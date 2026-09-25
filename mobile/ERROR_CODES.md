@@ -30,3 +30,8 @@ API failures keep the server's `NFC-*` ref and `request_id`. Tapping the referen
 | MOB-1019 | `programming_timeout` | No card presented | No card was held to the phone while programming. | Start again and hold the card to the back of the phone. |
 | MOB-1020 | `endpoint_unreachable` | Endpoint unreachable | Direct mode: the developer endpoint could not be reached. | Check the endpoint URL/host is reachable from the phone. |
 | MOB-1021 | `endpoint_not_configured` | Endpoint not configured | Direct mode: the application has no enabled endpoint. | Set and enable the endpoint in the dashboard. |
+| MOB-1022 | `not_a_digital_card` | Not a digital card | The tapped phone or card does not share an NFC Terminal digital card. | Ask the other person to open My Card → Share, or scan their exchange QR code. |
+| MOB-1023 | `hce_unsupported` | Phone can't share by NFC | This phone does not support NFC card emulation (HCE), so it cannot act as a card. | Share with the QR code or your public link instead. |
+| MOB-1024 | `session_expired` | Signed out | Your personal session was revoked or expired. | Sign in again. |
+| MOB-1025 | `invalid_login_qr` | Invalid sign-in QR code | The QR code is not a valid "Sign in on your phone" code. | Create a new code on the web (Share → Sign in on your phone). |
+| MOB-1026 | `image_pick_failed` | Photo not available | The photo could not be picked, cropped or read. | Allow photo/camera access and try again. |

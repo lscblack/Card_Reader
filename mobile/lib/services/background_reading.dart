@@ -15,6 +15,16 @@ bool shouldReturnToBackground(DispatchedTag tag) => tag.launchedFromBackground;
   if (result == null) {
     return (title: '$card read', body: 'Still sending — it will be retried if needed.');
   }
+  final digital = result.digitalCard;
+  if (result.digitalCardToken != null && result.business == null) {
+    final who = digital?.fullName ?? 'Digital card';
+    return switch (result.status) {
+      EventStatus.delivered || EventStatus.logged => (title: '$who ✓', body: [?digital?.headline, ?digital?.company].join(' · ')),
+      EventStatus.queued => (title: '$who — queued for retry', body: result.lastError ?? ''),
+      EventStatus.failed => (title: '$who — failed', body: result.lastError ?? ''),
+      _ => (title: '$who read', body: ''),
+    };
+  }
   final b = result.business;
   if (b != null) {
     // Business devices: the platform's message ("John Doe · Sales Manager").

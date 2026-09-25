@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, Download, Eye, EyeOff, Hammer, PackageOpen, ScrollText, Trash2 } from 'lucide-react'
 import type { AppRelease, AppReleaseStatus, CreateAppReleaseRequest } from '@/api/types'
@@ -34,12 +34,24 @@ function duration(r: AppRelease) {
 }
 
 function useReleases() {
-  return useQuery({
+  const qc = useQueryClient()
+  const wasRunning = useRef(false)
+  const q = useQuery({
     queryKey: ['admin', 'app-releases'],
     queryFn: async () => itemsOf(await adminReleasesApi.list()).items,
     // Live status while anything is building.
     refetchInterval: (q) => (q.state.data?.some(running) ? 2000 : false),
   })
+  // When a build finishes, refresh notifications right away (the bell toasts the result).
+  const isRunning = !!q.data?.some(running)
+  useEffect(() => {
+    if (wasRunning.current && !isRunning) {
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+      void qc.invalidateQueries({ queryKey: ['meta', 'app-release'] })
+    }
+    wasRunning.current = isRunning
+  }, [isRunning, qc])
+  return q
 }
 
 function useReleaseMutations() {

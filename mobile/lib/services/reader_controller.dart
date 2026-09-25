@@ -66,6 +66,24 @@ class ReaderController extends ChangeNotifier {
   /// While a card is being programmed, reads are not delivered as events.
   bool programming = false;
 
+  /// Reader mode off while another space needs NFC (My Card sharing via HCE, personal scan).
+  /// Dispatched tags are still handled.
+  bool suspended = false;
+
+  Future<void> suspend() async {
+    if (suspended) return;
+    suspended = true;
+    await nfc.stopReading();
+    _notify();
+  }
+
+  Future<void> unsuspend() async {
+    if (!suspended) return;
+    suspended = false;
+    if (active) await _enable();
+    _notify();
+  }
+
   /// Stops reader mode so the write tap isn't also delivered as an event.
   Future<void> pauseForProgramming() async {
     programming = true;
@@ -135,7 +153,7 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> _enable() async {
-    if (nfcState != NfcState.enabled || !_foreground || programming) return;
+    if (nfcState != NfcState.enabled || !_foreground || programming || suspended) return;
     try {
       await nfc.startReading(onCard: _onCard, onError: _onReadError);
       await platform.keepScreenOn(true);
@@ -198,6 +216,7 @@ class ReaderController extends ChangeNotifier {
       deliveryMode: config?.deliveryMode ?? DeliveryMode.relay,
       status: EventStatus.pending,
       updatedAt: DateTime.now().toUtc(),
+      digitalCardToken: card.digitalCardToken,
     );
     await repository.upsert(record);
     lastEvent = record;

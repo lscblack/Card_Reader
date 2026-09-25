@@ -121,7 +121,7 @@ async def get_usage(
 @router.get("/billing/plans", response_model=list[PlanOut], tags=["Usage & billing"],
             summary="Available plans (public)", description="Filter with `?audience=developer|business`.")
 async def list_plans(session: SessionDep, request: Request,
-                     audience: Literal["developer", "business"] | None = None) -> list[PlanOut]:
+                     audience: Literal["developer", "business", "personal"] | None = None) -> list[PlanOut]:
     set_actor(request, "public")
     now = datetime.now(UTC)
     promos = await promotions.live_promotions(session, now)

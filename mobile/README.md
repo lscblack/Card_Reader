@@ -109,6 +109,53 @@ tags with the screen off, so the app covers the rest in two ways.
   - If another NFC app is installed, Android may ask which app to use. Choose NFC Terminal and
     "Always".
 
+## Personal digital card (Part 4)
+
+On first launch the app asks how the phone will be used. It can be a **Personal digital card**,
+a **Terminal**, or both. The bottom navigation shows the spaces that are set up:
+My Card + Contacts, Reader + History, and Settings.
+
+- **Sign in.** Use email and password, create an account, or scan the web's "Sign in on your
+  phone" QR code (`nfcterminal://login?...`). The QR works in the in-app scanner and from the
+  system camera through a deep link.
+  - The session token (`nfcs_…`), the share key and a card cache are kept in secure storage.
+  - The login code is never stored.
+  - Sign-out revokes the session, wipes everything and disables card emulation.
+- **Share (phone as a card).** `CardHostApduService` (HCE, category `other`) answers two AIDs.
+  - `F04E4643444301` returns `NFCDC` followed by a fresh 41-byte signed token.
+  - `D2760000850101` emulates an NFC Forum Type 4 Tag with the public page URL
+    (`…/p/{slug}?via=nfc`), so iPhones get the web card.
+  - The service reads an AES-GCM cache encrypted with an Android Keystore key, written by the
+    app. It works with the app closed while the phone is unlocked.
+  - The service component is only enabled while signed in and sharing.
+  - While this app is scanning, Android suspends card emulation. The UI therefore separates
+    **Share my card** from **Scan a card**. With both spaces set up, terminal reader mode only
+    runs on the Reader tab.
+- **Scan.** The app sends the SELECT (150 ms) to the other device. If it answers with a token,
+  the app calls `POST /personal/exchanges` and shows their card with "mutual ✓".
+  - If NFC isn't available, use the exchange QR `nfcterminal://card?v=1&t=…`. The phone
+    generates it itself, offline, with the same token generator.
+  - The public-link QR is also available.
+- **Edit.** A live preview updates as you edit. You can change:
+  - the template (9, rendered with the web's six layouts: `centered`, `left`, `split`,
+    `hero_photo`, `banner`, `compact`), colours (presets, HSV or hex), background style,
+    pattern, font, corner radius and the QR toggle;
+  - the photo, cover and logo (camera or gallery with crop);
+  - the fields, with add/remove rows;
+  - per-field visibility and share settings.
+
+  Fields locked by a business are read-only.
+- **Contacts** (search, tags, favourites, notes, save to phone via a vCard intent, share),
+  **Activity** and **Business invites** (accept or decline).
+- **Terminals.** Every reader path (reader mode and background tag dispatch) tries the
+  digital-card SELECT first on IsoDep tags. A phone sharing a card is sent as
+  `card_type: digital_card`, `card_id` = share_id hex, plus `digital_card_token`. Everything
+  else follows the unchanged UID flow.
+
+Token format: see `docs/PART4_CONTRACT.md` §3. Dart (`lib/core/digital_card_token.dart`) and
+Kotlin (`DigitalCardToken.kt`) are both tested against the contract's vectors. Kotlin tests:
+`cd android && ./gradlew :app:testDebugUnitTest`.
+
 ## Business devices (Part 2)
 
 When the device config says `account_type: "business"`, the app changes in these ways:

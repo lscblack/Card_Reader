@@ -288,3 +288,57 @@ export function ProgrammingDiagram() {
     </Diagram>
   )
 }
+
+export function ExchangeDiagram() {
+  const lanes = [
+    { x: 110, label: 'A — scans' },
+    { x: 360, label: 'Platform API' },
+    { x: 610, label: 'B — shares' },
+  ]
+  const msgs: { from: number; to: number; y: number; label: string; accent?: boolean; dashed?: boolean }[] = [
+    { from: 0, to: 2, y: 88, label: 'SELECT digital-card AID (NFC)' },
+    { from: 2, to: 0, y: 122, label: '"NFCDC" + fresh signed token', dashed: true, accent: true },
+    { from: 0, to: 1, y: 162, label: 'POST /personal/exchanges { token }' },
+    { from: 1, to: 1, y: 196, label: 'verify MAC · key · issued_at' },
+    { from: 1, to: 0, y: 232, label: 'contact: B’s public + contacts fields', dashed: true },
+    { from: 1, to: 2, y: 268, label: 'auto-exchange on → contact for A + notification', dashed: true, accent: true },
+  ]
+  return (
+    <Diagram
+      h={300}
+      title="Mutual exchange sequence"
+      desc="Phone A scans phone B over NFC and receives a fresh signed token. A sends the token to the platform, which verifies it and gives A a contact with B's public and contacts fields. If B has auto-exchange on, B also receives a contact for A and a notification."
+    >
+      {() => (
+        <>
+          {lanes.map((l) => (
+            <g key={l.label}>
+              <rect x={l.x - 90} y={14} width={180} height={34} rx={8} fill="var(--surface-2)" stroke="var(--border-strong)" />
+              <text x={l.x} y={36} textAnchor="middle" fontSize="13" fontWeight="600" fill="var(--fg)">
+                {l.label}
+              </text>
+              <line x1={l.x} y1={48} x2={l.x} y2={292} stroke="var(--border-strong)" strokeDasharray="3 4" />
+            </g>
+          ))}
+          {msgs.map((m) => {
+            if (m.from === m.to) {
+              const x = lanes[m.from].x
+              return (
+                <g key={m.y}>
+                  <rect x={x - 110} y={m.y - 16} width={220} height={26} rx={6} fill="var(--accent-soft)" stroke="var(--accent)" />
+                  <text x={x} y={m.y + 2} textAnchor="middle" fontSize="11.5" fill="var(--fg)">
+                    {m.label}
+                  </text>
+                </g>
+              )
+            }
+            const x1 = lanes[m.from].x
+            const x2 = lanes[m.to].x
+            const dir = x2 > x1 ? 1 : -1
+            return <Arrow key={m.y} d={`M${x1 + dir * 4} ${m.y} H${x2 - dir * 6}`} label={m.label} lx={(x1 + x2) / 2} ly={m.y - 7} accent={m.accent} dashed={m.dashed} />
+          })}
+        </>
+      )}
+    </Diagram>
+  )
+}

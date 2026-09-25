@@ -126,7 +126,8 @@ class PlanFields(Schema):
     max_cards: int | None = Field(default=None, ge=0)
     max_members: int | None = Field(default=None, ge=0)
     features: list[str] | None = Field(default=None, max_length=30)
-    audience: Literal["developer", "business"] | None = None
+    audience: Literal["developer", "business", "personal"] | None = None
+    max_contacts: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
     is_featured: bool | None = None
     sort_order: int | None = Field(default=None, ge=0, le=10_000)
@@ -138,7 +139,7 @@ class PlanCreate(PlanFields):
     code: str = Field(min_length=2, max_length=32)
     name: str = Field(min_length=1, max_length=100)
     price_monthly_cents: int = Field(ge=0, le=100_000_000)
-    audience: Literal["developer", "business"] = "developer"
+    audience: Literal["developer", "business", "personal"] = "developer"
 
     @field_validator("code")
     @classmethod
@@ -208,7 +209,7 @@ async def update_plan(code: str, body: PlanPatch, admin: AdminUser, session: Ses
         raise validation_error("body.code", "plan codes are immutable")
     data.pop("code", None)
     nullable = {"price_yearly_cents", "events_per_month", "max_applications", "max_devices", "max_cards",
-                "max_members", "badge", "description"}
+                "max_members", "max_contacts", "badge", "description"}
     for key, value in data.items():
         if value is None and key not in nullable:
             continue
@@ -259,7 +260,7 @@ class PromotionFields(Schema):
     discount_type: Literal["percent", "amount"] | None = None
     discount_value: int | None = Field(default=None, ge=1)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
-    audience: Literal["developer", "business", "all"] | None = None
+    audience: Literal["developer", "business", "personal", "all"] | None = None
     plan_codes: list[str] | None = Field(default=None, max_length=50)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
@@ -411,7 +412,7 @@ class Cta(Schema):
 
 
 class EmailFilter(Schema):
-    account_type: Literal["developer", "business"] | None = None
+    account_type: Literal["developer", "business", "personal"] | None = None
     status: Literal["active", "inactive"] | None = None
     email_verified: bool | None = None
     plan_code: str | None = Field(default=None, max_length=32)

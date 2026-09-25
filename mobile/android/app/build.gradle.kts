@@ -40,3 +40,10 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider for vCard hand-off (normally already present transitively).
+    implementation("androidx.core:core:1.13.1")
+    // JVM unit tests for the HCE token/APDU logic (src/test/kotlin).
+    testImplementation("junit:junit:4.13.2")
+}

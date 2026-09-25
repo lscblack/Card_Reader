@@ -1,5 +1,6 @@
 import type { Audience } from './plans'
 import { ProductPreview } from './components/ProductPreview'
+import { DigitalCardSection } from './components/DigitalCardSection'
 import { Features, Stats } from './components/Features'
 import { Integration } from './components/Integration'
 import { Security } from './components/Security'
@@ -12,6 +13,7 @@ import { FinalCta } from './components/Footer'
 export default function BelowFold({ planAudience, onPlanAudience }: { planAudience: Audience; onPlanAudience: (a: Audience) => void }) {
   return (
     <>
+      <DigitalCardSection />
       <ProductPreview />
       <Features />
       <Stats />

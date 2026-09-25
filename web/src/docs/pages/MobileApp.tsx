@@ -1,5 +1,9 @@
 import { CodeBlock } from '../components/Code'
 import { B, C, Callout, DocHeader, DocLink, H2, OL, P, PrevNext, Table, UL } from '../components/Prose'
+import { Figure } from '../components/Figure'
+import { PairingSequenceDiagram, ProgrammingDiagram } from '../components/Diagrams'
+import { BackgroundNotificationMock, DeveloperResultMock } from '../components/PhoneMocks'
+import { DownloadApp } from '@/marketing/components/DownloadApp'
 
 export default function MobileApp() {
   return (
@@ -9,6 +13,13 @@ export default function MobileApp() {
         <B>NFC Terminal</B> is a generic reader app: tap a card → read its UID → deliver the event. It has no business logic and never decides
         what a card means.
       </P>
+
+      <H2 id="download">Download the Android app</H2>
+      <P>
+        Install the latest published build directly — scan the QR code with the phone, or download the APK and open it. Android may ask
+        you to allow installing apps from your browser the first time.
+      </P>
+      <DownloadApp className="my-5" />
 
       <H2 id="requirements">Requirements</H2>
       <UL>
@@ -52,6 +63,9 @@ export default function MobileApp() {
         </li>
       </OL>
       <CodeBlock language="text" title="QR payload" code="nfcterminal://pair?v=1&server=http%3A%2F%2F192.168.1.74%3A8000&code=nfcp_…&name=Front%20desk" />
+      <Figure scroll caption="QR pairing: the phone registers with a single-use code and keeps only its own device token.">
+        <PairingSequenceDiagram />
+      </Figure>
       <UL>
         <li>
           Codes are <B>single use</B>, <B>expire after 10 minutes</B> and are stored only as a SHA-256 hash. The app never stores the code.
@@ -90,6 +104,10 @@ export default function MobileApp() {
         ]}
       />
 
+      <Figure caption="After a read: status, card UID and the UID-only label.">
+        <DeveloperResultMock />
+      </Figure>
+
       <H2 id="background">Background reading limits</H2>
       <Callout tone="warning" title="Screen on and unlocked">
         Android only hands NFC tags to apps while the screen is <B>on and unlocked</B>. No app or service can read tags with the screen off or
@@ -109,6 +127,10 @@ export default function MobileApp() {
           reading still works without it. If another NFC app is installed, Android may ask which app to use: choose NFC Terminal and “Always”.
         </li>
       </UL>
+
+      <Figure caption="A background read: a notification confirms the result and you stay in your current app.">
+        <BackgroundNotificationMock />
+      </Figure>
 
       <H2 id="offline">Offline queue &amp; retries</H2>
       <UL>
@@ -142,6 +164,9 @@ export default function MobileApp() {
         <li>Hold a writable card or tag to the phone. The app writes an NDEF URI record with the card&apos;s tap URL (and, for Wi-Fi actions, optionally a native Wi-Fi record).</li>
         <li>The app confirms and reports it as programmed, binding the UID if the card had none.</li>
       </OL>
+      <Figure scroll caption="Programming a card: pick, hold, write, report.">
+        <ProgrammingDiagram />
+      </Figure>
       <Callout tone="note">
         The app never makes a tag read-only. Because the tag only stores a link, changing the action or profile later never requires
         rewriting it.

@@ -17,6 +17,38 @@ export default function Changelog() {
       <DocHeader slug="changelog" />
       <P>All changes are additive and backward compatible: existing developer accounts, devices, keys and the mobile app keep working.</P>
 
+      <H2 id="part-4">Part 4 — Personal accounts & digital cards</H2>
+      <Entry
+        items={[
+          <>
+            <b className="text-fg">Personal accounts</b> with a free plan and a <C>/me</C> dashboard.
+          </>,
+          <>
+            <b className="text-fg">Digital cards</b>: templates, per-field visibility, NFC phone-to-phone sharing, <b className="text-fg">mutual exchange</b>,
+            QR fallback and a public card page for phones without the app. See <DocLink to="/docs/digital-cards">Digital cards</DocLink>.
+          </>,
+          <>
+            <b className="text-fg">Business-issued employee cards</b> with locked fields and company branding.
+          </>,
+          <>
+            Terminals read digital cards: <C>digital_card_token</C> on device events and a <C>digital_card</C> object in webhooks (
+            <C>signed_token</C> level).
+          </>,
+        ]}
+      />
+
+      <H2 id="part-3">Part 3 — Branding, pricing & live tools</H2>
+      <Entry
+        items={[
+          'Runtime branding (name, logo, colours, fonts), admin-managed plans with promotions and yearly prices.',
+          <>
+            <b className="text-fg">Run mode</b>: a live console of taps and delivery attempts. See <DocLink to="/docs/run-mode">Run mode</DocLink>.
+          </>,
+          'Android app downloads from the dashboard and docs, in-app notifications and product tours.',
+          'The public API reference now lives only in these docs (no public Swagger).',
+        ]}
+      />
+
       <H2 id="part-2">Part 2 — Business accounts</H2>
       <Entry
         items={[

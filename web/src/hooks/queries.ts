@@ -42,7 +42,8 @@ export const useServerMeta = () => useQuery({ queryKey: qk.meta, queryFn: metaAp
 
 export const useOverview = () => useQuery({ queryKey: qk.overview, queryFn: overviewApi.get })
 
-export const useApplications = () => useQuery({ queryKey: qk.applications, queryFn: applicationsApi.list })
+export const useApplications = (opts: { enabled?: boolean } = {}) =>
+  useQuery({ queryKey: qk.applications, queryFn: applicationsApi.list, enabled: opts.enabled ?? true })
 
 export const useApplication = (id: string | undefined) =>
   useQuery({ queryKey: qk.application(id ?? ''), queryFn: () => applicationsApi.get(id!), enabled: !!id })

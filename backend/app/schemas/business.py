@@ -137,6 +137,7 @@ class EmployeeOut(Schema):
     total_taps: int
     last_tap_at: UTCDateTime | None
     created_at: UTCDateTime
+    digital_card: dict[str, Any] | None = None  # Part 4 §6
 
 
 class EmployeeIn(Schema):

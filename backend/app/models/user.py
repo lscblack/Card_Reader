@@ -25,7 +25,7 @@ class User(UUIDPk, Timestamps, Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint("role IN ('developer','admin')", name="role"),
-        CheckConstraint("account_type IN ('developer','business')", name="account_type"),
+        CheckConstraint("account_type IN ('developer','business','personal')", name="account_type"),
     )
 
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
@@ -87,6 +87,7 @@ class Plan(UUIDPk, Timestamps, Base):
     description: Mapped[str | None] = mapped_column(String(500))
     max_cards: Mapped[int | None] = mapped_column(Integer)
     max_members: Mapped[int | None] = mapped_column(Integer)
+    max_contacts: Mapped[int | None] = mapped_column(Integer)  # Part 4 (personal plans)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

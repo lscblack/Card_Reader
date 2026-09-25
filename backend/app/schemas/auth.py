@@ -30,7 +30,7 @@ class UserOut(Schema):
     is_active: bool
     created_at: UTCDateTime
     plan: str = "free"
-    account_type: Literal["developer", "business"] = "developer"
+    account_type: Literal["developer", "business", "personal"] = "developer"
     email_verified: bool = False
     email_verified_at: UTCDateTime | None = None
     memberships: list[MembershipInfo] = []
@@ -49,8 +49,11 @@ class RegisterIn(Schema):
     email: Email
     password: str = Field(min_length=10, max_length=128)
     full_name: str = Field(min_length=1, max_length=200)
-    account_type: Literal["developer", "business"] = "developer"
+    account_type: Literal["developer", "business", "personal"] = "developer"
     business: "BusinessRegistrationIn | None" = None
+    phone: str | None = Field(default=None, max_length=40)
+    card_invite: str | None = Field(default=None, min_length=10, max_length=256)
+    card_invite_token: str | None = Field(default=None, min_length=10, max_length=256)  # alias used by the web app
     invite_token: str | None = Field(default=None, min_length=10, max_length=256)
 
     @field_validator("full_name")

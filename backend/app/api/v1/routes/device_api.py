@@ -35,6 +35,7 @@ from app.schemas.device_api import (
 from app.core.error_catalog import ref_for
 from app.services import audit, delivery, live, usage
 from app.services import business as biz
+from app.services import digital_cards
 from app.services import taps as taps_service
 from app.services import plans as plan_service
 from app.services.serializers import device_out
@@ -277,6 +278,9 @@ async def submit_event(
         await plan_service.ensure_can_record_event(session, device.owner_id)
     now = datetime.now(UTC)
     is_direct = body.direct_delivery is not None
+    digital = None
+    if body.digital_card_token is not None:  # Part 4 §5
+        digital = await digital_cards.read_by_terminal(session, body.digital_card_token, body.card_id, app, business)
     event = NfcEvent(
         id=body.event_id,
         application_id=app.id,
@@ -284,7 +288,8 @@ async def submit_event(
         owner_id=device.owner_id,
         event_type="card.detected",
         card_id=body.card_id,
-        card_type=body.card_type,
+        card_type="digital_card" if digital is not None else body.card_type,
+        extra={"digital_card": digital.payload} if digital is not None else None,
         card_technologies=body.card_technologies,
         delivery_mode="direct" if is_direct else "relay",
         status="pending",
@@ -314,7 +319,10 @@ async def submit_event(
         "delivery_mode": event.delivery_mode})
 
     outcome = None
-    if business is not None:  # §C2: resolve against the business's cards, record a reader tap
+    if digital is not None:
+        await digital_cards.after_event(session, digital, event, device, app, business)
+        outcome = digital.outcome
+    elif business is not None:  # §C2: resolve against the business's cards, record a reader tap
         outcome = await taps_service.resolve_reader_tap(
             session, business=business, device=device, card_uid=body.card_id, nfc_event_id=event.id)
     webhook_event = outcome.webhook_event if outcome else None
@@ -324,14 +332,14 @@ async def submit_event(
         await _record_direct_attempt(session, event, body)
         await session.commit()
         await _enqueue(webhook_event)
-        return _out(await _state(session, event), block)
+        return _out(await _state(session, event), block, digital.response if digital else None)
 
     if business is not None and not (app.endpoint_url and app.endpoint_enabled):
         # Business terminal without an endpoint: not an error — the tap is logged.
         event.status = "logged"
         await session.commit()
         await _enqueue(webhook_event)
-        return _out(await _state(session, event), block)
+        return _out(await _state(session, event), block, digital.response if digital else None)
 
     await session.commit()  # persist before the (slow) outbound call
     await _enqueue(webhook_event)
@@ -344,7 +352,7 @@ async def submit_event(
         error=d.error,
         error_code=d.error_code,
         error_ref=ref_for(d.error_code),
-    ), block)
+    ), block, digital.response if digital else None)
 
 
 async def _enqueue(event: NfcEvent | None) -> None:
@@ -352,8 +360,10 @@ async def _enqueue(event: NfcEvent | None) -> None:
         await delivery.enqueue(event.id, datetime.now(UTC))
 
 
-def _out(state: DeviceEventOut, business_block: dict | None) -> JSONResponse:  # type: ignore[type-arg]
+def _out(state: DeviceEventOut, business_block: dict | None, digital: dict | None = None) -> JSONResponse:  # type: ignore[type-arg]
     data = state.model_dump(mode="json", exclude={"business"})
+    if digital is not None:
+        data["digital_card"] = digital
     # error_code / error_ref only when the attempt failed (keeps the Part 1 success shape unchanged).
     for key in ("error_code", "error_ref"):
         if data.get(key) is None:

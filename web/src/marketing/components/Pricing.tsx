@@ -77,7 +77,7 @@ function PlanCard({ plan, billing, cta }: { plan: PublicPlan; billing: Billing; 
 
         <div className="mt-5 flex flex-wrap items-baseline gap-x-2">
           {custom ? (
-            <span className="text-4xl font-semibold tracking-tight text-fg">Custom</span>
+            <span className="text-4xl font-semibold tracking-tight text-fg">{planAudience(plan) === 'personal' ? 'Soon' : 'Custom'}</span>
           ) : now === 0 ? (
             <span className="text-4xl font-semibold tracking-tight text-fg">Free</span>
           ) : (
@@ -177,7 +177,7 @@ export function Pricing({ audience, onAudience }: { audience: Audience; onAudien
 
   const cta = (p: PublicPlan) => {
     if (loggedIn) return { to: DASHBOARD_PATH, label: 'Go to dashboard' }
-    const to = audience === 'business' ? '/register?type=business' : '/register'
+    const to = audience === 'developer' ? '/register' : `/register?type=${audience}`
     if (isCustomPriced(p)) return { to, label: 'Get started' }
     return { to, label: p.price_monthly_cents === 0 ? 'Start free' : `Choose ${p.name}` }
   }
@@ -200,6 +200,7 @@ export function Pricing({ audience, onAudience }: { audience: Audience; onAudien
             options={[
               { value: 'developer', label: 'Developers' },
               { value: 'business', label: 'Businesses' },
+              { value: 'personal', label: 'Individuals' },
             ]}
           />
           {hasYearly && (
@@ -216,7 +217,10 @@ export function Pricing({ audience, onAudience }: { audience: Audience; onAudien
           )}
         </div>
 
-        <div className="mx-auto mt-12 grid max-w-5xl items-stretch gap-6 md:grid-cols-3" aria-busy={q.isLoading}>
+        <div
+          className={cn('mx-auto mt-12 grid items-stretch gap-6', plans.length === 2 ? 'max-w-3xl md:grid-cols-2' : plans.length === 1 ? 'max-w-sm' : 'max-w-5xl md:grid-cols-3')}
+          aria-busy={q.isLoading}
+        >
           {plans.map((p, i) => (
             <Reveal key={`${audience}-${p.code}`} delay={i * 0.07} className="h-full">
               <PlanCard plan={p} billing={effectiveBilling} cta={cta(p)} />

@@ -26,6 +26,7 @@ AUTH_PATHS = {
     "/api/v1/auth/reset-password",
     "/api/v1/auth/verify-email",
     "/api/v1/auth/resend-verification",
+    "/api/v1/personal/sessions",
 }
 _INVITE_ACCEPT_RE = re.compile(r"^/api/v1/invitations/[^/]+/accept$")
 
@@ -36,7 +37,7 @@ def is_credential_endpoint(method: str, path: str) -> bool:
 EXEMPT_PREFIXES = ("/api/v1/health", "/docs", "/redoc", "/openapi.json", "/media/")
 PUBLIC_PREFIXES = (
     "/api/v1/public/", "/api/v1/errors", "/api/v1/meta", "/api/v1/actions/types", "/api/v1/billing/plans",
-    "/api/v1/invitations/", "/api/v1/billing/promotions/active",
+    "/api/v1/invitations/", "/api/v1/billing/promotions/active", "/api/v1/personal/templates",
 )
 
 _last_warning = 0.0
@@ -93,6 +94,8 @@ def bucket_for(request: Request) -> tuple[str, int, int] | None:
             settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
         )
     auth = request.headers.get("authorization", "")
+    if path.startswith("/api/v1/public/") and request.method == "POST":
+        return f"public:post:{ip}", limit, window  # lead capture (plus a stricter per-card limit in the route)
     if path.startswith(PUBLIC_PREFIXES) and request.method == "GET":
         return f"public:ip:{ip}", limit, window
     if auth.lower().startswith("bearer "):
@@ -101,6 +104,8 @@ def bucket_for(request: Request) -> tuple[str, int, int] | None:
             return f"apikey:{_hash(token)}", limit, window
         if token.startswith("nfcd_"):
             return f"device:{_hash(token)}", limit, window
+        if token.startswith("nfcs_"):
+            return f"personal:{_hash(token)}", limit, window
         try:
             sub = decode_access_token(token)["sub"]
             return f"user:{sub}", limit, window

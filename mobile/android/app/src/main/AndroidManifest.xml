@@ -11,6 +11,7 @@
 
     <!-- NFC is optional so the app can be installed (and explain itself) on devices without it. -->
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
 
     <application
         android:label="NFC Terminal"
@@ -42,6 +43,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="nfcterminal" android:host="pair" />
+                <!-- Part 4: "Sign in on your phone" QR and card-exchange QR. -->
+                <data android:scheme="nfcterminal" android:host="login" />
+                <data android:scheme="nfcterminal" android:host="card" />
             </intent-filter>
             <!-- Links are handled by our own channel, not Flutter's router. -->
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
@@ -69,6 +73,37 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
+        <!--
+          Part 4: phone-as-card (Host Card Emulation). Disabled until the user signs in to a
+          personal account with NFC sharing on; toggled via PackageManager at runtime.
+        -->
+        <service
+            android:name=".CardHostApduService"
+            android:enabled="false"
+            android:exported="true"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/apduservice" />
+        </service>
+        <!-- Photo crop for the card editor (image_cropper / uCrop). -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <!-- vCard hand-off to the Contacts app. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

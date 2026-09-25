@@ -1,6 +1,6 @@
 import { request } from '@/api/client'
 
-export type Audience = 'developer' | 'business'
+export type Audience = 'developer' | 'business' | 'personal'
 
 /** `GET /billing/plans` (public). Business plans may carry extra limit fields; all are optional here. */
 export interface PublicPlan {
@@ -15,6 +15,7 @@ export interface PublicPlan {
   audience?: Audience
   max_cards?: number | null
   max_members?: number | null
+  max_contacts?: number | null
   taps_per_month?: number | null
   // Part 3 §2 (admin-managed pricing) — all optional so older backends keep working.
   price_yearly_cents?: number | null
@@ -46,7 +47,7 @@ export interface LandingPromotion {
   discount_type: 'percent' | 'amount'
   discount_value: number
   currency?: string | null
-  audience: 'developer' | 'business' | 'all'
+  audience: 'developer' | 'business' | 'personal' | 'all'
   plan_codes?: string[]
   starts_at?: string | null
   ends_at: string | null
@@ -138,10 +139,39 @@ export const FALLBACK_PLANS: PublicPlan[] = [
     audience: 'business',
     features: ['Everything in Growth', 'Unlimited cards, devices & members', 'Dedicated support'],
   },
+  {
+    code: 'personal_free',
+    name: 'Personal',
+    description: 'One person, a few great-looking cards.',
+    price_monthly_cents: 0,
+    currency: 'usd',
+    events_per_month: null,
+    max_applications: null,
+    max_devices: null,
+    max_cards: 3,
+    max_contacts: 1000,
+    audience: 'personal',
+    features: ['NFC & QR sharing', 'Mutual exchange', 'All free templates', 'Public card page'],
+  },
+  {
+    code: 'personal_pro',
+    name: 'Personal Pro',
+    description: 'For people who meet a lot of people.',
+    price_monthly_cents: null,
+    currency: 'usd',
+    events_per_month: null,
+    max_applications: null,
+    max_devices: null,
+    max_cards: 20,
+    max_contacts: null,
+    is_featured: true,
+    audience: 'personal',
+    features: ['Everything in Personal', 'Premium templates', 'Lead capture export'],
+  },
 ]
 
 export function planAudience(p: PublicPlan): Audience {
-  return p.audience ?? (p.code.startsWith('biz_') ? 'business' : 'developer')
+  return p.audience ?? (p.code.startsWith('biz_') ? 'business' : p.code.startsWith('personal_') ? 'personal' : 'developer')
 }
 
 export async function fetchPublicPlans(): Promise<PublicPlan[]> {
@@ -209,7 +239,10 @@ export function planLimits(p: PublicPlan): string[] {
     if (v === undefined) return
     out.push(v === null ? `Unlimited ${label}` : `${n(v)} ${label}`)
   }
-  if (planAudience(p) === 'business') {
+  if (planAudience(p) === 'personal') {
+    line(p.max_cards, 'digital cards')
+    line(p.max_contacts, 'contacts')
+  } else if (planAudience(p) === 'business') {
     line(p.taps_per_month !== undefined ? p.taps_per_month : p.events_per_month, 'taps / month')
     line(p.max_cards, 'cards & tags')
     line(p.max_devices, 'reader devices')

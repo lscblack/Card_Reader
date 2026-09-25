@@ -28,8 +28,9 @@ def business_payload(name: str = "Acme Café", **overrides: Any) -> dict[str, An
 def token_from_url(url: str) -> str:
     parts = urlsplit(url)
     q = parse_qs(parts.query)
-    if "token" in q:
-        return q["token"][0]
+    for key in ("token", "card_invite"):
+        if key in q:
+            return q[key][0]
     return parts.path.rsplit("/", 1)[-1]
 
 

@@ -11,7 +11,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { VerifyEmailBanner } from '@/components/VerifyEmailBanner'
 import { PoweredBy } from '@/components/PoweredBy'
 import { NotificationBell } from '@/components/NotificationBell'
-import { startTour, usePageTours } from '@/tours'
+import { startTour, usePageTours, TourWelcome } from '@/tours'
 import { MaintenanceBanner } from '@/components/MaintenanceBanner'
 import { cn } from '@/lib/cn'
 
@@ -263,6 +263,7 @@ export function DashboardShell({
           {showVerifyBanner && <VerifyEmailBanner />}
           {children ?? <Outlet />}
         </main>
+        <TourWelcome />
       </div>
     </div>
   )

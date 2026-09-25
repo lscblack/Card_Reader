@@ -24,6 +24,12 @@ export default function LandingPage() {
   const [planAudience, setPlanAudience] = useState<PlanAudience>('business')
 
   const navigate = useCallback((t: NavTarget | string) => {
+    if (t === 'individuals' || t === 'digital-card') {
+      setTab('individuals')
+      setPlanAudience('personal')
+      scrollToId('digital-card')
+      return
+    }
     if (t === 'developers' || t === 'businesses') {
       setTab(t)
       setPlanAudience(t === 'developers' ? 'developer' : 'business')
@@ -63,7 +69,7 @@ export default function LandingPage() {
             tab={tab}
             onTab={(t) => {
               setTab(t)
-              setPlanAudience(t === 'developers' ? 'developer' : 'business')
+              setPlanAudience(t === 'developers' ? 'developer' : t === 'individuals' ? 'personal' : 'business')
             }}
           />
           <Suspense fallback={<div className="min-h-[100vh]" aria-hidden="true" />}>

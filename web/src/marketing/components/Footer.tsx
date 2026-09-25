@@ -54,6 +54,7 @@ const columns: { title: string; links: { label: string; to: string; external?: b
       { label: 'How it works', to: '/#product' },
       { label: 'For businesses', to: '/#businesses' },
       { label: 'For developers', to: '/#developers' },
+      { label: 'Digital card', to: '/#individuals' },
       { label: 'Pricing', to: '/#pricing' },
     ],
   },

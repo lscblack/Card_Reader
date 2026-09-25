@@ -8,12 +8,14 @@ import '../theme.dart';
 Color businessResultColor(BuildContext c, BusinessResult b) => switch (b.result) {
   'recognized' => StatusColors.success(c),
   'inactive' => StatusColors.warning(c),
+  'digital_card' => Theme.of(c).colorScheme.primary,
   _ => StatusColors.neutral(c),
 };
 
 String businessResultLabel(BusinessResult b) => switch (b.result) {
   'recognized' => 'Recognized',
   'inactive' => 'Inactive',
+  'digital_card' => 'Digital card',
   _ => 'Unknown card',
 };
 

@@ -3,14 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/links.dart';
 import 'core/pairing.dart';
 import 'data/event_repository.dart';
 import 'services/app_state.dart';
 import 'services/deep_links.dart';
+import 'services/digital_card_scanner.dart';
 import 'services/nfc_service.dart';
-import 'ui/screens/home_shell.dart';
+import 'services/personal_state.dart';
+import 'ui/personal/exchange_flow.dart';
+import 'ui/personal/personal_auth_screen.dart';
+import 'ui/personal/welcome_screen.dart';
 import 'ui/screens/pair_confirm_screen.dart';
-import 'ui/screens/setup_screen.dart';
+import 'ui/screens/root_shell.dart';
 import 'ui/theme.dart';
 
 class NfcTerminalApp extends StatefulWidget {
@@ -20,12 +25,18 @@ class NfcTerminalApp extends StatefulWidget {
     required this.repository,
     required this.nfc,
     this.deepLinks = const NoDeepLinks(),
+    this.personal,
+    this.scanner,
   });
 
   final AppState appState;
   final EventRepository repository;
   final NfcService nfc;
   final DeepLinkSource deepLinks;
+
+  /// Personal space; a signed-out instance is created when omitted.
+  final PersonalState? personal;
+  final DigitalCardScanner? scanner;
 
   @override
   State<NfcTerminalApp> createState() => _NfcTerminalAppState();
@@ -36,12 +47,21 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
   final _messenger = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<String>? _linkSub;
   String? _pendingLink;
+  late final PersonalState _personal;
+  late final DigitalCardScanner _scanner = widget.scanner ?? AndroidDigitalCardScanner();
 
   @override
   void initState() {
     super.initState();
+    _personal = widget.personal ??
+        (PersonalState(
+          store: widget.appState.credentials.store,
+          httpClient: widget.appState.httpClient,
+          platform: widget.appState.platform,
+        )..init());
     WidgetsBinding.instance.addObserver(this);
     widget.appState.addListener(_tryPendingLink);
+    _personal.addListener(_tryPendingLink);
     _linkSub = widget.deepLinks.links.listen(_onLink);
     widget.deepLinks.initialLink().then((l) {
       if (l != null) _onLink(l);
@@ -53,25 +73,45 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     _tryPendingLink();
   }
 
-  /// Opens the pairing confirmation for a `nfcterminal://pair` link once the
-  /// app has finished loading.
+  void _snack(String text) => _messenger.currentState?.showSnackBar(SnackBar(content: Text(text)));
+
+  /// Routes `nfcterminal://pair|login|card` links once the app has loaded.
   void _tryPendingLink() {
     final link = _pendingLink;
     final nav = _navigator.currentState;
-    if (link == null || nav == null || widget.appState.phase == AppPhase.loading) return;
+    if (link == null || nav == null || widget.appState.phase == AppPhase.loading || _personal.loading) return;
     _pendingLink = null;
-    if (widget.appState.phase == AppPhase.ready) {
-      _messenger.currentState?.showSnackBar(const SnackBar(
-        content: Text('This phone is already registered. Unregister it in Settings before pairing again.'),
-      ));
-      return;
-    }
-    try {
-      final pairing = PairingPayload.parse(link);
-      nav.popUntil((r) => r.isFirst);
-      nav.push(MaterialPageRoute<void>(builder: (_) => PairConfirmScreen(pairing: pairing)));
-    } on PairingFormatException catch (e) {
-      _messenger.currentState?.showSnackBar(SnackBar(content: Text(e.message)));
+    final host = Uri.tryParse(link)?.host.toLowerCase();
+    switch (host) {
+      case 'login':
+        if (_personal.signedIn) return _snack('You are already signed in to My Card on this phone.');
+        try {
+          final p = LoginPayload.parse(link);
+          nav.popUntil((r) => r.isFirst);
+          nav.push(MaterialPageRoute<void>(builder: (_) => PersonalAuthScreen(loginLink: p)));
+        } on LinkFormatException catch (e) {
+          _snack(e.message);
+        }
+      case 'card':
+        if (!_personal.signedIn) return _snack('Sign in to My Card to exchange cards.');
+        try {
+          final c = CardQrPayload.parse(link);
+          final ctx = nav.context;
+          unawaited(runExchange(ctx, c.token, via: 'qr'));
+        } on LinkFormatException catch (e) {
+          _snack(e.message);
+        }
+      default:
+        if (widget.appState.phase == AppPhase.ready) {
+          return _snack('This phone is already registered. Unregister it in Settings before pairing again.');
+        }
+        try {
+          final pairing = PairingPayload.parse(link);
+          nav.popUntil((r) => r.isFirst);
+          nav.push(MaterialPageRoute<void>(builder: (_) => PairConfirmScreen(pairing: pairing)));
+        } on PairingFormatException catch (e) {
+          _snack(e.message);
+        }
     }
   }
 
@@ -88,6 +128,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.appState.removeListener(_tryPendingLink);
+    _personal.removeListener(_tryPendingLink);
     _linkSub?.cancel();
     super.dispose();
   }
@@ -97,7 +138,9 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: widget.appState),
+        ChangeNotifierProvider.value(value: _personal),
         Provider<EventRepository>.value(value: widget.repository),
+        Provider<DigitalCardScanner>.value(value: _scanner),
       ],
       child: MaterialApp(
         title: 'NFC Terminal',
@@ -106,11 +149,13 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        home: Consumer<AppState>(
-          builder: (context, app, _) => switch (app.phase) {
-            AppPhase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
-            AppPhase.setup => const SetupScreen(),
-            AppPhase.ready => HomeShell(nfc: widget.nfc),
+        home: Consumer2<AppState, PersonalState>(
+          builder: (context, app, personal, _) {
+            if (app.phase == AppPhase.loading || personal.loading) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            if (app.phase != AppPhase.ready && !personal.signedIn) return const WelcomeScreen();
+            return RootShell(nfc: widget.nfc);
           },
         ),
       ),

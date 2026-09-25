@@ -1,5 +1,6 @@
 import '../../core/error_catalog.dart';
 import 'business.dart';
+import 'personal.dart';
 import 'device_config.dart';
 
 /// Error from the platform API, parsed from the contract error envelope
@@ -114,6 +115,7 @@ class EventSubmission {
     required this.cardType,
     required this.detectedAt,
     this.directDelivery,
+    this.digitalCardToken,
   });
 
   final String eventId;
@@ -125,6 +127,9 @@ class EventSubmission {
   final String detectedAt;
   final DirectDeliveryReport? directDelivery;
 
+  /// Part 4 §5 (only sent for digital cards; Part 1 body unchanged otherwise).
+  final String? digitalCardToken;
+
   Map<String, Object?> toJson() => {
     'event_id': eventId,
     'card_id': cardId,
@@ -132,6 +137,7 @@ class EventSubmission {
     'card_type': cardType,
     'detected_at': detectedAt,
     'direct_delivery': directDelivery?.toJson(),
+    'digital_card_token': ?digitalCardToken,
   };
 }
 
@@ -146,6 +152,7 @@ class EventSubmitResult {
     this.errorRef,
     this.errorCode,
     this.business,
+    this.digitalCard,
   });
 
   final String eventId;
@@ -165,14 +172,19 @@ class EventSubmitResult {
   /// Part 2 C2: business resolution (business devices only; absent for developers).
   final BusinessResult? business;
 
+  /// Part 4 §5: digital card read by this terminal (public fields), if the platform returns it.
+  final DigitalCardSummary? digitalCard;
+
   factory EventSubmitResult.fromJson(Map<String, dynamic> j) => EventSubmitResult(
     eventId: j['event_id'] as String? ?? '',
     status: j['status'] as String? ?? 'pending',
     statusCode: (j['status_code'] as num?)?.toInt(),
     latencyMs: (j['latency_ms'] as num?)?.toInt(),
     error: j['error'] as String?,
-    errorRef: j['error_ref'] as String?,
-    errorCode: j['error_code'] as String?,
+    // Part 4 §9: token problems are reported inside `digital_card`.
+    errorRef: j['error_ref'] as String? ?? (j['digital_card'] is Map ? (j['digital_card'] as Map)['error_ref'] as String? : null),
+    errorCode: j['error_code'] as String? ?? (j['digital_card'] is Map ? (j['digital_card'] as Map)['error_code'] as String? : null),
+    digitalCard: DigitalCardSummary.fromJson(j['digital_card']),
     business: j['business'] is Map ? BusinessResult.fromJson((j['business'] as Map).cast<String, dynamic>()) : null,
   );
 }

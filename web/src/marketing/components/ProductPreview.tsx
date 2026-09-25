@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useInView, useScroll, useTransform } from 'motion/react'
-import { BarChart3, CreditCard, FlaskConical, LayoutDashboard, ListChecks, type LucideIcon } from 'lucide-react'
+import { BarChart3, ContactRound, CreditCard, FlaskConical, LayoutDashboard, ListChecks, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useReducedMotionPref } from '../lib'
 import type { ScreenName } from '../assets/screens'
@@ -13,6 +13,7 @@ const tabs: { id: ScreenName; label: string; icon: LucideIcon; url: string; capt
   { id: 'sandbox', label: 'Sandbox', icon: FlaskConical, url: '/dashboard/sandbox', caption: 'See exactly what was sent, with a signature verdict and checks.' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, url: '/business/…/analytics', caption: 'Taps, unique visitors and web vs reader taps for businesses.' },
   { id: 'card', label: 'Card detail', icon: CreditCard, url: '/business/…/cards/…', caption: 'Who holds a card, what a tap does, and its tap link.' },
+  { id: 'me-editor', label: 'Digital card', icon: ContactRound, url: '/me/cards/…', caption: 'Design your digital card and choose who sees each field, with a live preview.' },
 ]
 
 const INTERVAL = 5500
@@ -49,7 +50,7 @@ export function ProductPreview() {
           id="preview-title"
           eyebrow="The product"
           title="One dashboard for every reader, card and tap"
-          subtitle="Real screens from the app — developers and businesses share the same fast, clean workspace, in light or dark."
+          subtitle="Real screens from the app — developers, businesses and individuals share the same fast, clean workspace, in light or dark."
         />
 
         <div

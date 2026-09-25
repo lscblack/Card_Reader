@@ -24,6 +24,7 @@ import { Avatar, DetailRow, KpiCard, PageSkeleton } from '../components/bits'
 import { BizErrorState } from '../components/BizError'
 import { EmployeeFormModal, EmployeeStatusDialog } from '../components/EmployeeDialogs'
 import { HeldCards } from '../components/HeldCards'
+import { EmployeeDigitalCardPanel } from '../components/EmployeeDigitalCard'
 import { RangePicker, UrlQrPanel } from '../components/inputs'
 import { BarList, TimelineChart } from '../components/charts'
 import { TapDetailDrawer, TapsTable } from '../components/Taps'
@@ -180,7 +181,8 @@ export default function EmployeeDetailPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
+          <div className="space-y-6 lg:col-span-1">
+            <EmployeeDigitalCardPanel employee={e} />
             <HeldCards cards={e.cards} assignee={{ type: 'employee', id: e.id, name: e.full_name, photo_url: e.photo_url }} />
           </div>
           {can('analytics.view') && (

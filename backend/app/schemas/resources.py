@@ -250,9 +250,10 @@ class PlanOut(Schema):
     max_applications: int | None
     max_devices: int | None
     features: list[str]
-    audience: Literal["developer", "business"] = "developer"
+    audience: Literal["developer", "business", "personal"] = "developer"
     max_cards: int | None = None
     max_members: int | None = None
+    max_contacts: int | None = None
     # Part 3 §2
     price_yearly_cents: int | None = None
     is_active: bool = True

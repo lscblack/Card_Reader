@@ -12,7 +12,7 @@ export function Tabs<T extends string>({
   className?: string
 }) {
   return (
-    <div className={cn('-mx-4 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:px-0', className)}>
+    <div className={cn('overflow-x-auto border-b border-border', className)}>
       <div className="flex gap-1" role="tablist">
         {tabs.map((t) => (
           <button

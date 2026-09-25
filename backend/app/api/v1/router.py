@@ -17,6 +17,7 @@ from app.api.v1.routes import (
     live_notifications,
     releases,
     pairing,
+    personal,
     people,
     profiles,
     public,
@@ -31,6 +32,8 @@ for module in (health, auth, account, applications, api_keys, devices, events, a
     api_router.include_router(module.router)
 api_router.include_router(team.public_router)
 api_router.include_router(live_notifications.router)
+api_router.include_router(personal.router)
+api_router.include_router(personal.public_router)
 api_router.include_router(releases.router)
 api_router.include_router(releases.admin_router)
 

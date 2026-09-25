@@ -7,6 +7,7 @@ import 'package:nfc_manager/nfc_manager_android.dart';
 import '../core/config.dart';
 import '../core/logger.dart';
 import '../data/models/card_read.dart';
+import 'digital_card_scanner.dart';
 
 enum NfcState { unsupported, disabled, enabled }
 
@@ -115,6 +116,15 @@ class AndroidNfcService implements NfcService {
     final uid = CardUtils.normalizeUid(CardUtils.bytesToHex(android.id));
     if (uid == null) throw const FormatException('Card returned no usable UID');
     final techs = android.techList.map(CardUtils.shortTechName).toList();
+
+    // Part 4 §3 reader side: phones sharing a digital card answer the SELECT.
+    if (techs.contains('IsoDep')) {
+      final token = await probeDigitalCard(tag);
+      if (token != null) {
+        final digital = digitalCardRead(token, techs, detectedAt);
+        if (digital != null) return digital;
+      }
+    }
 
     final nfcA = NfcAAndroid.from(tag);
     int? productType;

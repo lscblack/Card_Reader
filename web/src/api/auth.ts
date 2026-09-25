@@ -32,5 +32,6 @@ export function homePathFor(user: { role?: string; account_type?: string } | nul
   if (!user) return '/login'
   if (user.role === 'admin') return '/admin'
   if (user.account_type === 'business') return '/business'
+  if (user.account_type === 'personal') return '/me'
   return '/dashboard'
 }

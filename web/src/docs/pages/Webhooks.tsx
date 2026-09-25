@@ -2,6 +2,8 @@ import { sampleHeaders, samplePayload } from '@/lib/snippets'
 import { verifySamplesAll } from '../verifySamples'
 import { CodeBlock, CodeTabs, type Sample } from '../components/Code'
 import { B, C, Callout, DocHeader, DocLink, H2, P, PrevNext, Table, UL } from '../components/Prose'
+import { Figure } from '../components/Figure'
+import { SignatureDiagram } from '../components/Diagrams'
 
 const signCli = `# Reproduce a signature by hand (relay mode) — useful for debugging.
 SECRET='whsec_your_webhook_secret'           # the full string, including "whsec_"
@@ -132,7 +134,8 @@ export default function Webhooks() {
           [<C key="f">event</C>, <><C>card.detected</C>; <C>endpoint.test</C> for test deliveries; <C>card.tapped</C> for business <C>developer_webhook</C> actions.</>],
           [<C key="f">card_id</C>, 'Uppercase hex UID without separators (same as card.uid).'],
           [<C key="f">card.technologies</C>, <>Android tech list, e.g. <C>NfcA</C>, <C>MifareUltralight</C>.</>],
-          [<C key="f">card.type</C>, <>Best-effort card family; may be <C>null</C>.</>],
+          [<C key="f">card.type</C>, <>Best-effort card family; may be <C>null</C>. <C>digital_card</C> for a phone sharing a digital card.</>],
+          [<C key="f">digital_card</C>, <>Only for digital cards: <C>verified</C> plus the owner’s public fields — see <DocLink to="/docs/digital-cards#developers">Digital cards</DocLink>.</>],
           [<C key="f">security</C>, <><C>authenticated: false</C>, <C>level: &quot;uid_only&quot;</C> — see <DocLink to="/docs/security#uid">Security</DocLink>.</>],
           [<C key="f">device_id</C>, 'Device UUID (all zeros for test events).'],
           [<C key="f">delivery_mode</C>, <><C>relay</C> or <C>direct</C>.</>],
@@ -171,6 +174,9 @@ export default function Webhooks() {
           <B>Output</B>: lowercase hex, prefixed with <C>v1=</C>. Compare in constant time.
         </li>
       </UL>
+      <Figure scroll caption="The v1 signature: HMAC-SHA256 over timestamp, nonce and raw body, keyed with the secret’s UTF-8 bytes.">
+        <SignatureDiagram />
+      </Figure>
       <CodeBlock language="bash" title="Debug a signature with openssl" code={signCli} />
 
       <H2 id="direct-key">Direct-mode derived key</H2>

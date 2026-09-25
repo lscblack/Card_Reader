@@ -15,6 +15,7 @@ class DispatchedTag {
     this.productType,
     required this.launchedFromBackground,
     required this.receivedAt,
+    this.digitalCardToken,
   });
 
   final String uidHex;
@@ -30,6 +31,9 @@ class DispatchedTag {
   final bool launchedFromBackground;
   final DateTime receivedAt;
 
+  /// Part 4: set when the tag was a phone sharing a digital card (probed in Kotlin).
+  final String? digitalCardToken;
+
   factory DispatchedTag.fromMap(Map<Object?, Object?> m, {DateTime? now}) => DispatchedTag(
     uidHex: (m['uid'] as String?) ?? '',
     techList: ((m['techList'] as List?) ?? const []).whereType<String>().toList(),
@@ -37,10 +41,16 @@ class DispatchedTag {
     productType: (m['productType'] as num?)?.toInt(),
     launchedFromBackground: m['fromBackground'] == true,
     receivedAt: now ?? DateTime.now().toUtc(),
+    digitalCardToken: m['digitalCardToken'] as String?,
   );
 
   /// Same normalisation and type guessing as reader mode. Null if the UID is unusable.
   CardRead? toCardRead() {
+    final token = digitalCardToken;
+    if (token != null) {
+      final d = digitalCardRead(token, techList.map(CardUtils.shortTechName).toList(), receivedAt);
+      if (d != null) return d;
+    }
     final uid = CardUtils.normalizeUid(uidHex);
     if (uid == null) return null;
     final techs = techList.map(CardUtils.shortTechName).toList();

@@ -17,6 +17,7 @@ import '../../services/reader_controller.dart';
 import '../theme.dart';
 import '../widgets/business_result.dart';
 import '../widgets/common.dart';
+import '../widgets/digital_card_result.dart';
 import '../widgets/error_ref.dart';
 import '../widgets/help_sheet.dart';
 import '../widgets/update_banner.dart';
@@ -304,6 +305,10 @@ class _LastCardCard extends StatelessWidget {
         InfoRow('Card ID', card.uid, mono: true),
         InfoRow('Type', card.type),
         InfoRow('Technologies', card.technologies.join(', ')),
+        if (card.isDigitalCard && e?.business == null) ...[
+          const SizedBox(height: 8),
+          DigitalCardResult(summary: e?.digitalCard, shareIdHex: card.uid),
+        ],
         if (e?.business != null) ...[
           const SizedBox(height: 8),
           BusinessResultCard(

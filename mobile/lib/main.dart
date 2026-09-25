@@ -6,7 +6,9 @@ import 'core/secure_store.dart';
 import 'data/event_repository.dart';
 import 'services/app_state.dart';
 import 'services/deep_links.dart';
+import 'services/hce_bridge.dart';
 import 'services/nfc_service.dart';
+import 'services/personal_state.dart';
 import 'services/platform_info.dart';
 import 'services/tag_dispatch.dart';
 
@@ -24,7 +26,19 @@ Future<void> main() async {
   // Show the loading screen immediately; init continues in the background.
   appState.init();
 
-  runApp(NfcTerminalApp(appState: appState, repository: repository, nfc: AndroidNfcService(),
+  final personal = PersonalState(
+    store: appState.credentials.store,
+    httpClient: appState.httpClient,
+    platform: appState.platform,
+    hce: AndroidHceBridge(),
+  );
+  personal.init();
+
+  runApp(NfcTerminalApp(
+    personal: personal,
+    appState: appState,
+    repository: repository,
+    nfc: AndroidNfcService(),
     deepLinks: AndroidDeepLinks(),
   ));
 }

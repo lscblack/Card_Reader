@@ -64,6 +64,7 @@ async def overview(admin: AdminUser, session: SessionDep,
         func.count(),
         func.count().filter(User.account_type == "developer"),
         func.count().filter(User.account_type == "business"),
+        func.count().filter(User.account_type == "personal"),
         func.count().filter(User.created_at >= since),
     ))).one()
     active_24h = await _scalar(session, select(func.count(func.distinct(RequestLog.user_id))).where(
@@ -123,8 +124,8 @@ async def overview(admin: AdminUser, session: SessionDep,
         pass
     return {
         "range": range,
-        "users": {"total": int(u[0]), "developers": int(u[1]), "businesses": int(u[2]), "active_24h": active_24h,
-                  "new_in_range": int(u[3])},
+        "users": {"total": int(u[0]), "developers": int(u[1]), "businesses": int(u[2]), "personal": int(u[3]),
+                  "active_24h": active_24h, "new_in_range": int(u[4])},
         "businesses": int(counts[0]),
         "applications": int(counts[1]),
         "devices": {"total": int(d[0]), "online": int(d[1]), "offline": int(d[2]), "revoked": int(d[3])},
@@ -231,7 +232,7 @@ def _account_row(user: User, business: Business | None, stats: dict[str, Any]) -
 
 @router.get("/accounts", summary="All accounts with stats")
 async def list_accounts(admin: AdminUser, session: SessionDep, pagination: PaginationDep,
-                        type: Literal["developer", "business"] | None = None,
+                        type: Literal["developer", "business", "personal"] | None = None,
                         q: str | None = Query(default=None, max_length=100),
                         status: Literal["active", "inactive"] | None = None) -> dict[str, Any]:
     conds = []
@@ -563,7 +564,7 @@ async def patch_settings(body: SettingsPatch, admin: AdminUser, session: Session
     raw = await request.json()
     patch: dict[str, Any] = {}
     if body.signups_enabled is not None:
-        bad = [k for k in body.signups_enabled if k not in ("developer", "business")]
+        bad = [k for k in body.signups_enabled if k not in ("developer", "business", "personal")]
         if bad:
             raise validation_error("body.signups_enabled", "keys must be developer and/or business")
         patch["signups_enabled"] = body.signups_enabled

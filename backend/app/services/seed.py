@@ -36,6 +36,17 @@ async def seed(session: AsyncSession) -> None:
                                                           "sort_order": cat.excluded.sort_order}))
     await session.flush()
 
+    from app.models import CardTemplate
+    from app.services.personal import TEMPLATES
+
+    for order, t in enumerate(TEMPLATES):  # templates are product data: kept in sync on every start
+        stmt = insert(CardTemplate).values(sort_order=order, **t)
+        await session.execute(stmt.on_conflict_do_update(
+            index_elements=[CardTemplate.id],
+            set_={k: stmt.excluded[k] for k in ("name", "description", "layout", "default_design", "supports",
+                                                "premium", "sort_order")}))
+    await session.flush()
+
     email = settings.DEFAULT_ADMIN_EMAIL.strip().lower()
     if email:
         existing = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()

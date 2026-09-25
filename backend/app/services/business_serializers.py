@@ -105,6 +105,7 @@ async def employees_out(session: AsyncSession, business: Business, employees: li
             select(Profile).where(Profile.employee_id.in_(ids), Profile.deleted_at.is_(None))
         )).scalars():
             profiles[p.employee_id] = p  # type: ignore[index]
+    digital = await _employee_digital_cards(session, ids)
     out = []
     for e in employees:
         prof = profiles.get(e.id)
@@ -118,7 +119,40 @@ async def employees_out(session: AsyncSession, business: Business, employees: li
             public_url=business_public_url(business, prof.slug if prof else e.slug),
             cards=[card_summary(c, business) for c in cards.get(e.id, [])],
             total_taps=e.total_taps, last_tap_at=e.last_tap_at, created_at=e.created_at,
+            digital_card=digital.get(e.id),
         ))
+    return out
+
+
+async def _employee_digital_cards(session: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any]]:
+    """Latest digital-card invitation per employee → {status, user_email, accepted_at} (Part 4 §6)."""
+    from datetime import UTC, datetime
+
+    from app.models import DigitalCard, DigitalCardInvite
+    from app.services.personal import effective_status
+
+    if not ids:
+        return {}
+    rows = (await session.execute(select(DigitalCardInvite).where(DigitalCardInvite.employee_id.in_(ids))
+                                  .order_by(DigitalCardInvite.created_at.desc()))).scalars().all()
+    latest: dict[uuid.UUID, Any] = {}
+    for inv in rows:
+        if inv.status_at(datetime.now(UTC)) != "revoked":
+            latest.setdefault(inv.employee_id, inv)
+    card_ids = [i.card_id for i in latest.values() if i.card_id]
+    cards = {c.id: c for c in (await session.execute(select(DigitalCard).where(DigitalCard.id.in_(card_ids))))
+             .scalars().unique()} if card_ids else {}
+    out = {}
+    for eid, inv in latest.items():
+        status = inv.status_at(datetime.now(UTC))
+        card = cards.get(inv.card_id) if inv.card_id else None
+        if status == "accepted":
+            status = effective_status(card) if card is not None and card.deleted_at is None else "removed"
+        elif status == "pending":
+            status = "invited"
+        out[eid] = {"status": status, "user_email": inv.email,
+                    "accepted_at": inv.accepted_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if inv.accepted_at else None}
     return out
 
 

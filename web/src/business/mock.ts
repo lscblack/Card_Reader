@@ -267,6 +267,7 @@ function seedAcme(): Db {
       slug,
       status: i === 10 ? 'inactive' : 'active',
       profile_published: i !== 10,
+      digital_card: i === 0 ? { status: 'active', user_email: 'john@acme-cafe.example', accepted_at: ago(12 * DAY) } : i === 3 ? { status: 'invited', user_email: 'sofia@acme-cafe.example', accepted_at: null } : null,
       cards: [],
       total_taps: 0,
       last_tap_at: null,
@@ -1241,6 +1242,12 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
       for (const p of db.profiles) if (p.employee_id === e.id) p.published = active
       refresh(db)
       return ok(e)
+    }
+    if (at('POST', '/employees/:eid/digital-card')) {
+      const email = str(body.email).trim().toLowerCase()
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.email', message: 'Enter a valid email address' }])
+      e.digital_card = { status: 'invited', user_email: email, accepted_at: null }
+      return ok({ digital_card: e.digital_card, dev_invite_url: `${WEB_BASE}/register?card_invite=${urlsafe(24)}` }, 201)
     }
     if (at('POST', '/employees/:eid/photo')) {
       e.photo_url = str(body.file_url) || null

@@ -221,7 +221,8 @@ async def test_admin_email_preview_templates_and_access(client: AsyncClient, use
                           headers=admin)
     assert r.status_code == 200 and "Title" in r.json()["html"] and "Go: https://x.example.com" in r.json()["text"]
     names = {t["name"] for t in (await client.get("/api/v1/admin/email-templates", headers=admin)).json()}
-    assert names == {"verify_email", "password_reset", "invitation", "welcome", "admin_message", "password_changed"}
+    assert names == {"verify_email", "password_reset", "invitation", "welcome", "admin_message", "password_changed",
+                     "digital_card_invite"}  # Part 4 §6 added digital_card_invite
     for name in names:
         p = (await client.get(f"/api/v1/admin/email-templates/{name}/preview", headers=admin)).json()
         assert p["html"].startswith("<!DOCTYPE html>") and p["text"] and p["subject"]

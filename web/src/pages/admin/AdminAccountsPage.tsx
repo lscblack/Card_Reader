@@ -84,6 +84,7 @@ export default function AdminAccountsPage() {
             <option value="">All types</option>
             <option value="developer">Developers</option>
             <option value="business">Businesses</option>
+            <option value="personal">Personal</option>
             <option value="admin">Admins</option>
           </Select>
           <Select aria-label="Status" value={status} onChange={(e) => set('status', e.target.value)} className="sm:w-40">
@@ -160,7 +161,7 @@ export default function AdminAccountsPage() {
                       </TD>
                       <TD>
                         <div className="flex flex-wrap gap-1">
-                          <Badge tone={u.account_type === 'business' ? 'info' : 'neutral'}>{u.account_type ?? 'developer'}</Badge>
+                          <Badge tone={u.account_type === 'business' ? 'info' : u.account_type === 'personal' ? 'success' : 'neutral'}>{u.account_type ?? 'developer'}</Badge>
                           {u.role === 'admin' && <Badge tone="accent">admin</Badge>}
                         </div>
                         {u.business && <p className="mt-0.5 truncate text-xs text-subtle">{u.business.name}</p>}

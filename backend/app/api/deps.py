@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, Query, Request
@@ -311,3 +311,54 @@ def business_permission(permission: str | None = "business.view"):  # type: igno
         return ctx
 
     return dependency
+
+
+# ── Personal accounts (Part 4) ───────────────────────────────────────────
+personal_scheme = HTTPBearer(
+    scheme_name="PersonalSessionOrJWT",
+    description="`Authorization: Bearer nfcs_...` (mobile session) or the dashboard JWT.",
+    auto_error=False,
+)
+
+
+@dataclass
+class PersonalContext:
+    user: User
+    session: Any  # PersonalSession | None
+
+
+async def get_personal_context(
+    request: Request,
+    session: SessionDep,
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(personal_scheme)],
+) -> PersonalContext:
+    from app.models import PersonalSession
+
+    token = creds.credentials if creds else ""
+    row = None
+    if token.startswith("nfcs_"):
+        digest = sha256_hex(token)
+        row = (await session.execute(select(PersonalSession).where(PersonalSession.token_hash == digest))
+               ).scalar_one_or_none()
+        if row is None or not constant_time_equals(row.token_hash, digest) or row.internal:
+            raise _unauthorized("invalid_session_token", "Invalid session token")
+        if row.revoked_at is not None:
+            raise _unauthorized("invalid_session_token", "This session was signed out")
+        user = await session.get(User, row.user_id)
+        if user is None:
+            raise _unauthorized("invalid_session_token", "Invalid session token")
+        if not user.is_active:
+            raise AppError(403, "account_disabled", "This account has been disabled")
+        set_actor(request, "personal_session", row.id, user_id=user.id)
+        now = datetime.now(UTC)
+        if row.last_seen_at is None or now - row.last_seen_at > _LAST_USED_RESOLUTION:
+            row.last_seen_at = now
+            await session.commit()
+    else:
+        user = await get_current_user(request, session, creds)
+    if user.account_type != "personal":
+        raise AppError(403, "personal_account_required", "This feature is available to personal accounts")
+    return PersonalContext(user=user, session=row)
+
+
+PersonalAuth = Annotated[PersonalContext, Depends(get_personal_context)]

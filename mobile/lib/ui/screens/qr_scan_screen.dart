@@ -6,9 +6,15 @@ import '../../core/error_catalog.dart';
 import '../../core/pairing.dart';
 import '../../services/app_state.dart';
 
-/// Scans a pairing QR code and pops with the parsed [PairingPayload].
+/// Scans a QR code and pops with what [parse] returns (default: a pairing QR →
+/// [PairingPayload]). [parse] throws with a user-facing message for other codes.
 class QrScanScreen extends StatefulWidget {
-  const QrScanScreen({super.key});
+  const QrScanScreen({super.key, this.parse, this.title = 'Scan pairing code', this.hint, this.errorRef});
+
+  final Object Function(String raw)? parse;
+  final String title;
+  final String? hint;
+  final String? errorRef;
 
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
@@ -33,12 +39,13 @@ class _QrScanScreenState extends State<QrScanScreen> {
       if (raw == null || raw == _lastRaw) continue;
       _lastRaw = raw;
       try {
-        final payload = PairingPayload.parse(raw);
+        final payload = (widget.parse ?? PairingPayload.parse)(raw);
         _done = true;
         Navigator.of(context).pop(payload);
         return;
-      } on PairingFormatException catch (e) {
-        setState(() => _error = '${e.message}\n${MobError.invalidQr.ref}');
+      } catch (e) {
+        final msg = e is PairingFormatException ? e.message : e.toString();
+        setState(() => _error = '$msg\n${widget.errorRef ?? MobError.invalidQr.ref}');
       }
     }
   }
@@ -48,7 +55,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan pairing code'),
+        title: Text(widget.title),
         actions: [
           IconButton(
             tooltip: 'Torch',
@@ -88,6 +95,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 padding: const EdgeInsets.all(14),
                 child: Text(
                   _error ??
+                      widget.hint ??
                       'In the dashboard, open your application and choose "Pair a phone", '
                           'then point the camera at the QR code.',
                   style: TextStyle(color: _error == null ? scheme.onSurface : scheme.onErrorContainer),

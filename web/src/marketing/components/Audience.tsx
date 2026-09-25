@@ -21,9 +21,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { GlowCard } from './GlowCard'
+import { CardRender } from './digital/CardRender'
+import { templates } from './digital/data'
 import { SectionHeading } from './Reveal'
 
-export type AudienceTab = 'businesses' | 'developers'
+export type AudienceTab = 'businesses' | 'developers' | 'individuals'
 
 function Bullet({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
   return (
@@ -274,9 +276,53 @@ function DeveloperPanel() {
   )
 }
 
+function PersonalPanel() {
+  return (
+    <div className="grid items-center gap-10 lg:grid-cols-2">
+      <div>
+        <h3 className="text-2xl font-semibold tracking-tight text-fg">A digital business card on your phone</h3>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted">
+          Create a free personal account, design your card from a template, and share it by tapping phones. People without the app still
+          get your card as a web page.
+        </p>
+        <ul className="mt-7 space-y-5">
+          <Bullet icon={ContactRound} title="Tap to share, tap to exchange">
+            When someone scans your phone you both get each other’s card — contacts saved automatically.
+          </Bullet>
+          <Bullet icon={Users} title="Your contacts, organised">
+            Notes, tags and favourites; export to vCard or CSV any time.
+          </Bullet>
+          <Bullet icon={CheckCircle2} title="You decide who sees what">
+            Each field can be public, shared only with contacts, or hidden.
+          </Bullet>
+        </ul>
+        <a
+          href="#digital-card"
+          onClick={(e) => {
+            e.preventDefault()
+            document.getElementById('digital-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+          className="group mt-8 inline-flex items-center gap-1.5 text-[14px] font-semibold text-accent"
+        >
+          See the digital card <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </a>
+      </div>
+      <div className="relative mx-auto flex w-full max-w-md items-end justify-center gap-4">
+        <div className="w-[46%] -rotate-3">
+          <CardRender t={templates[0]} />
+        </div>
+        <div className="mb-6 w-[46%] rotate-3">
+          <CardRender t={templates[3]} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const tabs: { id: AudienceTab; label: string }[] = [
   { id: 'businesses', label: 'For businesses' },
   { id: 'developers', label: 'For developers' },
+  { id: 'individuals', label: 'For individuals' },
 ]
 
 export function Audience({ tab, onTab }: { tab: AudienceTab; onTab: (t: AudienceTab) => void }) {
@@ -296,6 +342,7 @@ export function Audience({ tab, onTab }: { tab: AudienceTab; onTab: (t: Audience
       {/* anchors for nav deep links */}
       <span id="businesses" className="absolute -top-20" aria-hidden="true" />
       <span id="developers" className="absolute -top-20" aria-hidden="true" />
+      <span id="individuals" className="absolute -top-20" aria-hidden="true" />
       <div className="mx-auto w-11/12">
         <SectionHeading
           id="audience-title"
@@ -346,7 +393,7 @@ export function Audience({ tab, onTab }: { tab: AudienceTab; onTab: (t: Audience
               exit={reduce ? undefined : { opacity: 0, y: -8 }}
               transition={{ duration: 0.25 }}
             >
-              {tab === 'businesses' ? <BusinessPanel /> : <DeveloperPanel />}
+              {tab === 'businesses' ? <BusinessPanel /> : tab === 'developers' ? <DeveloperPanel /> : <PersonalPanel />}
             </motion.div>
           </AnimatePresence>
         </div>

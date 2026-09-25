@@ -16,7 +16,7 @@ class Promotion(UUIDPk, Timestamps, Base):
     __tablename__ = "promotions"
     __table_args__ = (
         CheckConstraint("discount_type IN ('percent','amount')", name="discount_type"),
-        CheckConstraint("audience IN ('developer','business','all')", name="audience"),
+        CheckConstraint("audience IN ('developer','business','personal','all')", name="audience"),
         Index("uq_promotions_code", "code", unique=True, postgresql_where=text("code IS NOT NULL")),
     )
 

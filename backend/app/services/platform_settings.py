@@ -16,7 +16,7 @@ logger = logging.getLogger("app.platform_settings")
 KEY = "platform"
 CACHE_TTL_SECONDS = 30.0
 DEFAULTS: dict[str, Any] = {
-    "signups_enabled": {"developer": True, "business": True},
+    "signups_enabled": {"developer": True, "business": True},  # "personal" (Part 4) defaults to enabled
     "request_log_retention_days": 90,
     "default_rate_limit": None,  # None → env RATE_LIMIT_REQUESTS / RATE_LIMIT_WINDOW_SECONDS
     "maintenance_message": None,
@@ -32,7 +32,7 @@ def effective(stored: dict[str, Any] | None = None) -> dict[str, Any]:
     src = _stored if stored is None else stored
     for key, value in src.items():
         if key == "signups_enabled" and isinstance(value, dict):
-            data[key].update({k: bool(v) for k, v in value.items() if k in ("developer", "business")})
+            data[key].update({k: bool(v) for k, v in value.items() if k in ("developer", "business", "personal")})
         elif key in data:
             data[key] = value
     if not data["default_rate_limit"]:

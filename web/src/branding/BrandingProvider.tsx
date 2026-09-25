@@ -68,7 +68,12 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   }, [setBranding])
 
   useEffect(() => {
-    void refresh()
+    // Initial revalidation (promise callbacks, not a synchronous setState in the effect).
+    brandingApi
+      .get()
+      .then(setBranding)
+      .catch(() => undefined)
+      .finally(() => setLoading(false))
     let last = Date.now()
     const onFocus = () => {
       // Revalidate at most once a minute (the API caches branding for 60 s anyway).
@@ -82,7 +87,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       clearInterval(t)
       window.removeEventListener('focus', onFocus)
     }
-  }, [refresh])
+  }, [refresh, setBranding])
 
   const value = useMemo<BrandingState>(() => ({ branding, loading, refresh, setBranding }), [branding, loading, refresh, setBranding])
   return <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>

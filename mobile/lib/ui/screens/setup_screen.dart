@@ -76,7 +76,12 @@ class _SetupScreenState extends State<SetupScreen> {
     );
     if (!mounted) return;
     // The API key is never kept: clear the field once registered.
-    if (error == null) _apiKey.clear();
+    if (error == null) {
+      _apiKey.clear();
+      // Pushed from the welcome screen: go back to the (now rebuilt) root.
+      if (Navigator.of(context).canPop()) Navigator.of(context).popUntil((r) => r.isFirst);
+      return;
+    }
     setState(() {
       _busy = false;
       _error = error;

@@ -198,7 +198,7 @@ export default function AdminAccountDetailPage() {
               <span className="flex flex-wrap items-center gap-2.5">
                 {a.full_name || a.email}
                 <ActiveBadge active={a.is_active} inactiveLabel="Disabled" />
-                <Badge tone={a.account_type === 'business' ? 'info' : 'neutral'}>{a.account_type ?? 'developer'}</Badge>
+                <Badge tone={a.account_type === 'business' ? 'info' : a.account_type === 'personal' ? 'success' : 'neutral'}>{a.account_type ?? 'developer'}</Badge>
                 {a.role === 'admin' && <Badge tone="accent">admin</Badge>}
                 {a.email_verified === false && <Badge tone="warning">Unverified</Badge>}
               </span>

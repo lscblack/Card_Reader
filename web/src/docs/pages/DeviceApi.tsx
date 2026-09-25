@@ -149,6 +149,10 @@ export default function DeviceApi() {
           <C>card_id</C> is normalised (uppercased, <C>:</C> and spaces stripped) and must match <C>^[0-9A-F]{'{4,64}'}$</C>.
         </li>
         <li>
+          Reading a phone that shares a <DocLink to="/docs/digital-cards#developers">digital card</DocLink>? Add <C>digital_card_token</C>, set{' '}
+          <C>card_type</C> to <C>digital_card</C> and <C>card_id</C> to the share id (32 hex chars).
+        </li>
+        <li>
           <C>detected_at</C> older than 7 days or more than 5 minutes in the future → <C>422</C>.
         </li>
         <li>

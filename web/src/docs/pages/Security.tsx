@@ -11,6 +11,11 @@ export default function SecurityPage() {
         <C>security.authenticated = false</C> and <C>security.level = &quot;uid_only&quot;</C>, and the app labels every read “UID only (not
         authenticated)”.
       </Callout>
+      <P>
+        Digital cards shared by phones are one step stronger: the phone hands over a short-lived signed token, and events carry{' '}
+        <C>security.level = &quot;signed_token&quot;</C>. That stops copying and later replay, but not a live relay — it is still not strong
+        authentication. See <DocLink to="/docs/digital-cards#developers">Digital cards</DocLink>.
+      </P>
       <UL>
         <li>Use the UID to look things up — attendance, check-in, loyalty, inventory, opening a profile.</li>
         <li>

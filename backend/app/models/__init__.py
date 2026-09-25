@@ -21,10 +21,21 @@ from app.models.business import (
     Profile,
 )
 from app.models.communication import AppRelease, EmailCampaign, EmailLog, Notification, Promotion
+from app.models.personal import (
+    CardTemplate,
+    Contact,
+    DigitalCard,
+    DigitalCardInvite,
+    PersonalActivity,
+    PersonalLoginCode,
+    PersonalSession,
+)
 from app.models.platform import PlatformSetting, RequestLog, SandboxEndpoint, SandboxRequest
 from app.models.user import EmailVerificationToken, PasswordResetToken, Plan, Subscription, User
 
 __all__ = [
+    "CardTemplate", "Contact", "DigitalCard", "DigitalCardInvite", "PersonalActivity", "PersonalLoginCode",
+    "PersonalSession",
     "AppRelease", "EmailCampaign", "EmailLog", "Notification", "Promotion",
     "Business", "BusinessCategory", "BusinessInvitation", "BusinessMember", "BusinessSlugRedirect",
     "Card", "CardHistory", "CardTap", "Customer", "Employee", "Profile",

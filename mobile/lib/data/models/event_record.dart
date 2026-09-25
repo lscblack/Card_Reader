@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'business.dart';
+import 'personal.dart';
 import 'device_config.dart';
 
 /// Local delivery status of an event.
@@ -47,6 +48,8 @@ class EventRecord {
     this.errorRef,
     this.requestId,
     this.businessJson,
+    this.digitalCardToken,
+    this.digitalJson,
   });
 
   final String eventId;
@@ -78,6 +81,22 @@ class EventRecord {
   /// Business resolution (C2) as returned by the platform, JSON-encoded.
   final String? businessJson;
 
+  /// Part 4: digital-card token (kept for retries; expires server-side after 10 min).
+  final String? digitalCardToken;
+
+  /// Part 4 §5: `digital_card` block returned by the platform (public fields).
+  final String? digitalJson;
+
+  DigitalCardSummary? get digitalCard {
+    final raw = digitalJson;
+    if (raw == null) return null;
+    try {
+      return DigitalCardSummary.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool get isSuccess => status == EventStatus.delivered || status == EventStatus.logged;
 
   BusinessResult? get business {
@@ -103,6 +122,7 @@ class EventRecord {
     String? Function()? errorRef,
     String? Function()? requestId,
     String? Function()? businessJson,
+    String? Function()? digitalJson,
   }) => EventRecord(
     eventId: eventId,
     cardId: cardId,
@@ -121,6 +141,8 @@ class EventRecord {
     errorRef: errorRef != null ? errorRef() : this.errorRef,
     requestId: requestId != null ? requestId() : this.requestId,
     businessJson: businessJson != null ? businessJson() : this.businessJson,
+    digitalCardToken: digitalCardToken,
+    digitalJson: digitalJson != null ? digitalJson() : this.digitalJson,
   );
 
   Map<String, Object?> toRow() => {
@@ -141,6 +163,8 @@ class EventRecord {
     'error_ref': errorRef,
     'request_id': requestId,
     'business_json': businessJson,
+    'digital_token': digitalCardToken,
+    'digital_json': digitalJson,
   };
 
   factory EventRecord.fromRow(Map<String, Object?> r) {
@@ -170,6 +194,8 @@ class EventRecord {
       errorRef: r['error_ref'] as String?,
       requestId: r['request_id'] as String?,
       businessJson: r['business_json'] as String?,
+      digitalCardToken: r['digital_token'] as String?,
+      digitalJson: r['digital_json'] as String?,
     );
   }
 }

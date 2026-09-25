@@ -56,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
     final dev = app.device;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: const Text('Terminal settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

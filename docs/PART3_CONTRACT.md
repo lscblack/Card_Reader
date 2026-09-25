@@ -143,3 +143,32 @@ log_excerpt (last 200 lines), started_at, finished_at, created_by, created_at, d
 
 "Powered by Nexventures" linking to `http://nexventures.net/` appears in the landing footer, docs footer/sidebar,
 dashboard shells (subtle, sidebar bottom), public profile pages (small), email template footer, and the mobile app's About.
+
+## 12. Backend implementation notes (additions / clarifications)
+
+- **Branding:** `GET /admin/branding` (read) added. PATCH ignores logo fields (use the assets endpoint). Contrast is checked
+  against `#FFFFFF` (accent_light) and `#0B0B0F` (accent_dark); the 422 `details[0]` has `contrast` and `background`.
+  Assets: PNG/WebP are stored as-is, SVGs are rebuilt by an allowlist sanitiser (defusedxml; DOCTYPE/entities rejected).
+  Emails skip SVG logos (most mail clients can't render them) and show the product name instead.
+- **Plans:** `DELETE /admin/plans/{code}` exists; `free` and `biz_starter` (registration defaults) or plans with
+  subscribers → `409 plan_in_use`. Admin plan objects include `subscribers`. Startup seeding is insert-only, so admin edits
+  are never overwritten.
+- **Promotions:** `GET /admin/promotions?status=` filter. `POST /billing/promotions/validate` also returns
+  `reason` (`unknown_plan|unknown_code|promotion_<status>|not_applicable`, null when valid). Free plans never get a promotion.
+  Demo promotion `LAUNCH20` (20% on `pro` + `biz_growth`) only with `SEED_DEMO_DATA` in development.
+- **Emails:** `welcome` is sent after the first successful email verification; `password_changed` after change/reset.
+  Campaign emails share one rendered HTML stored on the campaign (logs reference it). `GET /admin/emails` also accepts
+  `user_id` and `template`; campaigns include `queued` and `filter`. `POST /admin/accounts/{id}/send-verification` →
+  `202 { sent, already_verified, dev_verification_url }`. Template preview also returns `subject`.
+  Worker throttle: `EMAIL_THROTTLE_PER_MINUTE` (default 120). Footer: "Powered by Nexventures" (§11).
+- **Avatars** are centre-cropped, resized to 256×256 and re-encoded as WebP (metadata stripped).
+- **Error Center:** stats merge request logs + delivery attempts; trend buckets 1 h (24h), 6 h (7d), 1 day (30d);
+  `last_seen_at` is all-time; list sorted by occurrences.
+- **Live stream:** first frames are `retry: 3000` and `: connected`; replayed frames carry `id:`; `business.tap` also has
+  `source` (`web|reader`). Each frame's `data` is `{ type, at, data }`.
+- **Releases:** extra fields `error`, `downloads`, `publish_on_success`; the full log only with `?log=full`.
+  Deleting a building release → `409 build_in_progress`. Downloads are rate-limited per IP and send `X-Content-SHA256`.
+  Interrupted builds (worker restart) are marked `failed` on worker start.
+- **Notifications** list is paginated `{items,total,page,page_size}`.
+- **Preferences** use JSON merge-patch semantics (`null` removes a key).
+- **Docs:** `API_DOCS_ENABLED=false` also disables `/openapi.json`.

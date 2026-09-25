@@ -322,7 +322,6 @@ fun main() {
 
 /** Full webhook receivers (verification + handler) in every documented language. */
 export const verifySamplesAll: Sample[] = [
-  { label: 'Shell', language: 'bash', code: shell },
   { label: 'Python', language: 'python', code: pythonVerify },
   { label: 'Node.js', language: 'javascript', code: nodeVerify },
   { label: 'PHP', language: 'php', code: phpVerify },
@@ -332,6 +331,7 @@ export const verifySamplesAll: Sample[] = [
   { label: 'Ruby', language: 'ruby', code: ruby },
   { label: 'Rust', language: 'rust', code: rust },
   { label: 'Kotlin', language: 'kotlin', code: kotlin },
+  { label: 'Shell', language: 'bash', code: shell },
 ]
 
 /** Same, without the shell debugging snippet (for places that show "a receiver"). */

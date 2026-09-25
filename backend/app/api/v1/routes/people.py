@@ -5,7 +5,10 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Response, UploadFile
+from pydantic import Field
+
+from app.schemas.common import Schema
 from sqlalchemy import func, or_, select
 
 from app.api.deps import BusinessContext, ClientDep, PaginationDep, SessionDep, business_permission
@@ -251,3 +254,58 @@ async def delete_customer(customer_id: uuid.UUID, ctx: Manage, session: SessionD
     await session.delete(c)
     await session.commit()
     return Response(status_code=204)
+
+
+
+# ── Part 4 §6: business-issued employee digital cards ──────────────────────
+class DigitalCardInviteIn(Schema):
+    email: str = Field(min_length=3, max_length=320)
+    template_id: str | None = Field(default=None, max_length=32)
+    design: dict | None = None  # type: ignore[type-arg]
+    locked_fields: list[str] | None = Field(default=None, max_length=20)
+
+
+@router.post("/employees/{employee_id}/digital-card", status_code=201,
+             summary="Issue a digital card to an employee (invitation email)")
+async def issue_digital_card(employee_id: uuid.UUID, body: DigitalCardInviteIn, ctx: Manage, session: SessionDep,
+                             client: ClientDep, background: BackgroundTasks) -> dict:  # type: ignore[type-arg]
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    from app.core.errors import validation_error
+    from app.core.security import generate_reset_token, sha256_hex
+    from app.models import DigitalCardInvite
+    from app.services import email as email_service
+    from app.services import personal as personal_service
+
+    e = await _get_employee(session, ctx.business.id, employee_id)
+    addr = body.email.strip().lower()
+    if "@" not in addr:
+        raise validation_error("body.email", "a valid email is required")
+    if body.template_id:
+        await personal_service.get_template(session, body.template_id)
+    design = personal_service.validate_design(body.design, {}) if body.design else None
+    allowed = set(personal_service.FIELD_KEYS) | {"photo", "logo", "cover"}
+    locked = body.locked_fields if body.locked_fields is not None else ["company"]
+    bad = [f for f in locked if f not in allowed]
+    if bad:
+        raise validation_error("body.locked_fields", f"unknown fields: {', '.join(bad)}")
+    now = datetime.now(UTC)
+    await session.execute(update(DigitalCardInvite).where(
+        DigitalCardInvite.employee_id == e.id, DigitalCardInvite.accepted_at.is_(None),
+        DigitalCardInvite.declined_at.is_(None), DigitalCardInvite.revoked_at.is_(None)).values(revoked_at=now))
+    token = generate_reset_token()
+    inv = DigitalCardInvite(business_id=ctx.business.id, employee_id=e.id, email=addr, token_hash=sha256_hex(token),
+                            template_id=body.template_id, design=design, locked_fields=locked, invited_by=ctx.user.id,
+                            expires_at=now + timedelta(days=7))
+    session.add(inv)
+    await session.flush()
+    audit.record(session, action="digital_card.invite", user_id=ctx.user.id, client=client, resource_type="employee",
+                 resource_id=e.id, metadata={"email": addr})
+    await session.commit()
+    background.add_task(email_service.send_digital_card_invite, addr, ctx.business.name, e.full_name, token)
+    return {"digital_card": {"status": "invited", "user_email": addr, "accepted_at": None,
+                             "invite_id": str(inv.id),
+                             "expires_at": inv.expires_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")},
+            "dev_invite_url": email_service.card_invite_link(token) if email_service.expose_dev_links() else None}

@@ -81,6 +81,9 @@ TEMPLATES: dict[str, TemplateSpec] = {
     "admin_message": TemplateSpec("admin_message", "Message composed by a platform administrator (markdown).",
                                   "", None,
                                   "You're receiving this because you have an account on our platform."),
+    "digital_card_invite": TemplateSpec("digital_card_invite", "A business issued the recipient an employee digital card.",
+                                        "Your digital business card", "Accept your card",
+                                        "You're receiving this because a business invited this email address."),
     "password_changed": TemplateSpec("password_changed", "Security notice after a password change or reset.",
                                      "Your password was changed", None,
                                      "You're receiving this security notice because your account password changed."),
@@ -92,6 +95,7 @@ SUBJECTS = {
     "invitation": "You're invited to {business_name} on {product}",
     "welcome": "Welcome to {product}",
     "password_changed": "Your {product} password was changed",
+    "digital_card_invite": "{business_name} issued you a digital business card",
 }
 
 
@@ -148,6 +152,7 @@ def render(name: str, context: dict[str, Any], branding: dict[str, Any], subject
             "invitation": f"Join {context.get('business_name', 'the team')}.",
             "welcome": "Your account is ready — here's how to get started.",
             "password_changed": "Security notice about your account.",
+            "digital_card_invite": f"Accept your {context.get('business_name', 'company')} digital card.",
         }.get(name, ctx.get("body_text", "")[:120])
     html = _html_env.get_template(f"{name}.html").render(**ctx)
     text = _text_env.get_template(f"{name}.txt").render(**ctx)
@@ -183,6 +188,8 @@ def sample_context(name: str) -> dict[str, Any]:
                           "- Dashboard read-only for ~10 minutes\n- Deliveries are queued, nothing is lost\n\n"
                           "Questions? Just reply to this email.",
                           "cta": {"label": "View status page", "url": f"{web}/status"}},
+        "digital_card_invite": {"recipient_name": None, "business_name": "Acme Café", "employee_name": "John Doe",
+                                "action_url": f"{web}/register?card_invite=SAMPLE_TOKEN"},
         "password_changed": {"recipient_name": "Alex", "email": "alex@example.com",
                              "changed_at": "2026-09-25 08:30 UTC", "reset_url": f"{web}/forgot-password"},
     }[name]

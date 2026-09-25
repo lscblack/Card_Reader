@@ -238,6 +238,28 @@ async def execute(session_factory: async_sessionmaker[AsyncSession], release_id)
         logger.info("App build %s finished: %s", release.id, release.status)
 
 
+async def recover_orphans(session_factory: async_sessionmaker[AsyncSession]) -> int:
+    """On worker start: `building` rows with no live build lock were interrupted (restart/crash) → failed."""
+    if _running is not None and not _running.done():
+        return 0
+    try:
+        if await get_redis().exists(LOCK_KEY):
+            return 0
+    except Exception:
+        pass
+    async with session_factory() as session:
+        rows = (await session.execute(select(AppRelease).where(AppRelease.status == "building"))).scalars().all()
+        for release in rows:
+            release.status = "failed"
+            release.error = "Build interrupted (worker restarted)"
+            release.finished_at = datetime.now(UTC)
+            await _notify_finished(session, release)
+        await session.commit()
+    if rows:
+        logger.warning("Marked %d interrupted app build(s) as failed", len(rows))
+    return len(rows)
+
+
 async def maybe_start(session_factory: async_sessionmaker[AsyncSession]) -> bool:
     """Called from the worker loop: starts the oldest queued build if none is running (cluster-wide lock)."""
     global _running

@@ -2,6 +2,7 @@ import { receiverSamples } from '../verifySamples'
 import { CodeBlock, CodeTabs } from '../components/Code'
 import { B, C, Callout, DocHeader, DocLink, H2, OL, P, PrevNext, UL } from '../components/Prose'
 import { requestSamples } from '../samples'
+import { Figure } from '../components/Figure'
 
 export default function QuickstartDevelopers() {
   return (
@@ -43,6 +44,7 @@ export default function QuickstartDevelopers() {
           body: { url: 'https://example.com/api/nfc/card', enabled: true, timeout_seconds: 10, delivery_mode: 'relay' },
         })}
       />
+      <Figure shot="sandbox" caption="New accounts get a sandbox endpoint: every request, its signature verdict and checks." />
       <Callout tone="tip">
         Restrict where an application may deliver with an <DocLink to="/docs/security#allowlist">endpoint allowlist</DocLink>.
       </Callout>
@@ -92,6 +94,7 @@ export default function QuickstartDevelopers() {
   …
 }`}
       />
+      <Figure shot="events" caption="Each tap appears under NFC Events with its delivery status and attempts." />
       <P>
         Respond with any <C>2xx</C> quickly. Map <C>card_id</C> to whatever it means in your system — and remember a UID is{' '}
         <DocLink to="/docs/concepts#uid-only">not proof of identity</DocLink>.

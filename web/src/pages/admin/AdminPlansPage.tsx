@@ -18,13 +18,17 @@ import { SkeletonRows } from '@/components/ui/Spinner'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/Table'
 import { useToast } from '@/components/ui/toastContext'
 
-const LIMITS: { key: keyof Plan; label: string; audience?: 'business' }[] = [
-  { key: 'events_per_month', label: 'Events / month' },
-  { key: 'max_applications', label: 'Applications' },
-  { key: 'max_devices', label: 'Devices' },
-  { key: 'max_cards', label: 'Cards', audience: 'business' },
-  { key: 'max_members', label: 'Team members', audience: 'business' },
+type Audience = 'developer' | 'business' | 'personal'
+
+const LIMITS: { key: keyof Plan; label: string; audiences: Audience[] }[] = [
+  { key: 'events_per_month', label: 'Events / month', audiences: ['developer', 'business'] },
+  { key: 'max_applications', label: 'Applications', audiences: ['developer', 'business'] },
+  { key: 'max_devices', label: 'Devices', audiences: ['developer', 'business'] },
+  { key: 'max_cards', label: 'Cards', audiences: ['business', 'personal'] },
+  { key: 'max_members', label: 'Team members', audiences: ['business'] },
+  { key: 'max_contacts', label: 'Contacts', audiences: ['personal'] },
 ]
+const limitsFor = (aud: Audience | undefined) => LIMITS.filter((l) => l.audiences.includes(aud ?? 'developer'))
 
 const lim = (v: number | null | undefined) => (v == null ? '∞' : compact(v))
 const toCents = (s: string) => (s.trim() === '' ? null : Math.round(Number(s) * 100))
@@ -33,7 +37,7 @@ const fromCents = (c: number | null | undefined) => (c == null ? '' : (c / 100).
 interface Draft {
   code: string
   name: string
-  audience: 'developer' | 'business'
+  audience: Audience
   description: string
   badge: string
   is_featured: boolean
@@ -94,7 +98,7 @@ function PlanEditor({ plan, open, onClose, nextOrder }: { plan: Plan | null; ope
       price_yearly_cents: yearly,
       features: d.features.map((f) => f.trim()).filter(Boolean),
       ...Object.fromEntries(
-        LIMITS.filter((l) => !l.audience || l.audience === d.audience).map((l) => [l.key, d.limits[l.key].trim() === '' ? null : Number(d.limits[l.key])]),
+        limitsFor(d.audience).map((l) => [l.key, d.limits[l.key].trim() === '' ? null : Number(d.limits[l.key])]),
       ),
     }
     try {
@@ -143,6 +147,7 @@ function PlanEditor({ plan, open, onClose, nextOrder }: { plan: Plan | null; ope
               <Select {...p} value={d.audience} onChange={(e) => set('audience', e.target.value as Draft['audience'])}>
                 <option value="developer">Developers</option>
                 <option value="business">Businesses</option>
+                <option value="personal">Personal (digital cards)</option>
               </Select>
             )}
           </Field>
@@ -176,7 +181,7 @@ function PlanEditor({ plan, open, onClose, nextOrder }: { plan: Plan | null; ope
           <p className="mb-2 text-[13px] font-medium">Limits</p>
           <p className="mb-2 text-xs text-subtle">Leave blank for unlimited.</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            {LIMITS.filter((l) => !l.audience || l.audience === d.audience).map((l) => (
+            {limitsFor(d.audience).map((l) => (
               <Field key={l.key} label={l.label}>
                 {(p) => (
                   <Input
@@ -300,7 +305,7 @@ function PlanTable({ plans, all }: { plans: Plan[]; all: Plan[] }) {
                   {p.price_yearly_cents != null && <p className="text-xs text-muted">{money(p.price_yearly_cents, p.currency ?? 'usd')}/yr</p>}
                 </TD>
                 <TD className="text-xs text-muted">
-                  {LIMITS.filter((l) => !l.audience || l.audience === p.audience)
+                  {limitsFor(p.audience)
                     .map((l) => `${lim(p[l.key] as number | null)} ${l.label.toLowerCase()}`)
                     .join(' · ')}
                 </TD>
@@ -356,7 +361,7 @@ export default function AdminPlansPage() {
   useDocumentTitle('Admin · Plans')
   const { data, isLoading, error, refetch } = useAdminPlans()
   const [creating, setCreating] = useState(false)
-  const groups = (['developer', 'business'] as const).map((aud) => ({
+  const groups = (['developer', 'business', 'personal'] as const).map((aud) => ({
     aud,
     plans: (data ?? []).filter((p) => (p.audience ?? 'developer') === aud).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
   }))
@@ -387,7 +392,7 @@ export default function AdminPlansPage() {
         <div className="space-y-6">
           {groups.map((g) => (
             <Card key={g.aud}>
-              <CardHeader title={g.aud === 'developer' ? 'Developer plans' : 'Business plans'} description={`${g.plans.filter((p) => p.is_active !== false).length} active of ${g.plans.length}`} />
+              <CardHeader title={g.aud === 'developer' ? 'Developer plans' : g.aud === 'business' ? 'Business plans' : 'Personal plans'} description={`${g.plans.filter((p) => p.is_active !== false).length} active of ${g.plans.length}`} />
               {g.plans.length ? <PlanTable plans={g.plans} all={data} /> : <EmptyState title="No plans for this audience" />}
             </Card>
           ))}

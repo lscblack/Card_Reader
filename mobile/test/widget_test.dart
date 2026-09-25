@@ -22,6 +22,11 @@ void main() {
     await tester.pumpWidget(NfcTerminalApp(appState: app, repository: repo, nfc: FakeNfcService()));
     await tester.pumpAndSettle();
 
+    // Part 4 onboarding: choose the Terminal space.
+    expect(find.byKey(const Key('choosePersonal')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('chooseTerminal')));
+    await tester.pumpAndSettle();
+
     expect(find.text('NFC Terminal'), findsOneWidget);
     expect(find.byKey(const Key('serverUrl')), findsOneWidget);
     expect(find.byKey(const Key('apiKey')), findsOneWidget);

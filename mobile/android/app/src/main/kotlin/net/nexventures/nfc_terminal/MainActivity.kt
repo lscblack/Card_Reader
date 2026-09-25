@@ -11,6 +11,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.nfc.cardemulation.CardEmulation
+import android.nfc.tech.IsoDep
 import android.nfc.tech.MifareUltralight
 import android.nfc.tech.NfcA
 import android.os.Build
@@ -21,6 +23,9 @@ import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import androidx.core.content.FileProvider
+import org.json.JSONObject
+import java.io.File
 
 class MainActivity : FlutterActivity() {
     private var linksChannel: MethodChannel? = null
@@ -80,6 +85,64 @@ class MainActivity : FlutterActivity() {
                     }
                     else -> result.notImplemented()
                 }
+            }
+        }
+        MethodChannel(messenger, HCE_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isSupported" -> result.success(
+                    NfcAdapter.getDefaultAdapter(this) != null &&
+                        packageManager.hasSystemFeature(PackageManager.FEATURE_NFC_HOST_CARD_EMULATION)
+                )
+                "setCache" -> {
+                    val m = call.arguments as? Map<*, *>
+                    if (m == null) result.error("bad_args", "map expected", null) else {
+                        ShareCacheStore(this).save(JSONObject(m))
+                        result.success(null)
+                    }
+                }
+                "clearCache" -> {
+                    ShareCacheStore(this).clear()
+                    result.success(null)
+                }
+                "setServiceEnabled" -> {
+                    setComponent(hceComponent(), call.arguments == true)
+                    result.success(null)
+                }
+                "isServiceEnabled" -> result.success(
+                    packageManager.getComponentEnabledSetting(hceComponent()) ==
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                )
+                "setPreferred" -> result.success(setPreferredHce(call.arguments == true))
+                else -> result.notImplemented()
+            }
+        }
+        MethodChannel(messenger, CONTACTS_CHANNEL).setMethodCallHandler { call, result ->
+            val vcard = call.argument<String>("vcard")
+            val name = (call.argument<String>("name") ?: "contact").replace(Regex("[^A-Za-z0-9_-]"), "_").take(40)
+            if (vcard == null) {
+                result.error("bad_args", "vcard missing", null)
+                return@setMethodCallHandler
+            }
+            try {
+                val dir = File(cacheDir, "shared").apply { mkdirs() }
+                val file = File(dir, "$name.vcf").apply { writeText(vcard) }
+                val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
+                val intent = when (call.method) {
+                    "saveVcard" -> Intent(Intent.ACTION_VIEW).setDataAndType(uri, "text/x-vcard")
+                    "shareVcard" -> Intent.createChooser(
+                        Intent(Intent.ACTION_SEND).setType("text/x-vcard").putExtra(Intent.EXTRA_STREAM, uri),
+                        "Share contact",
+                    )
+                    else -> {
+                        result.notImplemented()
+                        return@setMethodCallHandler
+                    }
+                }
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                startActivity(intent)
+                result.success(true)
+            } catch (e: Exception) {
+                result.success(false)
             }
         }
         tagsChannel = MethodChannel(messenger, TAGS_CHANNEL).apply {
@@ -156,6 +219,11 @@ class MainActivity : FlutterActivity() {
         var sak: Int? = null
         var atqa: String? = null
         var productType: Int? = null
+        val digitalToken = if (techs.contains(IsoDep::class.java.name)) probeDigitalCard(tag) else null
+        if (digitalToken != null) {
+            return mapOf("uid" to uid, "techList" to techs, "digitalCardToken" to digitalToken,
+                "fromBackground" to fromBackground)
+        }
         NfcA.get(tag)?.let { nfcA ->
             sak = nfcA.sak.toInt()
             atqa = nfcA.atqa?.joinToString("") { "%02X".format(it) }
@@ -184,6 +252,50 @@ class MainActivity : FlutterActivity() {
         null
     } finally {
         try { nfcA.close() } catch (_: Exception) {}
+    }
+
+    /**
+     * Part 4 §3 reader side: SELECT the digital-card AID (150 ms). Returns the base64url token
+     * when the tag is a phone sharing a digital card, else null (→ normal UID flow).
+     */
+    private fun probeDigitalCard(tag: Tag): String? {
+        val iso = IsoDep.get(tag) ?: return null
+        return try {
+            iso.connect()
+            iso.timeout = 150
+            val r = iso.transceive(ApduHandler.hex("00A4040007F04E464344430100"))
+            val ok = r.size == 5 + DigitalCardToken.LENGTH + 2 &&
+                String(r.copyOfRange(0, 5), Charsets.US_ASCII) == "NFCDC" &&
+                r[r.size - 2] == 0x90.toByte() && r[r.size - 1] == 0x00.toByte()
+            if (!ok) null else android.util.Base64.encodeToString(
+                r.copyOfRange(5, 5 + DigitalCardToken.LENGTH),
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP,
+            )
+        } catch (_: Exception) {
+            null
+        } finally {
+            try { iso.close() } catch (_: Exception) {}
+        }
+    }
+
+    private fun hceComponent() = ComponentName(this, CardHostApduService::class.java)
+
+    private fun setComponent(component: ComponentName, enabled: Boolean) {
+        packageManager.setComponentEnabledSetting(
+            component,
+            if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            PackageManager.DONT_KILL_APP,
+        )
+    }
+
+    /** While the Share screen is visible, prefer our service over other apps with the same AIDs. */
+    private fun setPreferredHce(preferred: Boolean): Boolean = try {
+        val adapter = NfcAdapter.getDefaultAdapter(this) ?: return false
+        val ce = CardEmulation.getInstance(adapter)
+        if (preferred) ce.setPreferredService(this, hceComponent()) else ce.unsetPreferredService(this)
+    } catch (_: Exception) {
+        false
     }
 
     private fun aliasComponent() = ComponentName(this, "$packageName.NfcTagLauncher")
@@ -259,11 +371,11 @@ class MainActivity : FlutterActivity() {
 
     // ------------------------------------------------------------------- misc --
 
-    /** Only `nfcterminal://pair...` VIEW intents are forwarded. */
+    /** Only `nfcterminal://pair|login|card...` VIEW intents are forwarded. */
     private fun pairingLink(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_VIEW) return null
         val data = intent.data ?: return null
-        if (data.scheme != "nfcterminal" || data.host != "pair") return null
+        if (data.scheme != "nfcterminal" || data.host !in setOf("pair", "login", "card")) return null
         return data.toString()
     }
 
@@ -285,6 +397,8 @@ class MainActivity : FlutterActivity() {
         private const val SETTINGS_CHANNEL = "net.nexventures.nfc_terminal/settings"
         private const val LINKS_CHANNEL = "net.nexventures.nfc_terminal/links"
         private const val TAGS_CHANNEL = "net.nexventures.nfc_terminal/tags"
+        private const val HCE_CHANNEL = "net.nexventures.nfc_terminal/hce"
+        private const val CONTACTS_CHANNEL = "net.nexventures.nfc_terminal/contacts"
         private const val NOTIFICATION_CHANNEL = "card_reads"
         private const val REQUEST_NOTIFICATIONS = 4711
     }

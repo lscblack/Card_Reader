@@ -1,6 +1,6 @@
 import { api } from '@/api/client'
 import { uploadFile } from './upload'
-import type { Customer, CustomerInput, Employee, EmployeeInput, Paginated, PeopleFilters } from './types'
+import type { Customer, CustomerInput, Employee, EmployeeInput, IssueDigitalCardRequest, Paginated, PeopleFilters } from './types'
 
 const e = (bid: string) => `/businesses/${bid}/employees`
 const cu = (bid: string) => `/businesses/${bid}/customers`
@@ -14,6 +14,9 @@ export const employeesApi = {
   activate: (bid: string, id: string) => api.post<Employee>(`${e(bid)}/${id}/activate`),
   deactivate: (bid: string, id: string) => api.post<Employee>(`${e(bid)}/${id}/deactivate`),
   uploadPhoto: (bid: string, id: string, file: File) => uploadFile<Employee>(`${e(bid)}/${id}/photo`, file),
+  /** Part 4 §6 — invites the employee (by email) to carry a company digital card on their personal account. */
+  issueDigitalCard: (bid: string, id: string, body: IssueDigitalCardRequest) =>
+    api.post<{ dev_invite_url?: string | null; digital_card?: Employee['digital_card'] } | null>(`${e(bid)}/${id}/digital-card`, body),
 }
 
 export const customersApi = {

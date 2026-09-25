@@ -86,6 +86,8 @@ async def register(
 ) -> TokenOut:
     invitation = None
     account_type = body.account_type
+    if body.card_invite_token and not body.card_invite:
+        body.card_invite = body.card_invite_token
     if body.invite_token:
         invitation = (await session.execute(
             select(BusinessInvitation).where(BusinessInvitation.token_hash == sha256_hex(body.invite_token))
@@ -98,6 +100,8 @@ async def register(
         account_type = "business"
     else:
         enabled = platform_settings.effective()["signups_enabled"]
+        if body.card_invite:
+            account_type = "personal"
         if not enabled.get(account_type, True):
             raise AppError(403, "signups_disabled", f"New {account_type} sign-ups are currently disabled")
         if account_type == "business":
@@ -116,6 +120,7 @@ async def register(
         role="developer",
         is_active=True,
         account_type=account_type,
+        phone=(body.phone or "").strip() or None,
         email_verified=invitation is not None,  # the invitation link proved the address
         email_verified_at=datetime.now(UTC) if invitation is not None else None,
     )
@@ -125,11 +130,29 @@ async def register(
     except IntegrityError:
         await session.rollback()
         raise AppError(409, "email_taken", "An account with this email already exists")
-    await plan_service.create_free_subscription(session, user)
+    if account_type == "personal":
+        await plan_service.create_subscription(session, user, "personal_free")
+    else:
+        await plan_service.create_free_subscription(session, user)
     audit.record(session, action="user.register", user_id=user.id, client=client,
                  resource_type="user", resource_id=user.id, metadata={"account_type": account_type})
     if invitation is not None:
         await team_service.accept_invitation(session, invitation, user, client)
+    elif account_type == "personal":
+        # Part 4 §1: a first digital card (template "modern") from the user's name/email; optional card invite (§6).
+        from app.services import card_invites, personal
+
+        if body.card_invite:
+            invite = await card_invites.by_token(session, sha256_hex(body.card_invite))
+            if invite is None:
+                raise AppError(410, "card_invite_unavailable", "This card invitation is no longer available")
+            await card_invites.accept(session, invite, user, client)
+            user.email_verified, user.email_verified_at = True, datetime.now(UTC)
+        else:
+            fields = {"full_name": user.full_name, "emails": [{"label": "Email", "value": user.email}]}
+            if user.phone:
+                fields["phones"] = [{"label": "Mobile", "value": user.phone}]
+            await personal.new_card(session, user, fields=fields)
     elif account_type == "business":
         assert body.business is not None
         business = await business_service.create_workspace(session, user, body.business.model_dump())

@@ -48,6 +48,9 @@ dependencies:
   path: ^1.9.1
   mobile_scanner: ^7.4.2
   url_launcher: ^6.3.2
+  qr_flutter: ^4.1.0
+  image_picker: ^1.2.3
+  image_cropper: ^12.2.1
 
 dev_dependencies:
   flutter_test:

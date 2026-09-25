@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Building2, Check, Code2, Mail } from 'lucide-react'
+import { ArrowLeft, Building2, Check, Code2, IdCard, Mail } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { authApi } from '@/api/auth'
 import { ApiError, request } from '@/api/client'
@@ -98,8 +98,11 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const [params] = useSearchParams()
   const inviteToken = params.get('invite') ?? ''
-  const initialType = params.get('type') === 'business' ? 'business' : params.get('type') === 'developer' ? 'developer' : null
-  const [type, setType] = useState<AccountType | null>(inviteToken ? 'business' : initialType)
+  const cardInvite = params.get('card_invite') ?? ''
+  const t0 = params.get('type')
+  const initialType: AccountType | null = t0 === 'business' || t0 === 'developer' || t0 === 'personal' ? t0 : null
+  const [type, setType] = useState<AccountType | null>(inviteToken ? 'business' : cardInvite ? 'personal' : initialType)
+  const [personalPhone, setPersonalPhone] = useState('')
   const [step, setStep] = useState(0)
 
   // Shared account fields
@@ -196,6 +199,15 @@ export default function RegisterPage() {
             address: address.trim() || undefined,
           },
         })
+      } else if (type === 'personal') {
+        await register({
+          email: email.trim(),
+          password,
+          full_name: fullName.trim(),
+          account_type: 'personal',
+          phone: personalPhone.trim() || undefined,
+          card_invite_token: cardInvite || undefined,
+        })
       } else {
         await register({ email: email.trim(), password, full_name: fullName.trim(), account_type: 'developer' })
       }
@@ -218,7 +230,7 @@ export default function RegisterPage() {
         {(p) => <Input {...p} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />}
       </Field>
       <Field
-        label={type === 'business' ? 'Login email' : 'Work email'}
+        label={type === 'business' ? 'Login email' : type === 'personal' ? 'Email' : 'Work email'}
         hint={lockedEmail ? 'The invitation was sent to this address.' : undefined}
         error={show(accountErrors.email) ?? fe('email')}
       >
@@ -251,6 +263,13 @@ export default function RegisterPage() {
             body="Smart NFC cards & tags, no code"
             points={['Employee cards, tags and public profiles', 'Choose what each tap does', 'Team roles, analytics & readers']}
             onClick={() => setType('business')}
+          />
+          <TypeCard
+            icon={IdCard}
+            title="Personal"
+            body="Your own digital business card"
+            points={['Share your card with a tap or a QR code', 'Collect contacts from people you meet', 'Free: 3 cards · 1,000 contacts']}
+            onClick={() => setType('personal')}
           />
         </div>
       </AuthLayout>
@@ -314,6 +333,46 @@ export default function RegisterPage() {
             </Button>
           </form>
         )}
+      </AuthLayout>
+    )
+  }
+
+  // ---------- Personal (one step) ----------
+  if (type === 'personal') {
+    const phoneErr = personalPhone.trim() && !PHONE.test(personalPhone.trim()) ? 'Enter a phone number, ideally with country code.' : null
+    return (
+      <AuthLayout title="Create your digital card" subtitle="Free · share your card with a tap or a QR code" footer={<Footer />}>
+        {!cardInvite && back}
+        <form
+          onSubmit={(e) => {
+            if (phoneErr) {
+              e.preventDefault()
+              setTouched(true)
+              return
+            }
+            void submit(e)
+          }}
+          className="space-y-4"
+          noValidate
+        >
+          {cardInvite && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-2 p-3">
+              <IdCard className="h-5 w-5 shrink-0 text-accent" />
+              <p className="text-[13px] text-muted">
+                A business has issued you a digital card. Create your personal account to accept it — you can decline it later from your dashboard.
+              </p>
+            </div>
+          )}
+          {error != null && <ErrorAlert error={error} />}
+          {accountFields()}
+          <Field label="Phone" optional hint="Shown on your card only if you choose to." error={show(phoneErr) ?? fe('phone')}>
+            {(p) => <Input {...p} type="tel" inputMode="tel" autoComplete="tel" value={personalPhone} onChange={(e) => setPersonalPhone(e.target.value)} placeholder="+250 788 000 000" />}
+          </Field>
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
+            {cardInvite ? 'Create account & accept card' : 'Create my card'}
+          </Button>
+          <p className="text-center text-xs text-subtle">We create your first card from your name and email — you can design it after signing up.</p>
+        </form>
       </AuthLayout>
     )
   }

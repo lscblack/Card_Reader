@@ -399,3 +399,11 @@ REQUEST_LOG_ENABLED=true
   profile_published, first_employee, first_card, card_programmed, device_paired, team_invited} }`.
 - **Admin list endpoints** (`/admin/accounts`, `/admin/businesses`, `/admin/devices`, `/admin/deliveries`) are paginated
   `{items,total,page,page_size}` (`page`, `page_size` query params).
+- **Business-owned applications:** `POST /businesses/{id}/applications` (`api.manage`) — same body/response as
+  `POST /applications` (first API key + webhook secret plaintext shown once); the business plan's `max_applications`
+  applies (`402 plan_limit_reached`, `details.limit = "applications"`).
+- **Slug check:** `GET /businesses/slug-available?slug=&business_id=` (auth) → `{ available, reason }`,
+  `reason` ∈ `null | "invalid_format" | "taken" | "current"` (pass `business_id` so the current slug reports `current`).
+- **Rate limits:** the strict 10/min per-IP bucket applies **only** to credential POSTs (`/auth/login`, `/auth/register`,
+  `/auth/forgot-password`, `/auth/reset-password`, `/auth/verify-email`, `/auth/resend-verification`,
+  `/invitations/{token}/accept`). `/auth/me` and every other authenticated route use the normal per-user bucket.

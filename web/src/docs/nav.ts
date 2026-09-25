@@ -228,6 +228,25 @@ export const docPages: DocPage[] = [
     keywords: '429 retry-after x-ratelimit 402 plan_limit_reached quota',
   },
   {
+    slug: 'digital-cards',
+    title: 'Digital cards',
+    group: 'Individuals',
+    description: 'Your business card on your phone: design, share, exchange, privacy — and how terminals read it.',
+    headings: [
+      { id: 'create', title: 'Create your card' },
+      { id: 'templates', title: 'Templates & design' },
+      { id: 'share-scan', title: 'Share vs scan' },
+      { id: 'exchange', title: 'Mutual exchange' },
+      { id: 'no-app', title: 'iPhones & phones without the app' },
+      { id: 'qr', title: 'QR fallback' },
+      { id: 'privacy', title: 'Privacy & visibility' },
+      { id: 'business-issued', title: 'Cards issued by a business' },
+      { id: 'limits', title: 'Plans & limits' },
+      { id: 'developers', title: 'For developers: reading digital cards' },
+    ],
+    keywords: 'personal digital card exchange hce ndef iphone qr visibility template digital_card_token signed_token share_id',
+  },
+  {
     slug: 'security',
     title: 'Security',
     group: 'Platform',
@@ -251,6 +270,8 @@ export const docPages: DocPage[] = [
     group: 'Platform',
     description: 'What changed in each part of the platform.',
     headings: [
+      { id: 'part-4', title: 'Part 4 — Personal accounts & digital cards' },
+      { id: 'part-3', title: 'Part 3 — Branding, pricing & live tools' },
       { id: 'part-2', title: 'Part 2 — Business accounts' },
       { id: 'v1-1', title: 'v1.1 — Access controls & QR pairing' },
       { id: 'part-1', title: 'Part 1 — Developer platform' },
@@ -259,7 +280,7 @@ export const docPages: DocPage[] = [
   },
 ]
 
-export const docGroups = ['Getting started', 'Core concepts', 'Developers', 'Businesses', 'Platform']
+export const docGroups = ['Getting started', 'Core concepts', 'Developers', 'Businesses', 'Individuals', 'Platform']
 
 export const docPath = (slug: string) => (slug ? `/docs/${slug}` : '/docs')
 

@@ -303,3 +303,24 @@ def test_build_argv_rejects_injection() -> None:
                                           api_base_url="http://192.168.1.74:8000/"))
     assert ok[1:] == ["build", "apk", "--debug", "--build-name=1.2.3-beta.1", "--build-number=7",
                       "--dart-define=API_BASE_URL=http://192.168.1.74:8000"]
+
+
+async def test_orphaned_building_rows_marked_failed_on_worker_start(client: AsyncClient, redis) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import select
+
+    from app.models import AppRelease
+
+    async with SessionLocal() as s:
+        s.add(AppRelease(version_name="1.0.0", build_number=5, channel="stable", build_type="release",
+                         api_base_url="http://x.example.com", status="building", is_published=False,
+                         publish_on_success=False, downloads=0, started_at=datetime.now(UTC)))
+        await s.commit()
+    await redis.set(app_builds.LOCK_KEY, "someone")  # a live build elsewhere → untouched
+    assert await app_builds.recover_orphans(SessionLocal) == 0
+    await redis.delete(app_builds.LOCK_KEY)
+    assert await app_builds.recover_orphans(SessionLocal) == 1
+    async with SessionLocal() as s:
+        row = (await s.execute(select(AppRelease))).scalar_one()
+    assert row.status == "failed" and "interrupted" in row.error and row.finished_at is not None
+    admin = await _admin(client)
+    assert (await client.get("/api/v1/notifications", headers=admin)).json()["items"][0]["type"] == "app_build.failed"

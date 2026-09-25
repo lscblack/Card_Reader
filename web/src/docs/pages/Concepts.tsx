@@ -1,4 +1,6 @@
 import { B, C, Callout, DocHeader, DocLink, H2, P, PrevNext, Table, UL } from '../components/Prose'
+import { Figure } from '../components/Figure'
+import { RelayDirectDiagram } from '../components/Diagrams'
 
 export default function Concepts() {
   return (
@@ -61,6 +63,8 @@ export default function Concepts() {
         ]}
       />
 
+      <Figure shot="events" caption="Events with status, device and attempts in the dashboard." />
+
       <H2 id="delivery-modes">Relay vs direct</H2>
       <P>Choose the delivery mode per application under Endpoint configuration. Devices pick up the change on their next config refresh.</P>
       <Table
@@ -76,6 +80,9 @@ export default function Concepts() {
           ['Good for', 'Most integrations, public HTTPS endpoints', 'Latency-critical or LAN-only endpoints'],
         ]}
       />
+      <Figure scroll caption="Relay: the platform signs and retries. Direct: the phone signs with a derived key and reports back.">
+        <RelayDirectDiagram />
+      </Figure>
       <P>
         Either way the payload and signature scheme are identical — only the key differs. See{' '}
         <DocLink to="/docs/webhooks#direct-key">direct-mode derived key</DocLink>.

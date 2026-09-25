@@ -4,7 +4,7 @@ import { useBranding } from '@/branding/context'
 
 export const DASHBOARD_PATH = '/dashboard'
 
-export type NavTarget = 'product' | 'developers' | 'businesses' | 'pricing'
+export type NavTarget = 'product' | 'developers' | 'businesses' | 'individuals' | 'pricing'
 
 export function useIsLoggedIn(): boolean {
   return useAuth().status === 'authenticated'

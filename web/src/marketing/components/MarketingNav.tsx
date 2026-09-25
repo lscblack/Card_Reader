@@ -11,6 +11,7 @@ const links: { id: NavTarget; label: string }[] = [
   { id: 'product', label: 'Product' },
   { id: 'developers', label: 'Developers' },
   { id: 'businesses', label: 'Businesses' },
+  { id: 'individuals', label: 'Digital card' },
   { id: 'pricing', label: 'Pricing' },
 ]
 

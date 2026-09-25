@@ -226,3 +226,14 @@ async def process_queue(session_factory, batch: int | None = None) -> int:  # ty
                     log.next_attempt_at = datetime.now(UTC) + timedelta(seconds=30 * log.attempts)
         await session.commit()
         return len(rows)
+
+
+
+async def send_digital_card_invite(to_email: str, business_name: str, employee_name: str, token: str) -> None:
+    link = card_invite_link(token)
+    await deliver_templated("digital_card_invite", to_email, {
+        "business_name": business_name, "employee_name": employee_name, "action_url": link}, secrets=[link])
+
+
+def card_invite_link(token: str) -> str:
+    return f"{settings.public_web_url}/register?card_invite={token}"

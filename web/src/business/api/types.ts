@@ -297,6 +297,23 @@ export interface Employee {
   total_taps: number
   last_tap_at: ISODateTime | null
   created_at: ISODateTime
+  profile_id?: UUID | null
+  public_url?: string | null
+  /** Part 4 §6 — business-issued personal digital card. */
+  digital_card?: EmployeeDigitalCard | null
+}
+
+export interface EmployeeDigitalCard {
+  status: 'invited' | 'active' | 'inactive' | 'declined' | string
+  user_email: string | null
+  accepted_at: ISODateTime | null
+}
+
+export interface IssueDigitalCardRequest {
+  email: string
+  template_id?: string
+  design?: Record<string, unknown>
+  locked_fields?: string[]
 }
 
 export interface EmployeeInput {

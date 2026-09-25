@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router'
 import { FullPageSpinner } from '@/components/ui/Spinner'
 import { coreRoutes } from '@/routes/coreRoutes'
 import { businessRoutes } from '@/business/routes'
+import { personalRoutes } from '@/personal/routes'
 import { marketingRoutes } from '@/marketing/routes'
 
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
@@ -19,6 +20,7 @@ export default function App() {
       <Routes>
         {coreRoutes()}
         {businessRoutes()}
+        {personalRoutes()}
         {marketingRoutes()}
         <Route
           path="*"

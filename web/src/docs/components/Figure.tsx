@@ -66,7 +66,7 @@ export function Figure({
   const capId = useId()
   const content = shot ? <Screenshot name={shot} /> : children
   return (
-    <figure className={cn('my-7', narrow && 'mx-auto max-w-[300px]', className)} aria-labelledby={capId}>
+    <figure className={cn('my-7 min-w-0', narrow && 'mx-auto max-w-[300px]', className)} aria-labelledby={capId}>
       <div className="group relative overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div className={cn(scroll && 'overflow-x-auto')}>
           <div className={cn(scroll && 'min-w-[600px]', !shot && 'p-3 sm:p-5')}>{content}</div>

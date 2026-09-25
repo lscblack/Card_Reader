@@ -11,6 +11,7 @@ import '../../services/app_state.dart';
 import '../format.dart';
 import '../widgets/business_result.dart';
 import '../widgets/common.dart';
+import '../widgets/digital_card_result.dart';
 import '../widgets/error_ref.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -68,6 +69,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     InfoRow('Detected', '${formatLocalTime(e.detectedAt)}\n${isoUtc(e.detectedAt)}'),
                   ],
                 ),
+                if (e.digitalCardToken != null && e.business == null) ...[
+                  const SizedBox(height: 12),
+                  DigitalCardResult(summary: e.digitalCard, shareIdHex: e.cardId),
+                ],
                 if (e.business != null) ...[
                   const SizedBox(height: 12),
                   BusinessResultCard(result: e.business!),

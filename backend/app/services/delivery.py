@@ -79,7 +79,8 @@ def build_event_payload(event: NfcEvent, mode: str = "relay") -> dict[str, Any]:
             "technologies": list(event.card_technologies or []),
             "type": event.card_type,
         },
-        "security": {"authenticated": False, "level": "uid_only"},
+        "security": {"authenticated": False, "level": "signed_token" if (event.extra or {}).get(
+            "digital_card", {}).get("verified") else "uid_only"},
         "device_id": str(event.device_id) if event.device_id else None,
         "application_id": str(event.application_id),
         "delivery_mode": mode,
@@ -500,8 +501,12 @@ async def run_worker(
     poll = poll_seconds or settings.DELIVERY_WORKER_POLL_SECONDS
     logger.info("Delivery worker started (v%s, poll=%.1fs)", VERSION, poll)
     last_recovery = 0.0
-    from app.services import request_logs
+    from app.services import app_builds, request_logs
 
+    try:
+        await app_builds.recover_orphans(session_factory)
+    except Exception as exc:
+        logger.warning("Orphaned build recovery failed: %s", exc.__class__.__name__)
     while not stop.is_set():
         try:
             await get_redis().set(WORKER_HEARTBEAT_KEY, datetime.now(UTC).isoformat(), ex=120)

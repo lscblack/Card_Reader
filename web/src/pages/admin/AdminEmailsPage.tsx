@@ -154,6 +154,8 @@ function Composer({ initialUsers }: { initialUsers: Picked[] }) {
   const preview = useQuery({
     queryKey: ['admin', 'email-preview', previewInput],
     queryFn: () => adminEmailsApi.preview(JSON.parse(previewInput) as { subject: string; body_markdown: string; cta?: { label: string; url: string } }),
+    // The server rejects empty drafts (422); wait until there's something to render.
+    enabled: !!subject.trim() && !!body.trim(),
     placeholderData: (prev) => prev,
   })
 
@@ -217,6 +219,7 @@ function Composer({ initialUsers }: { initialUsers: Picked[] }) {
                   <option value="">All account types</option>
                   <option value="developer">Developers</option>
                   <option value="business">Businesses</option>
+                  <option value="personal">Personal</option>
                 </Select>
                 <Select aria-label="Status" value={filter.status ?? ''} onChange={(e) => setFilter({ ...filter, status: (e.target.value || undefined) as EmailFilter['status'] })}>
                   <option value="">Active + disabled</option>
@@ -286,7 +289,13 @@ function Composer({ initialUsers }: { initialUsers: Picked[] }) {
       <Card className="xl:sticky xl:top-20 xl:self-start">
         <CardHeader title="Live preview" description="Exactly what recipients receive (rendered by the server)." actions={preview.isFetching ? <Spinner className="h-4 w-4 text-subtle" /> : null} />
         <CardBody>
-          {preview.error ? <ErrorAlert error={preview.error} /> : <EmailFrame html={preview.data?.html} title="Email preview" />}
+          {!subject.trim() || !body.trim() ? (
+            <EmptyState icon={Mail} title="Nothing to preview yet" description="Add a subject and a message to see the email as recipients will receive it." />
+          ) : preview.error ? (
+            <ErrorAlert error={preview.error} />
+          ) : (
+            <EmailFrame html={preview.data?.html} title="Email preview" />
+          )}
         </CardBody>
       </Card>
       <ConfirmDialog

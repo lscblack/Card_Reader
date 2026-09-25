@@ -1,4 +1,6 @@
 import { B, C, Callout, DocHeader, DocLink, H2, OL, P, PrevNext, UL } from '../components/Prose'
+import { Figure } from '../components/Figure'
+import { ProgrammingDiagram } from '../components/Diagrams'
 
 export default function QuickstartBusinesses() {
   return (
@@ -27,6 +29,8 @@ export default function QuickstartBusinesses() {
         edited too.
       </P>
 
+      <Figure shot="profile" narrow caption="Your public business profile as customers see it on their phone." />
+
       <H2 id="cards">3. Add cards &amp; tags</H2>
       <UL>
         <li>
@@ -40,6 +44,8 @@ export default function QuickstartBusinesses() {
         Create them one by one, or in bulk (up to 500 at a time) for a print run. Each gets a short, unguessable tap link like{' '}
         <C>{'{PUBLIC_API_URL}/t/Ab3dE5gH7k'}</C> — it is not the card&apos;s UID.
       </P>
+
+      <Figure shot="card" caption="A card’s detail page: holder, action, tap statistics and the tap link with its QR code." />
 
       <H2 id="actions">4. Choose what a tap does</H2>
       <P>
@@ -61,12 +67,17 @@ export default function QuickstartBusinesses() {
         <li>The card shows as programmed in the dashboard. The app never makes a tag read-only, so you can rewrite it later.</li>
       </OL>
 
+      <Figure scroll caption="Programming writes the card’s link; the tag is never locked.">
+        <ProgrammingDiagram />
+      </Figure>
+
       <H2 id="share">6. Tap, share &amp; measure</H2>
       <P>
         Customers just tap with their phone — no app required. Every tap is recorded: total taps, unique visitors, top cards and employees,
         device types and busiest hours in <B>Analytics</B>. Invite your team with the right <DocLink to="/docs/business-guide#roles">role</DocLink>{' '}
         and deactivate a card (or an employee) instantly when needed.
       </P>
+      <Figure shot="analytics" caption="Analytics: taps, unique visitors, web vs reader taps and trends." />
       <PrevNext slug="quickstart-businesses" />
     </article>
   )

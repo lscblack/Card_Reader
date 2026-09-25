@@ -75,7 +75,7 @@ export default function LoginPage() {
         </Button>
         {USE_MOCKS && (
           <p className="text-center text-xs text-subtle">
-            Mock mode: any 10+ char password. Emails containing “admin” open the admin console, “business” a business account.
+            Mock mode: any 10+ char password. Emails containing “admin” open the admin console, “business” a business account, “personal” a personal account.
           </p>
         )}
       </form>

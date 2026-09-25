@@ -99,8 +99,21 @@ _PRESENTATION = {  # Part 3: badge / featured / yearly price / description (admi
     "biz_starter": (False, None, None, "Get your business started with NFC cards and tags."),
     "biz_growth": (True, "Best value", 49000, "For growing teams with many cards and devices."),
     "biz_enterprise": (False, None, 199000, "Unlimited scale with dedicated support."),
+    "personal_free": (False, None, None, "Your digital business card: share by NFC, QR or link."),
+    "personal_pro": (True, "Pro", 4900, "More cards, unlimited contacts and lead export."),
 }
+PLAN_SEED += [
+    {"code": "personal_free", "name": "Personal Free", "price_monthly_cents": 0, "currency": "USD",
+     "events_per_month": None, "max_applications": None, "max_devices": None, "max_cards": 3, "max_members": None,
+     "max_contacts": 1000, "audience": "personal", "sort_order": 20,
+     "features": ["3 digital cards", "NFC, QR and link sharing", "1,000 contacts", "Lead capture"]},
+    {"code": "personal_pro", "name": "Personal Pro", "price_monthly_cents": 499, "currency": "USD",
+     "events_per_month": None, "max_applications": None, "max_devices": None, "max_cards": 20, "max_members": None,
+     "max_contacts": None, "audience": "personal", "sort_order": 21,
+     "features": ["20 digital cards", "Unlimited contacts", "Lead capture export", "Premium templates"]},
+]
 for _plan in PLAN_SEED:
+    _plan.setdefault("max_contacts", None)
     _plan.setdefault("audience", "developer")
     _plan.setdefault("max_cards", None)
     _plan.setdefault("max_members", None)
@@ -144,6 +157,19 @@ async def create_free_subscription(session: AsyncSession, user: User) -> Subscri
         user_id=user.id, plan_id=plan.id, status="active",
         current_period_start=start, current_period_end=end,
     )
+    sub.plan = plan
+    session.add(sub)
+    user.subscription = sub
+    return sub
+
+
+async def create_subscription(session: AsyncSession, user: User, plan_code: str) -> Subscription:
+    plan = await get_plan(session, plan_code)
+    if plan is None:  # pragma: no cover - seeded on startup
+        raise RuntimeError(f"{plan_code} plan missing; seeding did not run")
+    start, end = usage.month_bounds()
+    sub = Subscription(user_id=user.id, plan_id=plan.id, status="active",
+                       current_period_start=start, current_period_end=end)
     sub.plan = plan
     session.add(sub)
     user.subscription = sub

@@ -75,8 +75,51 @@ async def seed_demo_promotion(session: AsyncSession) -> None:
     await session.commit()
 
 
+PERSONAL_EMAILS = ("personal.demo@example.com", "personal2.demo@example.com")
+
+
+async def seed_demo_personal(session: AsyncSession) -> None:
+    """Two personal accounts with cards and a mutual exchange between them (Part 4). Idempotent."""
+    from app.models import Contact
+    from app.services import personal
+
+    if (await session.execute(select(User.id).where(User.email.in_(PERSONAL_EMAILS)))).first():
+        return
+    people = []
+    for email, name, title, company, template in (
+        (PERSONAL_EMAILS[0], "Amani Uwimana", "Product Designer", "Studio Amani", "modern"),
+        (PERSONAL_EMAILS[1], "Jean-Paul Habimana", "Sales Lead", "Kigali Motors", "split"),
+    ):
+        user = User(email=email, password_hash=hash_password(settings.DEMO_PASSWORD), full_name=name, role="developer",
+                    is_active=True, account_type="personal", email_verified=True, email_verified_at=datetime.now(UTC))
+        session.add(user)
+        await session.flush()
+        await plan_service.create_subscription(session, user, "personal_free")
+        card = await personal.new_card(session, user, label="Work", template_id=template, fields={
+            "full_name": name, "headline": f"{title} at {company}", "job_title": title, "company": company,
+            "phones": [{"label": "Mobile", "value": "+250788000333"}],
+            "emails": [{"label": "Work", "value": email}],
+            "websites": [{"label": "Website", "url": "https://example.com"}],
+            "socials": [{"platform": "linkedin", "url": "https://www.linkedin.com/in/example"}]})
+        await personal.new_card(session, user, label="Personal", template_id="minimal",
+                                fields={"full_name": name, "emails": [{"label": "Home", "value": email}]})
+        people.append((user, card))
+    (a, card_a), (b, card_b) = people
+    now = datetime.now(UTC)
+    for owner, owner_card, other in ((a, card_a, card_b), (b, card_b, card_a)):
+        session.add(Contact(owner_id=owner.id, owner_card_id=owner_card.id, source="nfc_exchange",
+                            counterpart_user_id=other.user_id, counterpart_card_id=other.id,
+                            card=personal.snapshot(other, "contacts"), access_level="contacts", live=True, tags=[],
+                            favorite=False, met_at=now))
+        other.exchanges += 1
+        personal.record_activity(session, other.user_id, other.id, "exchange",
+                                 f"{(owner_card.fields or {}).get('full_name')} received your card", "nfc", mutual=True)
+    await session.commit()
+
+
 async def seed_demo(session: AsyncSession) -> None:
     await seed_demo_promotion(session)
+    await seed_demo_personal(session)
     exists = (await session.execute(select(User.id).where(User.email.in_([DEV_EMAIL, BIZ_EMAIL])))).first()
     if exists:
         return

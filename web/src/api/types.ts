@@ -45,7 +45,7 @@ export interface ServerMeta {
 // ---------- Auth / users ----------
 
 export type UserRole = 'developer' | 'admin'
-export type AccountType = 'developer' | 'business'
+export type AccountType = 'developer' | 'business' | 'personal'
 export type MemberRole = 'owner' | 'admin' | 'manager' | 'staff'
 
 export interface Membership {
@@ -114,6 +114,10 @@ export interface RegisterRequest {
   account_type?: AccountType
   business?: RegisterBusinessInfo
   invite_token?: string
+  /** Part 4 §1 — personal accounts */
+  phone?: string
+  /** Part 4 §6 — accept a business-issued digital card while registering (`/register?card_invite=`). */
+  card_invite_token?: string
 }
 
 export interface BusinessCategory {
@@ -366,8 +370,10 @@ export interface Plan {
   max_applications: number | null
   max_devices: number | null
   features: string[]
-  /** Part 2 §A3 */
-  audience?: 'developer' | 'business'
+  /** Part 2 §A3 (+ Part 4 "personal") */
+  audience?: 'developer' | 'business' | 'personal'
+  /** Personal plan limit (Part 4 §1). */
+  max_contacts?: number | null
   /** Business plan limits (Part 2 §B8). */
   max_cards?: number | null
   max_members?: number | null

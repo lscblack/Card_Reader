@@ -1,5 +1,8 @@
 import { Check, Minus } from 'lucide-react'
 import { B, C, Callout, DocHeader, DocLink, H2, H3, OL, P, PrevNext, Table, UL } from '../components/Prose'
+import { Figure } from '../components/Figure'
+import { ProgrammingDiagram, TapFlowDiagram } from '../components/Diagrams'
+import { BusinessResultMock } from '../components/PhoneMocks'
 
 const yes = <Check className="h-4 w-4 text-emerald-500" aria-label="Yes" />
 const no = <Minus className="h-4 w-4 text-subtle" aria-label="No" />
@@ -49,6 +52,8 @@ export default function BusinessGuide() {
         <li>Create cards in bulk (1–500 at a time, with a name prefix) for a print batch; they start unprogrammed.</li>
       </UL>
 
+      <Figure shot="card" caption="Card detail: the holder, the tap action, statistics and the printable tap-link QR code." />
+
       <H2 id="actions">Tap actions</H2>
       <P>
         An action decides what happens when someone taps. Set one per card, or a business-wide default; with neither, the tap opens your
@@ -86,6 +91,10 @@ export default function BusinessGuide() {
         <li>Unknown or inactive cards open a neutral “unavailable” page; link-preview bots are recorded but excluded from analytics.</li>
       </UL>
 
+      <Figure scroll caption="Customer phones open the tap link; reader devices look the card up.">
+        <TapFlowDiagram />
+      </Figure>
+
       <H2 id="profiles">Profiles</H2>
       <P>
         Profiles are public pages at <C>/b/{'{business_slug}'}</C> and <C>/b/{'{business_slug}'}/{'{profile_slug}'}</C>. Types:{' '}
@@ -112,6 +121,8 @@ export default function BusinessGuide() {
         Unpublished, inactive, suspended or unverified profiles show a neutral page. Changing your slug keeps the old one redirecting for
         90 days.
       </P>
+
+      <Figure shot="profile" narrow caption="A published business profile on a customer’s phone." />
 
       <H2 id="employees">Employees &amp; customers</H2>
       <UL>
@@ -185,6 +196,7 @@ export default function BusinessGuide() {
         <li>Timeline, top cards, top employees, actions used</li>
         <li>Device types, countries and taps by hour of day</li>
       </UL>
+      <Figure shot="analytics" caption="Business analytics for the last 30 days." />
       <Callout tone="note" title="Privacy">
         Unique visitors are counted with a hash that uses a daily-rotating salt. Raw IP addresses are not stored, there is no GeoIP lookup, and
         country is only taken from a trusted proxy header when available.
@@ -201,6 +213,9 @@ export default function BusinessGuide() {
           programmed and binds its UID.
         </li>
       </OL>
+      <Figure scroll caption="Programming a card from a business reader device.">
+        <ProgrammingDiagram />
+      </Figure>
       <P>
         This requires the business setting <B>Devices can register cards</B> (on by default), which grants devices the{' '}
         <C>cards.register</C> and <C>cards.program</C> capabilities. Tags are never locked, so they can be rewritten.
@@ -212,6 +227,17 @@ export default function BusinessGuide() {
         whether it&apos;s recognised, who it belongs to and its status, and offers to open its action. Unknown cards can be registered on the
         spot. Devices can be assigned to an employee; the dashboard shows which are online and their recent activity.
       </P>
+      <div className="my-6 grid gap-5 sm:grid-cols-3">
+        <Figure caption="Recognized card">
+          <BusinessResultMock state="recognized" />
+        </Figure>
+        <Figure caption="Inactive card">
+          <BusinessResultMock state="inactive" />
+        </Figure>
+        <Figure caption="Unknown card">
+          <BusinessResultMock state="unknown" />
+        </Figure>
+      </div>
       <Callout tone="warning" title="Reader devices identify cards, they don't authenticate them">
         Recognising a card by UID is convenient for check-ins and lookups, but a UID can be cloned. See{' '}
         <DocLink to="/docs/security#uid">Security</DocLink>.

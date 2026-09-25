@@ -1,6 +1,7 @@
 import { CodeBlock, CodeTabs } from '../components/Code'
 import { B, C, Callout, DocHeader, DocLink, H2, H3, OL, P, PrevNext, Table, UL } from '../components/Prose'
 import { requestSamples } from '../samples'
+import { Figure } from '../components/Figure'
 
 const requestExample = `{
   "id": "…",
@@ -42,6 +43,8 @@ export default function Sandbox() {
           <C>Authorization</C> header values are masked. The receiver needs no auth and is rate-limited per token.
         </li>
       </UL>
+
+      <Figure shot="sandbox" caption="The sandbox inspector: incoming requests on the left, verdict, headers and body on the right." />
 
       <H2 id="getting-started">Getting started</H2>
       <OL>

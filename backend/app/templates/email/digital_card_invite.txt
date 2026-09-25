@@ -1,0 +1,2 @@
+{% extends "base.txt" %}{% block content %}{{ business_name }} has issued you a digital business card on {{ brand.product_name }}{% if employee_name %} for {{ employee_name }}{% endif %}.
+Accept it to share your work details by tapping your phone, a QR code or a link. The invitation expires in 7 days.{% endblock %}

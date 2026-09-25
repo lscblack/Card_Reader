@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block content %}<p style="margin:0 0 12px 0;"><strong>{{ business_name }}</strong> has issued you a digital business card on {{ brand.product_name }}{% if employee_name %} for <strong>{{ employee_name }}</strong>{% endif %}.</p>
+<p style="margin:0;">Accept it to share your work details by tapping your phone, a QR code or a link. The card lives on your personal account; the company details are managed by {{ business_name }}. The invitation expires in 7 days.</p>{% endblock %}

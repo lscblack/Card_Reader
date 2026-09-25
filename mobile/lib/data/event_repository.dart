@@ -51,13 +51,18 @@ class SqfliteEventRepository implements EventRepository {
     final db = await f.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onUpgrade: (db, oldVersion, _) async {
           if (oldVersion < 2) {
             // Part 2: error refs + business result.
             await db.execute('ALTER TABLE $_table ADD COLUMN error_ref TEXT');
             await db.execute('ALTER TABLE $_table ADD COLUMN request_id TEXT');
             await db.execute('ALTER TABLE $_table ADD COLUMN business_json TEXT');
+          }
+          if (oldVersion < 3) {
+            // Part 4: digital cards.
+            await db.execute('ALTER TABLE $_table ADD COLUMN digital_token TEXT');
+            await db.execute('ALTER TABLE $_table ADD COLUMN digital_json TEXT');
           }
         },
         onCreate: (db, _) async {
@@ -79,7 +84,9 @@ class SqfliteEventRepository implements EventRepository {
               updated_at INTEGER NOT NULL,
               error_ref TEXT,
               request_id TEXT,
-              business_json TEXT
+              business_json TEXT,
+              digital_token TEXT,
+              digital_json TEXT
             )''');
           await db.execute('CREATE INDEX idx_events_detected ON $_table(detected_at DESC)');
           await db.execute('CREATE INDEX idx_events_status ON $_table(status, next_attempt_at)');

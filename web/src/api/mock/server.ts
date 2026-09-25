@@ -46,6 +46,7 @@ import type {
 } from '../types'
 import { endpointOutsideAllowlist, parseAllowedDomain } from '@/lib/url'
 import { handleBusinessMock } from '@/business/mock'
+import { handlePersonalMock } from '@/personal/mock'
 import { mockErrorCatalog } from '@/docs/data/mockErrorCatalog'
 import { mockActivePromotions, mockAppRelease, mockPlans, mockPromotions, mockPublicPlans } from '@/marketing/mockPricing'
 
@@ -1342,6 +1343,9 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
   const c4 = handleCore4(method, path, q, body, token)
   if (c4) return c4
   // Business domain (Part 2) — delegated; returns null for routes it doesn't own.
+  // Personal accounts & digital cards (Part 4) — delegated; returns null for routes it doesn't own.
+  const personal = handlePersonalMock(method, path, q, body, token && loggedIn ? token : null)
+  if (personal) return personal
   const biz = handleBusinessMock(method, path, q, body, token && loggedIn ? token : null)
   if (biz) return biz
   const is = (m: string, pattern: string) => {
@@ -1365,8 +1369,10 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
     if (body.full_name) user.full_name = String(body.full_name)
     // Mock personas: "admin…" → admin console, "business…" / business sign-up → business, else developer.
     const business = registering ? body.account_type === 'business' : /business/i.test(email)
+    const personal = registering ? body.account_type === 'personal' : /personal/i.test(email)
     user.role = /admin/i.test(email) ? 'admin' : 'developer'
-    user.account_type = business ? 'business' : 'developer'
+    user.account_type = business ? 'business' : personal ? 'personal' : 'developer'
+    if (personal && typeof body.phone === 'string' && body.phone) user.phone = body.phone
     user.email_verified = registering ? false : !/unverified/i.test(email)
     loggedIn = true
     savePersona()

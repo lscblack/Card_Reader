@@ -91,6 +91,8 @@ class DeviceEventIn(Schema):
     card_type: str | None = Field(default=None, max_length=64)
     detected_at: datetime
     direct_delivery: DirectDeliveryIn | None = None
+    # Part 4 §5: phone-as-card token read over HCE (base64url, 55 chars)
+    digital_card_token: str | None = Field(default=None, min_length=1, max_length=128)
 
     @field_validator("card_id")
     @classmethod

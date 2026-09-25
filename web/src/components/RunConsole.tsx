@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import type { Application, LiveDeliveryAttempt, SandboxEndpoint } from '@/api/types'
 import { errorDocsUrl } from '@/api/client'
-import { useApplications } from '@/hooks/queries'
+import { useApplication, useApplications } from '@/hooks/queries'
 import { useSandboxMutations } from '@/hooks/useConsole'
 import { useLiveRun, type LiveStatus, type LiveTap } from '@/hooks/useLiveRun'
 import { cn } from '@/lib/cn'
@@ -170,18 +170,37 @@ function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
 
 /**
  * "Run" console (Part 3 §8): the live debugging view of card taps and their deliveries.
- * `fixedAppId` locks the application (app detail "Live" tab); `sandbox` enables one-click connect.
+ *
+ * - `fixedAppId`: lock to one application (e.g. an app's "Live" tab) — no picker is shown.
+ * - `application` / `appName`: pass what you already have (business apps aren't in the developer
+ *   `/applications` list); otherwise the app is loaded with `GET /applications/{id}`.
+ * - `sandbox`: enables "Connect app to sandbox" and sandbox verdict lines.
  */
-export function RunConsole({ fixedAppId, sandbox, className }: { fixedAppId?: string; sandbox?: SandboxEndpoint; className?: string }) {
-  const apps = useApplications()
+export function RunConsole({
+  fixedAppId,
+  application,
+  appName,
+  sandbox,
+  className,
+}: {
+  fixedAppId?: string
+  application?: Application
+  appName?: string
+  sandbox?: SandboxEndpoint
+  className?: string
+}) {
+  const apps = useApplications({ enabled: !fixedAppId && !application })
   const toast = useToast()
   const { useFor } = useSandboxMutations()
   const [picked, setPicked] = useState('')
   const [running, setRunning] = useState(false)
   const [sound, setSound] = useState(false)
   const [freshKey, setFreshKey] = useState<string | null>(null)
-  const appId = fixedAppId ?? (picked || apps.data?.find((a) => sandbox && a.endpoint.url === sandbox.url)?.id || apps.data?.[0]?.id || '')
-  const app: Application | undefined = apps.data?.find((a) => a.id === appId)
+  const lockedId = application?.id ?? fixedAppId
+  const appId = lockedId ?? (picked || apps.data?.find((a) => sandbox && a.endpoint.url === sandbox.url)?.id || apps.data?.[0]?.id || '')
+  const single = useApplication(lockedId && !application ? lockedId : undefined)
+  const app: Application | undefined = application ?? single.data ?? apps.data?.find((a) => a.id === appId)
+  const displayName = appName ?? app?.name
   const soundRef = useRef(sound)
   useEffect(() => {
     soundRef.current = sound
@@ -228,7 +247,7 @@ export function RunConsole({ fixedAppId, sandbox, className }: { fixedAppId?: st
             {statusLabel[status]}
           </span>
         </div>
-        {!fixedAppId && (
+        {!lockedId && (
           <Select aria-label="Application" value={appId} onChange={(e) => setPicked(e.target.value)} className="h-8 w-full text-[13px] sm:w-52" disabled={running}>
             {!apps.data?.length && <option value="">No applications</option>}
             {apps.data?.map((a) => (
@@ -278,7 +297,7 @@ export function RunConsole({ fixedAppId, sandbox, className }: { fixedAppId?: st
 
       <div className="max-h-[560px] min-h-[260px] overflow-y-auto bg-code-bg px-4 py-4 font-mono text-[12.5px] leading-relaxed text-zinc-200 sm:px-5" role="log" aria-live="polite" aria-label="Live taps">
         <p className="text-zinc-500">
-          $ nfc run --app &quot;{app?.name ?? '…'}&quot;
+          $ nfc run --app &quot;{displayName ?? '…'}&quot;
           {app?.endpoint.url ? ` → ${app.endpoint.url}` : ''}
         </p>
         {!running ? (

@@ -36,13 +36,22 @@ Map<String, Object?> buildEndpointPayload({
     'technologies': event.technologies,
     'type': event.cardType,
   },
-  'security': {'authenticated': false, 'level': 'uid_only'},
+  'security': {'authenticated': false, 'level': event.digitalCardToken == null ? 'uid_only' : 'signed_token'},
   'device_id': config.deviceId,
   'application_id': config.applicationId,
   'delivery_mode': mode.name,
   'test': false,
   'timestamp': isoUtc(event.detectedAt),
+  // Part 4 (direct mode): the phone can't verify the token — the developer can, via the
+  // platform; public profile fields are only added by the platform in relay mode.
+  if (event.digitalCardToken != null)
+    'digital_card': {'id': _uuidFromHex(event.cardId), 'token': event.digitalCardToken, 'verified': false},
 };
+
+String _uuidFromHex(String h) => h.length != 32
+    ? h
+    : '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}'
+          .toLowerCase();
 
 /// Headers that callers' `custom_headers` may not override.
 const _reservedHeaders = {
@@ -208,8 +217,12 @@ class DeliveryService {
     }
   }
 
-  EventRecord _withBusiness(EventRecord e, EventSubmitResult r) =>
-      r.business == null ? e : e.copyWith(businessJson: () => jsonEncode(r.business!.raw));
+  EventRecord _withBusiness(EventRecord e, EventSubmitResult r) {
+    var out = e;
+    if (r.business != null) out = out.copyWith(businessJson: () => jsonEncode(r.business!.raw));
+    if (r.digitalCard != null) out = out.copyWith(digitalJson: () => jsonEncode(r.digitalCard!.raw));
+    return out;
+  }
 
   /// Local ref for a direct-delivery failure (null when the endpoint answered).
   static String? _directRef(String? error) {
@@ -397,5 +410,6 @@ class DeliveryService {
     cardType: e.cardType,
     detectedAt: isoUtc(e.detectedAt),
     directDelivery: report,
+    digitalCardToken: e.digitalCardToken,
   );
 }

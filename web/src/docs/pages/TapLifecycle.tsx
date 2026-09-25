@@ -38,14 +38,12 @@ export default function TapLifecycle() {
         </li>
         <li>The event appears in <B>NFC Events</B> with every delivery attempt; run mode shows it live.</li>
       </OL>
-      <div className="my-6 grid gap-6 sm:grid-cols-2">
-        <Figure caption="What the phone shows after a relayed delivery.">
-          <DeveloperResultMock />
-        </Figure>
-        <Figure scroll caption="Relay vs direct: who signs, who retries.">
-          <RelayDirectDiagram />
-        </Figure>
-      </div>
+      <Figure narrow caption="What the phone shows after a relayed delivery.">
+        <DeveloperResultMock />
+      </Figure>
+      <Figure scroll caption="Relay vs direct: who signs, who retries.">
+        <RelayDirectDiagram />
+      </Figure>
 
       <H2 id="business-device">Business device</H2>
       <P>

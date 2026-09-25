@@ -3,12 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { ArrowRight, Briefcase, Code2, type LucideIcon } from 'lucide-react'
 import { CodeBlock } from '../components/Code'
 import { B, C, Callout, DocHeader, DocLink, H2, P, PrevNext, UL } from '../components/Prose'
+import { Figure } from '../components/Figure'
+import { useProductName } from '@/marketing/lib'
+import { ArchitectureDiagram } from '../components/Diagrams'
 
 const flow = `NFC card ──tap──▶ Android phone (NFC Terminal app)
                         │
          ┌──────────────┴───────────────┐
          ▼ relay (default)              ▼ direct
-   NFC Platform ── signed POST ──▶  your endpoint  ◀── signed POST ── phone
+   Platform ────── signed POST ──▶  your endpoint  ◀── signed POST ── phone
    (logs, retries, analytics)                         (reports outcome to the platform)
 
 Business cards & tags:
@@ -48,6 +51,7 @@ function Choice({ to, icon: Icon, title, body }: { to: string; icon: LucideIcon;
 export default function Introduction() {
   const { hash } = useLocation()
   const navigate = useNavigate()
+  const productName = useProductName()
   useEffect(() => {
     const target = legacyAnchors[hash.slice(1)]
     if (target) navigate(target, { replace: true })
@@ -59,7 +63,7 @@ export default function Introduction() {
 
       <H2 id="what-it-is">What it is</H2>
       <P>
-        NFC Platform turns any NFC-enabled Android phone into a programmable card reader. The principle is simple:{' '}
+        {productName} turns any NFC-enabled Android phone into a programmable card reader. The principle is simple:{' '}
         <B>NFC detection → card ID → secure delivery</B>. The phone reads a card&apos;s identifier (UID), and the platform delivers it — signed
         — to wherever it needs to go.
       </P>
@@ -89,6 +93,9 @@ export default function Introduction() {
       </P>
 
       <H2 id="architecture">Architecture</H2>
+      <Figure scroll caption="How the pieces fit: readers, the platform, your endpoint and customer phones.">
+        <ArchitectureDiagram />
+      </Figure>
       <CodeBlock code={flow} language="text" title="How a tap flows" />
       <UL>
         <li>
@@ -106,6 +113,8 @@ export default function Introduction() {
           <B>Public pages</B> — business and employee profiles at <C>/b/{'{slug}'}</C> that open when a customer taps a card.
         </li>
       </UL>
+
+      <Figure shot="dashboard" caption="The developer dashboard: applications, devices, events and delivery success at a glance." />
 
       <Callout tone="danger" title="A UID is an identifier, not proof of identity">
         Many card UIDs can be read by anyone nearby, cloned or randomised. Every event carries <C>security.authenticated = false</C> and{' '}

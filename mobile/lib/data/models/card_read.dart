@@ -1,3 +1,5 @@
+import '../../core/digital_card_token.dart';
+
 /// A card detection. Only the UID is read: it is an identifier, not proof of
 /// identity (`security.level = "uid_only"`).
 class CardRead {
@@ -6,6 +8,7 @@ class CardRead {
     required this.technologies,
     required this.type,
     required this.detectedAt,
+    this.digitalCardToken,
   });
 
   /// Uppercase hex, no separators.
@@ -17,6 +20,12 @@ class CardRead {
   /// One of [CardType] values.
   final String type;
   final DateTime detectedAt;
+
+  /// Part 4: token served by a phone sharing a digital card (then [uid] is the
+  /// share_id hex and [type] is `digital_card`).
+  final String? digitalCardToken;
+
+  bool get isDigitalCard => digitalCardToken != null;
 
   int get uidLength => uid.length ~/ 2;
 }
@@ -31,6 +40,20 @@ class CardType {
   static const felica = 'felica';
   static const iso15693 = 'iso15693';
   static const unknown = 'unknown';
+  static const digitalCard = 'digital_card';
+}
+
+/// Builds the read for a digital card (Part 4 §3/§5): card_id = share_id hex.
+CardRead? digitalCardRead(String token, List<String> technologies, DateTime detectedAt) {
+  final shareHex = DigitalCardToken.shareIdHex(token);
+  if (shareHex == null) return null;
+  return CardRead(
+    uid: shareHex,
+    technologies: technologies,
+    type: CardType.digitalCard,
+    detectedAt: detectedAt,
+    digitalCardToken: token,
+  );
 }
 
 /// Pure helpers for UIDs and technologies. No platform dependencies.

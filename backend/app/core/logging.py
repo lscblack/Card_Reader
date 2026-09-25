@@ -21,7 +21,7 @@ _SENSITIVE_KEYS = re.compile(
 
 
 def _build_patterns(api_key_prefix: str = "nfc_") -> list[tuple[re.Pattern[str], str]]:
-    prefixes = {re.escape(api_key_prefix), "nfc_", "nfcd_", "nfcp_", "whsec_"}
+    prefixes = {re.escape(api_key_prefix), "nfc_", "nfcd_", "nfcp_", "nfcs_", "nfcl_", "whsec_"}
     token_alt = "|".join(sorted(prefixes, key=len, reverse=True))
     return [
         # Authorization / Bearer values

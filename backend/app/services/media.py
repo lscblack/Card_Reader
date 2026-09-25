@@ -87,3 +87,37 @@ def save_avatar(data: bytes, owner_id: str) -> str:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(out.getvalue())
     return rel.as_posix()
+
+
+def save_resized(data: bytes, folder: str, stem: str, size: tuple[int, int], crop: bool,
+                 max_bytes: int = 3 * 1024 * 1024) -> str:
+    """Validates (magic bytes), then crops-to-fill (crop=True) or fits inside `size`, re-encoding as WebP."""
+    import io
+
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    if len(data) > max_bytes:
+        raise AppError(422, "invalid_upload", f"Images must be at most {max_bytes // (1024 * 1024)} MB",
+                       [{"field": "file", "message": "file too large"}])
+    if sniff(data) is None:
+        raise AppError(422, "invalid_upload", "Only PNG, JPEG or WebP images are accepted",
+                       [{"field": "file", "message": "unsupported image type"}])
+    Image.MAX_IMAGE_PIXELS = 40_000_000
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img = ImageOps.exif_transpose(img)
+            img = img.convert("RGBA" if img.mode in ("RGBA", "LA", "P") else "RGB")
+            if crop:
+                img = ImageOps.fit(img, size, method=Image.Resampling.LANCZOS)
+            else:
+                img.thumbnail(size, Image.Resampling.LANCZOS)
+            out = io.BytesIO()
+            img.save(out, format="WEBP", quality=86, method=6)
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise AppError(422, "invalid_upload", "The image could not be read",
+                       [{"field": "file", "message": "corrupt or unsupported image"}]) from exc
+    rel = Path(folder) / f"{stem}-{secrets.token_hex(6)}.webp"
+    target = media_root() / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(out.getvalue())
+    return rel.as_posix()

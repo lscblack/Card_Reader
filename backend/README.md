@@ -203,6 +203,18 @@ tests/                    pytest suite (real Postgres + fakeredis + respx)
 * **Demo data** (`SEED_DEMO_DATA=true` and `ENVIRONMENT=development` only): `developer.demo@example.com` and
   `business.demo@example.com`, password `DEMO_PASSWORD` (default `DemoPassword123`).
 
+## Part 3: branding, pricing, emails, live mode, app releases (`docs/PART3_CONTRACT.md`)
+
+* **Docs are off by default** (`API_DOCS_ENABLED=false`): `/docs`, `/redoc` and `/openapi.json` return 404.
+* **Branding** lives in `platform_settings` (key `branding`), served at `/meta/branding` with an ETag; uploaded SVGs are
+  rebuilt by an allowlist sanitiser (`app/services/svg_sanitizer.py`).
+* **Emails** use Jinja2 templates in `app/templates/email/` (HTML + text); every send is logged in `email_logs`, and
+  one-time links are replaced with `[link removed]` in stored copies. Admin campaigns are queued and sent by the worker.
+* **Live mode**: `GET /api/v1/live/applications/{id}` streams SSE from Redis pub/sub, with replay from a capped Redis stream.
+* **App builds**: with `APP_BUILD_ENABLED=true` the worker runs
+  `FLUTTER_BIN build apk --<type> --build-name --build-number --dart-define=API_BASE_URL` (no shell) in
+  `MOBILE_PROJECT_DIR`, one at a time. APKs land in `MEDIA_ROOT/releases/` and are served from `/downloads/android/latest`.
+
 ## Implementation notes
 
 * `usage_daily` holds per-application daily counters (`events`, `delivered`, `failed`) keyed by the event's
