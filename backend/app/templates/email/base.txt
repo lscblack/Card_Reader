@@ -1,0 +1,14 @@
+{{ heading }}
+{{ "=" * (heading|length) }}
+
+{% if recipient_name %}Hi {{ recipient_name }},
+
+{% endif %}{% block content %}{% endblock %}{% if action_url %}
+
+{{ action_label }}: {{ action_url }}
+{% endif %}{% block after %}{% endblock %}
+
+--
+{{ reason }}
+{{ brand.product_name }}{% if brand.company_address %} · {{ brand.company_address }}{% endif %}{% if brand.support_email %} · {{ brand.support_email }}{% endif %}
+Powered by Nexventures — http://nexventures.net/

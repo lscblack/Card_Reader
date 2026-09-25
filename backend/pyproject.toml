@@ -1,0 +1,16 @@
+[project]
+name = "nfc-platform-backend"
+version = "1.0.0"
+description = "NFC SaaS platform API: card taps → signed webhook deliveries"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"

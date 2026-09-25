@@ -1,0 +1,2 @@
+{% extends "base.txt" %}{% block content %}{% if inviter_name %}{{ inviter_name }} invited you{% else %}You've been invited{% endif %} to join {{ business_name }} on {{ brand.product_name }} as {{ role }}.
+The invitation expires in 7 days.{% endblock %}

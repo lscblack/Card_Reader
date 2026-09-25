@@ -1,0 +1,2 @@
+{% extends "base.txt" %}{% block content %}Please confirm that {{ email }} is your email address to finish setting up your {{ brand.product_name }} account.
+This link expires in {{ expires_hours }} hours.{% endblock %}

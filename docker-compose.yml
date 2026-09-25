@@ -1,0 +1,74 @@
+# NFC Platform: PostgreSQL 16 + Redis 7 + backend API.
+#
+#   docker compose up -d postgres redis      # just the infrastructure (for local dev)
+#   docker compose up -d --build             # everything; API on http://127.0.0.1:8000/docs
+#
+# Host ports can be changed if 5432/6379/8000 are taken, e.g.
+#   POSTGRES_HOST_PORT=5433 REDIS_HOST_PORT=6380 docker compose up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-YourStrongPassword}
+      POSTGRES_DB: ${DB_NAME:-nfc_platform}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Values come from your shell or a .env file next to this compose file.
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-postgres}:${DB_PASSWORD:-YourStrongPassword}@postgres:5432/${DB_NAME:-nfc_platform}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      API_BASE_URL: ${API_BASE_URL:-http://127.0.0.1:8000}
+      DEBUG: ${DEBUG:-false}
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-long-random-production-secret}
+      WEBHOOK_SIGNING_SECRET: ${WEBHOOK_SIGNING_SECRET:-change-this-secret}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_SMTP_SERVER: ${EMAIL_SMTP_SERVER:-mail.example.com}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_LOGIN: ${EMAIL_LOGIN:-info@example.com}
+      EMAIL_SENDER_EMAIL: ${EMAIL_SENDER_EMAIL:-info@example.com}
+      EMAIL_SENDER_PASSWORD: ${EMAIL_SENDER_PASSWORD:-}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-ChangeThisImmediately}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-false}
+    ports:
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
+
+volumes:
+  pgdata:
+  redisdata:

@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block content %}<p style="margin:0 0 12px 0;">{% if inviter_name %}<strong>{{ inviter_name }}</strong> invited you{% else %}You've been invited{% endif %} to join <strong>{{ business_name }}</strong> on {{ brand.product_name }} as <strong>{{ role }}</strong>.</p>
+<p style="margin:0;">Accept the invitation to manage NFC cards, devices and analytics with the team. The invitation expires in 7 days.</p>{% endblock %}

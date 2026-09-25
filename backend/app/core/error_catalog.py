@@ -1,0 +1,274 @@
+"""Error catalog (Part 2 §A1): every error code the platform can emit, with a stable ref.
+
+Ranges: NFC-1xxx auth · 2xxx request/validation · 3xxx applications/endpoints · 4xxx devices/events/pairing ·
+5xxx webhook delivery · 6xxx business · 7xxx plans/billing · 8xxx sandbox/admin · 9xxx server ·
+MOB-1xxx mobile app (served so the app and docs share one source).
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+
+
+@dataclass(frozen=True)
+class ErrorDef:
+    code: str
+    ref: str
+    http_status: int | None
+    source: str  # api | delivery | mobile
+    title: str
+    description: str
+    fix: str
+
+
+_E = ErrorDef
+CATALOG_LIST: list[ErrorDef] = [
+    # ── NFC-1xxx auth / session / credentials ──────────────────────────
+    _E("unauthorized", "NFC-1000", 401, "api", "Authentication required",
+       "The request has no credentials.", "Send `Authorization: Bearer <token>`."),
+    _E("invalid_credentials", "NFC-1001", 401, "api", "Invalid email or password",
+       "The email/password combination is wrong.", "Check the credentials or reset the password."),
+    _E("invalid_token", "NFC-1002", 401, "api", "Invalid access token",
+       "The dashboard JWT is malformed, forged or its user no longer exists.", "Sign in again."),
+    _E("invalid_api_key", "NFC-1003", 401, "api", "Invalid API key",
+       "The API key is unknown or malformed.", "Copy the key again from the dashboard (keys are shown once)."),
+    _E("token_expired", "NFC-1004", 401, "api", "Access token expired",
+       "The dashboard JWT has expired.", "Sign in again."),
+    _E("token_revoked", "NFC-1005", 401, "api", "Access token revoked",
+       "The password was changed after this token was issued.", "Sign in again."),
+    _E("api_key_revoked", "NFC-1006", 401, "api", "API key revoked",
+       "The API key was revoked or its application deleted.", "Create a new API key."),
+    _E("invalid_device_token", "NFC-1007", 401, "api", "Invalid device token",
+       "The device token is unknown or malformed.", "Register the device again."),
+    _E("device_revoked", "NFC-1008", 401, "api", "Device revoked",
+       "The device was revoked or deleted from the dashboard.",
+       "Wipe the stored token and register the device again."),
+    _E("invalid_pairing_code", "NFC-1009", 401, "api", "Invalid pairing code",
+       "The QR pairing code is unknown, already used, expired or cancelled.", "Create a new pairing QR code."),
+    _E("account_disabled", "NFC-1010", 403, "api", "Account disabled",
+       "The account was deactivated by an administrator.", "Contact support."),
+    _E("forbidden", "NFC-1011", 403, "api", "Forbidden",
+       "You are not allowed to perform this action.", "Use an account with the required role."),
+    _E("invalid_password", "NFC-1012", 400, "api", "Current password incorrect",
+       "The current password does not match.", "Re-enter your current password."),
+    _E("invalid_reset_token", "NFC-1013", 400, "api", "Invalid reset link",
+       "The password reset link is invalid, used or expired.", "Request a new reset email."),
+    _E("email_taken", "NFC-1014", 409, "api", "Email already registered",
+       "An account with this email already exists.", "Sign in or reset the password."),
+    _E("invalid_verification_token", "NFC-1015", 400, "api", "Invalid verification link",
+       "The email verification link is invalid, used or expired.", "Request a new verification email."),
+    _E("signups_disabled", "NFC-1016", 403, "api", "Sign-ups disabled",
+       "New registrations of this account type are currently disabled.", "Try again later or contact support."),
+    _E("https_required", "NFC-1017", 403, "api", "HTTPS required",
+       "The API only accepts HTTPS requests in this environment.", "Use the https:// URL."),
+    # ── NFC-2xxx request / validation / rate limit ─────────────────────
+    _E("validation_error", "NFC-2000", 422, "api", "Validation error",
+       "The request body, path or query failed validation.", "See `details` for the failing fields."),
+    _E("bad_request", "NFC-2001", 400, "api", "Bad request", "The request is malformed.", "Fix the request."),
+    _E("not_found", "NFC-2002", 404, "api", "Not found",
+       "The resource does not exist or you don't have access to it.", "Check the id and your account."),
+    _E("method_not_allowed", "NFC-2003", 405, "api", "Method not allowed",
+       "This HTTP method is not supported on this path.", "Check the API reference."),
+    _E("rate_limited", "NFC-2004", 429, "api", "Too many requests",
+       "The rate limit for this key/device/user/IP was exceeded.", "Wait `Retry-After` seconds and retry."),
+    _E("payload_too_large", "NFC-2005", 413, "api", "Payload too large",
+       "The request body exceeds the allowed size.", "Send a smaller body."),
+    _E("unsupported_media_type", "NFC-2006", 415, "api", "Unsupported media type",
+       "The content type is not supported.", "Use application/json (or the documented upload types)."),
+    _E("conflict", "NFC-2007", 409, "api", "Conflict", "The request conflicts with the current state.",
+       "Reload and retry."),
+    _E("invalid_upload", "NFC-2008", 422, "api", "Invalid upload",
+       "The file is not a PNG/JPEG/WebP image or is larger than 2 MB.", "Upload a smaller PNG, JPEG or WebP."),
+    _E("error", "NFC-2099", None, "api", "Error", "Unclassified HTTP error.", "See the message."),
+    # ── NFC-3xxx applications / keys / endpoints / allowlists ──────────
+    _E("application_disabled", "NFC-3000", 403, "api", "Application disabled",
+       "The application is paused (is_active=false) or deleted.", "Re-activate the application in the dashboard."),
+    _E("endpoint_not_configured", "NFC-3001", 400, "delivery", "Endpoint not configured",
+       "The application has no endpoint URL, so nothing was delivered.", "Configure the endpoint URL."),
+    _E("domain_not_allowed", "NFC-3002", 422, "delivery", "Domain not allowed",
+       "The endpoint host is not in the application's allowed domains; it was not contacted.",
+       "Add the host to the allowlist or change the endpoint."),
+    _E("endpoint_outside_allowlist", "NFC-3003", 409, "api", "Endpoint outside allowlist",
+       "The new allowlist would not match the current endpoint URL.", "Change the endpoint first."),
+    _E("origin_exists", "NFC-3004", 409, "api", "Origin already allowed",
+       "This browser origin is already allowed (database or CORS_ORIGINS).", "Nothing to do."),
+    _E("delivery_in_progress", "NFC-3005", 409, "api", "Delivery in progress",
+       "Another delivery attempt for this event is running.", "Retry in a few seconds."),
+    _E("endpoint_disabled", "NFC-3006", None, "delivery", "Endpoint disabled",
+       "The endpoint is configured but disabled; nothing was delivered.", "Enable the endpoint."),
+    _E("webhook_secret_not_configured", "NFC-3007", None, "delivery", "Webhook secret missing",
+       "The application has no webhook secret.", "Rotate the webhook secret."),
+    # ── NFC-4xxx devices / events / pairing ────────────────────────────
+    _E("event_id_conflict", "NFC-4000", 409, "api", "event_id already used",
+       "Another device already submitted this event_id.", "Generate a fresh UUID per tap."),
+    _E("device_capability_missing", "NFC-4001", 403, "api", "Device capability missing",
+       "The business does not allow devices to register or program cards.",
+       "Enable 'Devices can register cards' in business settings."),
+    _E("device_not_business", "NFC-4002", 403, "api", "Not a business device",
+       "This endpoint is only available to devices registered to a business.", "Pair the device with a business."),
+    _E("too_many_streams", "NFC-4003", 429, "api", "Too many live streams",
+       "At most 5 concurrent live streams per user.", "Close another live view (browser tab) and retry."),
+    # ── NFC-5xxx webhook delivery failures (recorded on attempts) ──────
+    _E("delivery_failed", "NFC-5000", None, "delivery", "Delivery failed",
+       "The endpoint could not be reached or did not acknowledge.", "Check the delivery attempt details."),
+    _E("delivery_timeout", "NFC-5001", None, "delivery", "Endpoint timed out",
+       "The endpoint did not answer within the configured timeout.",
+       "Respond with 2xx quickly and process asynchronously; raise the timeout (max 30 s)."),
+    _E("delivery_connection_refused", "NFC-5002", None, "delivery", "Connection refused",
+       "Nothing is listening at the endpoint host/port.", "Check that your server is running and reachable."),
+    _E("delivery_dns_failure", "NFC-5003", None, "delivery", "DNS failure",
+       "The endpoint hostname could not be resolved.", "Check the hostname and DNS records."),
+    _E("delivery_tls_error", "NFC-5004", None, "delivery", "TLS error",
+       "The TLS handshake failed (expired, self-signed or mismatched certificate).", "Fix the certificate."),
+    _E("delivery_http_4xx", "NFC-5005", None, "delivery", "Endpoint returned 4xx",
+       "The endpoint rejected the request (often a signature check failure).",
+       "Verify signatures with the documented scheme; see the response excerpt."),
+    _E("delivery_http_5xx", "NFC-5006", None, "delivery", "Endpoint returned 5xx",
+       "The endpoint failed while processing the request.", "Check your server logs."),
+    _E("delivery_redirect_blocked", "NFC-5007", None, "delivery", "Redirect not followed",
+       "The endpoint answered with a redirect; deliveries never follow redirects.",
+       "Configure the final URL directly."),
+    _E("delivery_ssrf_blocked", "NFC-5008", None, "delivery", "Endpoint blocked",
+       "The endpoint URL is not allowed (private/reserved address, non-https outside development).",
+       "Use a public https endpoint."),
+    _E("delivery_response_too_large", "NFC-5009", None, "delivery", "Response too large",
+       "The endpoint response exceeded the allowed size.", "Return a small acknowledgement body."),
+    _E("delivery_connection_error", "NFC-5010", None, "delivery", "Connection error",
+       "The connection failed or was reset.", "Check network reachability of the endpoint."),
+    # ── NFC-6xxx business domain ───────────────────────────────────────
+    _E("not_a_member", "NFC-6001", 403, "api", "Not a member",
+       "You are not an active member of this business.", "Ask an owner to invite you."),
+    _E("business_suspended", "NFC-6002", 403, "api", "Business suspended",
+       "The business was suspended by the platform.", "Contact support."),
+    _E("insufficient_permissions", "NFC-6003", 403, "api", "Insufficient permissions",
+       "Your role does not include the required permission (see details.required).",
+       "Ask a business owner or admin to grant it."),
+    _E("card_uid_exists", "NFC-6004", 409, "api", "Card UID already registered",
+       "Another card of this business already uses this UID.", "Use a different card or unbind the other one."),
+    _E("last_owner", "NFC-6005", 409, "api", "Last owner",
+       "A business must always keep at least one active owner.", "Promote another member to owner first."),
+    _E("invitation_email_mismatch", "NFC-6006", 403, "api", "Invitation email mismatch",
+       "The invitation was sent to a different email address.", "Sign in with the invited email."),
+    _E("invitation_unavailable", "NFC-6007", 410, "api", "Invitation unavailable",
+       "The invitation is unknown, revoked, expired or already accepted.", "Ask for a new invitation."),
+    _E("already_member", "NFC-6008", 409, "api", "Already a member",
+       "This user is already a member of the business.", "Nothing to do."),
+    _E("slug_taken", "NFC-6009", 409, "api", "Slug taken", "This slug is already used.", "Pick another slug."),
+    _E("invalid_action_config", "NFC-6010", 422, "api", "Invalid action configuration",
+       "The action type or its config is invalid (see details).", "Fix the fields listed in details."),
+    _E("profile_unavailable", "NFC-6011", 404, "api", "Profile unavailable",
+       "The profile is unpublished, or the business is inactive, suspended or not verified yet.",
+       "Publish the profile / verify the business."),
+    _E("cannot_edit_own_role", "NFC-6012", 403, "api", "Cannot edit own role",
+       "Members cannot change their own role, permissions or status.", "Ask another owner/admin."),
+    _E("owner_required", "NFC-6013", 403, "api", "Owner required",
+       "Only owners can manage owners, billing, deletion or ownership transfer.", "Ask an owner."),
+    _E("card_uid_mismatch", "NFC-6014", 409, "api", "Card already bound",
+       "This card is already bound to a different UID.", "Unbind it in the dashboard first."),
+    _E("invitation_exists", "NFC-6015", 409, "api", "Invitation already pending",
+       "A pending invitation for this email already exists.", "Resend the existing invitation."),
+    # ── NFC-7xxx plans / billing / limits ──────────────────────────────
+    _E("plan_limit_reached", "NFC-7001", 402, "api", "Plan limit reached",
+       "The plan's limit for this resource was reached (see details.limit).", "Upgrade the plan or free capacity."),
+    _E("invalid_plan", "NFC-7002", 422, "api", "Invalid plan",
+       "The plan code is unknown or not available for this account type.", "Use a code from /billing/plans."),
+    _E("plan_in_use", "NFC-7003", 409, "api", "Plan in use",
+       "The plan has subscribers (or is a default plan) and cannot be deleted.", "Deactivate it instead."),
+    _E("plan_exists", "NFC-7004", 409, "api", "Plan code exists",
+       "A plan with this code already exists (codes are immutable).", "Choose another code."),
+    _E("promotion_code_exists", "NFC-7005", 409, "api", "Promotion code exists",
+       "Another promotion already uses this coupon code.", "Choose another code."),
+    # ── NFC-8xxx sandbox / admin ───────────────────────────────────────
+    _E("sandbox_no_application", "NFC-8001", 409, "api", "Sandbox has no application",
+       "Link the sandbox endpoint to an application first (it provides the signing secret).",
+       "Use POST /sandbox/endpoints/{id}/use-for/{application_id}."),
+    _E("cannot_deactivate_self", "NFC-8101", 400, "api", "Cannot deactivate yourself",
+       "Administrators cannot deactivate or demote their own account.", "Ask another administrator."),
+    _E("branding_low_contrast", "NFC-8201", 422, "api", "Accent colour contrast too low",
+       "The accent colour has less than 3:1 contrast against the theme background (see details).",
+       "Pick a darker accent for the light theme or a lighter one for the dark theme."),
+    _E("too_many_recipients", "NFC-8301", 422, "api", "Too many recipients",
+       "An admin email can target at most 5,000 recipients.", "Narrow the filter or split the campaign."),
+    _E("no_recipients", "NFC-8302", 422, "api", "No recipients",
+       "The selection matched no users.", "Adjust the user ids or the filter."),
+    _E("no_release", "NFC-8401", 404, "api", "No release published",
+       "No published NFC Terminal release is available yet.", "Ask an administrator to publish a build."),
+    _E("app_builds_disabled", "NFC-8402", 403, "api", "App builds disabled",
+       "Mobile builds are disabled on this server (APP_BUILD_ENABLED=false).", "Enable builds in the server config."),
+    _E("build_in_progress", "NFC-8403", 409, "api", "Build in progress",
+       "Another app build is queued or running; builds run one at a time.", "Wait for it to finish or cancel it."),
+    _E("release_not_ready", "NFC-8404", 409, "api", "Release not ready",
+       "Only successfully built releases can be published.", "Wait for the build to succeed."),
+    _E("release_published", "NFC-8405", 409, "api", "Release is published",
+       "The published release cannot be deleted.", "Unpublish it first."),
+    # ── NFC-9xxx server / infrastructure ───────────────────────────────
+    _E("internal_error", "NFC-9000", 500, "api", "Internal error",
+       "An unexpected error occurred.", "Retry; if it persists, contact support with the request_id."),
+    _E("service_unavailable", "NFC-9001", 503, "api", "Service unavailable",
+       "A dependency (database/Redis) is unavailable.", "Retry shortly."),
+    _E("live_unavailable", "NFC-9002", 503, "api", "Live stream unavailable",
+       "Live updates need Redis pub/sub, which is unavailable.", "The dashboard falls back to polling automatically."),
+    # ── MOB-1xxx mobile app (local failures) — mirrors mobile/ERROR_CODES.md ──
+    _E('nfc_unsupported', 'MOB-1001', None, "mobile", 'NFC not supported',
+       'This phone has no NFC hardware.', 'Use an NFC-capable Android phone.'),
+    _E('nfc_disabled', 'MOB-1002', None, "mobile", 'NFC is turned off',
+       'NFC is disabled in the system settings.', 'Turn on NFC in Settings → Connections.'),
+    _E('tag_lost', 'MOB-1003', None, "mobile", 'Card moved away',
+       'The card left the NFC field before the operation finished.', 'Hold the card still against the phone and retry.'),
+    _E('uid_unavailable', 'MOB-1004', None, "mobile", 'No usable card ID',
+       'The card returned an empty or invalid UID.', 'Try again; some cards/phones use random UIDs that cannot be used.'),
+    _E('offline', 'MOB-1005', None, "mobile", 'Phone is offline',
+       'No network connection. The event is queued and sent when the network is back.', 'Check Wi-Fi or mobile data.'),
+    _E('server_unreachable', 'MOB-1006', None, "mobile", 'Server unreachable',
+       'The platform server could not be reached (DNS, refused connection, network).', 'Check the server URL and that the phone can reach it.'),
+    _E('tls_error', 'MOB-1007', None, "mobile", 'Secure connection failed',
+       'The TLS handshake failed (invalid or untrusted certificate).', 'Use a valid HTTPS certificate on the server/endpoint.'),
+    _E('timeout', 'MOB-1008', None, "mobile", 'Request timed out',
+       'The server or endpoint did not answer in time.', 'Retry; check server load or the endpoint timeout.'),
+    _E('signing_failed', 'MOB-1009', None, "mobile", 'Cannot sign direct delivery',
+       'Direct mode needs a signing secret, but the device config has none.', 'Re-sync the configuration (Settings → Re-sync); check the application is in direct mode.'),
+    _E('domain_not_allowed', 'MOB-1010', None, "mobile", 'Endpoint domain not allowed',
+       "Direct mode: the endpoint host is not in the application's allowed domains, so it was not contacted.", 'Add the host to the allowlist or change the endpoint URL in the dashboard.'),
+    _E('camera_permission_denied', 'MOB-1011', None, "mobile", 'Camera permission denied',
+       'The QR scanner needs camera access.', 'Allow camera access in app settings, or enter an API key manually.'),
+    _E('invalid_qr', 'MOB-1012', None, "mobile", 'Invalid pairing QR code',
+       'The scanned QR code is not a valid NFC Terminal pairing code.', 'Generate a new pairing code in the dashboard.'),
+    _E('ndef_write_failed', 'MOB-1013', None, "mobile", 'Writing the card failed',
+       'The NDEF write was rejected by the card.', 'Retry holding the card still; try another card.'),
+    _E('tag_read_only', 'MOB-1014', None, "mobile", 'Card is read-only',
+       'The card is locked and cannot be written.', 'Use a new, writable card.'),
+    _E('tag_too_small', 'MOB-1015', None, "mobile", 'Card memory too small',
+       "The link does not fit in the card's NDEF memory.", 'Use a card with more memory (e.g. NTAG215/216).'),
+    _E('notification_permission_denied', 'MOB-1016', None, "mobile", 'Notifications not allowed',
+       'Background reads work, but their result cannot be shown as a notification.', 'Allow notifications for NFC Terminal in the system settings.'),
+    _E('tag_not_ndef', 'MOB-1017', None, "mobile", 'Card cannot store a link',
+       'The card does not support NDEF and cannot be formatted for it (e.g. MIFARE Classic on many phones).', 'Use an NDEF-compatible card (NTAG21x, MIFARE Ultralight, DESFire).'),
+    _E('invalid_server_response', 'MOB-1018', None, "mobile", 'Unexpected server response',
+       'The server answered with data the app does not understand.', 'Update the app/server; contact support with the request id.'),
+    _E('programming_timeout', 'MOB-1019', None, "mobile", 'No card presented',
+       'No card was held to the phone while programming.', 'Start again and hold the card to the back of the phone.'),
+    _E('endpoint_unreachable', 'MOB-1020', None, "mobile", 'Endpoint unreachable',
+       'Direct mode: the developer endpoint could not be reached.', 'Check the endpoint URL/host is reachable from the phone.'),
+    _E('endpoint_not_configured', 'MOB-1021', None, "mobile", 'Endpoint not configured',
+       'Direct mode: the application has no enabled endpoint.', 'Set and enable the endpoint in the dashboard.'),
+]
+
+# Lookup by code for API/delivery errors. Mobile entries may reuse a server code name (e.g.
+# `domain_not_allowed`), so they are keyed separately and never shadow the server entry.
+CATALOG: dict[str, ErrorDef] = {e.code: e for e in CATALOG_LIST if e.source != "mobile"}
+MOBILE_CATALOG: dict[str, ErrorDef] = {e.code: e for e in CATALOG_LIST if e.source == "mobile"}
+FALLBACK = CATALOG["internal_error"]
+
+assert len({e.ref for e in CATALOG_LIST}) == len(CATALOG_LIST), "duplicate error refs"
+assert len({(e.code, e.source == "mobile") for e in CATALOG_LIST}) == len(CATALOG_LIST), "duplicate error codes"
+
+
+def ref_for(code: str | None) -> str | None:
+    if not code:
+        return None
+    entry = CATALOG.get(code)
+    return entry.ref if entry else None
+
+
+def as_public_list() -> list[dict]:
+    return [asdict(e) for e in CATALOG_LIST]

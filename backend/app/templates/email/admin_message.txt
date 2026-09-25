@@ -1,0 +1,1 @@
+{% extends "base.txt" %}{% block content %}{{ body_text }}{% endblock %}

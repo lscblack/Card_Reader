@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}<p style="margin:0 0 12px 0;">Your email is verified and your {{ brand.product_name }} account is ready.</p>
+{% if account_type == "business" %}<p style="margin:0 0 8px 0;">Next steps for your business:</p>
+<ul style="margin:0 0 0 18px;padding:0;"><li style="margin:0 0 6px 0;">Add your employees and create their cards</li><li style="margin:0 0 6px 0;">Pair a phone as an NFC Terminal with a QR code</li><li style="margin:0;">Publish your business profile</li></ul>
+{% else %}<p style="margin:0 0 8px 0;">Next steps:</p>
+<ul style="margin:0 0 0 18px;padding:0;"><li style="margin:0 0 6px 0;">Create an application and copy its API key</li><li style="margin:0 0 6px 0;">Watch deliveries arrive in your sandbox endpoint</li><li style="margin:0;">Register an Android phone as an NFC reader</li></ul>{% endif %}{% endblock %}
