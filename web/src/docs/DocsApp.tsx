@@ -3,10 +3,12 @@ import DocsLayout from './DocsLayout'
 import Introduction from './pages/Introduction'
 import QuickstartDevelopers from './pages/QuickstartDevelopers'
 import QuickstartBusinesses from './pages/QuickstartBusinesses'
+import QuickstartPersonal from './pages/QuickstartPersonal'
 import Concepts from './pages/Concepts'
 import TapLifecycle from './pages/TapLifecycle'
 import RunMode from './pages/RunMode'
 import DigitalCards from './pages/DigitalCards'
+import PersonalGuide from './pages/PersonalGuide'
 import MobileApp from './pages/MobileApp'
 import DeviceApi from './pages/DeviceApi'
 import Webhooks from './pages/Webhooks'
@@ -39,9 +41,11 @@ export default function DocsApp() {
         <Route index element={<Introduction />} />
         <Route path="quickstart-developers" element={<QuickstartDevelopers />} />
         <Route path="quickstart-businesses" element={<QuickstartBusinesses />} />
+        <Route path="quickstart-personal" element={<QuickstartPersonal />} />
         <Route path="concepts" element={<Concepts />} />
         <Route path="tap-lifecycle" element={<TapLifecycle />} />
         <Route path="run-mode" element={<RunMode />} />
+        <Route path="personal-guide" element={<PersonalGuide />} />
         <Route path="digital-cards" element={<DigitalCards />} />
         <Route path="mobile-app" element={<MobileApp />} />
         <Route path="device-api" element={<DeviceApi />} />

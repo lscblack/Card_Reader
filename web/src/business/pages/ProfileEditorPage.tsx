@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, BookmarkPlus, ChevronDown, Copy, ExternalLink, Eye, EyeOff, Inbox, Moon, Plus, Save, Sun, Trash2, Undo2 } from 'lucide-react'
+import { ArrowLeft, BookmarkPlus, ChevronDown, Copy, ExternalLink, Eye, EyeOff, Inbox, LayoutTemplate, Maximize2, Minimize2, Moon, Plus, Save, Sun, Trash2, Undo2 } from 'lucide-react'
+import { useFocusMode } from '@/hooks/useShellChrome'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -30,6 +31,7 @@ import { SectionEditor } from '../components/SectionEditors'
 import { DragHandle, SortableList } from '../components/pages/Sortable'
 import { ThemePanel } from '../components/pages/ThemePanel'
 import { SaveTemplateModal } from '../components/pages/NewPageModal'
+import { ChangeTemplateModal } from '../components/pages/ChangeTemplateModal'
 import { TYPE_LABEL, hasForm } from '../lib/pages'
 import { UrlQrPanel } from '../components/inputs'
 
@@ -171,10 +173,10 @@ function AddSection({ onAdd, pageType }: { onAdd: (t: SectionType) => void; page
   )
 }
 
-function PhoneFrame({ children }: { children: ReactNode }) {
+function PhoneFrame({ children, tall }: { children: ReactNode; tall?: boolean }) {
   return (
     <div className="mx-auto w-full max-w-[380px] rounded-[2.2rem] border border-border-strong bg-surface-3 p-2.5 shadow-xl">
-      <div className="h-[680px] overflow-y-auto rounded-[1.7rem] bg-bg" aria-label="Live preview">
+      <div className={cn('overflow-y-auto rounded-[1.7rem] bg-bg', tall ? 'h-[min(760px,calc(100dvh-9rem))]' : 'h-[min(680px,calc(100dvh-10rem))]')} aria-label="Live preview">
         {children}
       </div>
     </div>
@@ -228,6 +230,8 @@ function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; 
   const categories = useCategories()
   const [draft, setDraft] = useState<Draft>(() => toDraft(profile))
   const [previewDark, setPreviewDark] = useState<boolean | null>(null)
+  const [changingTpl, setChangingTpl] = useState(false)
+  const { focus, setFocus } = useFocusMode()
   const navigate = useNavigate()
   const { base } = useBusiness()
   const manage = can('profiles.manage')
@@ -268,6 +272,17 @@ function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; 
     />
   )
 
+  useEffect(() => {
+    if (!focus) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return
+      setFocus(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [focus, setFocus])
+  useEffect(() => () => setFocus(false), [setFocus])
+
   async function doSave() {
     try {
       await save.mutateAsync(draft)
@@ -293,6 +308,21 @@ function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; 
         description={`Last updated ${relativeTime(profile.updated_at)}`}
         actions={
           <>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setFocus(!focus)}
+              aria-pressed={focus}
+              aria-label={focus ? 'Exit full screen (Esc)' : 'Full screen'}
+              title={focus ? 'Exit full screen (Esc)' : 'Full screen'}
+            >
+              {focus ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+            {manage && isPage && (
+              <Button leftIcon={<LayoutTemplate className="h-4 w-4" />} onClick={() => setChangingTpl(true)}>
+                Template
+              </Button>
+            )}
             <a href={profile.public_url} target="_blank" rel="noreferrer">
               <Button leftIcon={<ExternalLink className="h-4 w-4" />}>View</Button>
             </a>
@@ -376,7 +406,21 @@ function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; 
         ]}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+      {changingTpl && (
+        <ChangeTemplateModal
+          pageType={profile.type}
+          onClose={() => setChangingTpl(false)}
+          onApply={(filled, withContent) => {
+            // Keep the page's own cover and logo unless the template brings its own.
+            const theme = { ...filled.theme, cover_image_url: filled.theme.cover_image_url || draft.theme.cover_image_url, logo_url: filled.theme.logo_url || draft.theme.logo_url }
+            setDraft({ ...draft, theme, items: withContent ? filled.sections.map((section) => ({ key: `s${keySeq++}`, section })) : draft.items })
+            setPreviewDark(null)
+            toast.success(withContent ? 'Template applied — review the content, then save.' : 'New design applied — your content is unchanged. Save to keep it.')
+          }}
+        />
+      )}
+
+      <div className={cn('grid gap-6', focus ? 'lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_440px]' : 'lg:grid-cols-[minmax(0,1fr)_400px]')}>
         <div className={cn('min-w-0 space-y-4', pane === 'preview' && 'hidden lg:block')}>
           <FormError error={formLevelError(save.error, ['slug', 'title'])} />
           <Card>
@@ -468,7 +512,7 @@ function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; 
         </div>
 
         <div className={cn('min-w-0', pane === 'edit' && 'hidden lg:block')}>
-          <div className="lg:sticky lg:top-20">
+          <div className={cn('lg:sticky', focus ? 'lg:top-4' : 'lg:top-20')}>
             <div className="mb-2 flex items-center justify-center gap-2">
               <p className="text-xs font-medium text-subtle">Live preview · what customers see</p>
               {isPage && (
@@ -483,7 +527,7 @@ function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; 
                 </Button>
               )}
             </div>
-            <PhoneFrame>{preview}</PhoneFrame>
+            <PhoneFrame tall={focus}>{preview}</PhoneFrame>
           </div>
         </div>
       </div>

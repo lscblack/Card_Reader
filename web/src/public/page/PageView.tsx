@@ -148,6 +148,7 @@ export function PageView({
           `pg-chrome-${layout.chrome}`,
           `pg-titles-${layout.titles}`,
           `pg-tex-${layout.texture}`,
+          `pg-cat-${layout.cat}`,
           layout.width === 'wide' && 'pg-wide',
           layout.align === 'center' && 'pg-center',
           layout.upper && 'pg-upper',

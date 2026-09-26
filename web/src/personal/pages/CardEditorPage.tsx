@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeft, Check, CloudUpload, ExternalLink, LayoutTemplate, Loader2, Minus, Palette, Plus, Redo2, RotateCw, Share2, SquarePen, Undo2, Blocks } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, CloudUpload, ExternalLink, LayoutTemplate, Loader2, Maximize2, Minimize2, Minus, Palette, Plus, Redo2, RotateCw, Share2, SquarePen, Undo2, Blocks } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Alert } from '@/components/ui/Alert'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useFocusMode } from '@/hooks/useShellChrome'
 import { cn } from '@/lib/cn'
 import { BizErrorState } from '@/business/components/BizError'
 import { PageSkeleton } from '@/business/components/bits'
@@ -69,6 +70,7 @@ function Editor({ card }: { card: DigitalCard }) {
   const locked = (k: string) => !!link?.locked_fields.includes(k)
   const inFlight = useRef(false)
   const desktop = useMediaQuery('(min-width: 1024px)')
+  const { focus, setFocus } = useFocusMode()
 
   // Autosave: 900 ms after the last change, PATCH only what differs from the last saved version.
   const patch = diffPatch(doc, base, locked)
@@ -109,6 +111,19 @@ function Editor({ card }: { card: DigitalCard }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [undo, redo])
+
+  // Full screen: Escape exits unless a dialog or popup menu is handling it; leaving the editor always exits.
+  useEffect(() => {
+    if (!focus) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return
+      setFocus(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focus, setFocus])
+  useEffect(() => () => setFocus(false), [setFocus])
 
   const hasBack = !!v2?.canvas.back && doc.sides_enabled.includes('back')
   const panelProps: PanelProps = { doc, set: history.set, card, template, v2, locked }
@@ -151,6 +166,16 @@ function Editor({ card }: { card: DigitalCard }) {
           <Button size="icon-sm" variant="ghost" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo (Ctrl+Shift+Z)" title="Redo (Ctrl+Shift+Z)">
             <Redo2 className="h-4 w-4" />
           </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => setFocus(!focus)}
+            aria-pressed={focus}
+            aria-label={focus ? 'Exit full screen (Esc)' : 'Full screen'}
+            title={focus ? 'Exit full screen (Esc)' : 'Full screen'}
+          >
+            {focus ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
           <a href={card.public_url} target="_blank" rel="noreferrer" className="hidden sm:inline-flex">
             <Button size="sm" leftIcon={<ExternalLink className="h-3.5 w-3.5" />}>
               View
@@ -170,7 +195,12 @@ function Editor({ card }: { card: DigitalCard }) {
         </Alert>
       )}
 
-      <Card className="overflow-hidden lg:grid lg:h-[calc(100vh-13rem)] lg:min-h-[620px] lg:grid-cols-[76px_360px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+      <Card
+        className={cn(
+          'overflow-hidden lg:grid lg:min-h-[620px] lg:grid-cols-[76px_360px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]',
+          focus ? 'lg:h-[calc(100dvh-5rem)]' : 'lg:h-[calc(100dvh-13rem)]',
+        )}
+      >
         {/* Rail (desktop) */}
         <nav className="hidden border-r border-border bg-surface-2/40 py-2 lg:block" aria-label="Editor sections">
           {tabs.map((t) => (
@@ -263,7 +293,7 @@ function Editor({ card }: { card: DigitalCard }) {
       {/* Mobile: tabs + bottom sheet panel */}
       {!desktop && (
       <div>
-        <div className="sticky bottom-0 z-20 -mx-4 rounded-t-2xl border border-border bg-surface shadow-[0_-8px_24px_-12px_rgba(0,0,0,.25)] sm:mx-0">
+        <div className={cn('sticky bottom-0 z-20 rounded-t-2xl border border-border bg-surface shadow-[0_-8px_24px_-12px_rgba(0,0,0,.25)] sm:mx-0', focus ? '-mx-3' : '-mx-4')}>
           <div className="flex items-center justify-between gap-1 overflow-x-auto border-b border-border px-2 pt-2">
             {tabs.map((t) => (
               <button

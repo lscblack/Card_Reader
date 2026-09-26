@@ -111,7 +111,7 @@ export const PAGE_FONTS: Record<string, { name: string; heading: string; body: s
   mono: { name: 'Mono + Inter', heading: "'JetBrains Mono', ui-monospace, monospace", body: "'Inter', system-ui, sans-serif", google: [] },
 }
 /** Decorative display fonts some layouts use for category titles. */
-const DECOR: Record<string, string[]> = { chalk: ['Caveat:wght@600;700'] }
+const DECOR: Record<string, string[]> = { chalk: ['Caveat:wght@600;700'], script: ['Great+Vibes', 'Caveat:wght@600;700'], brush: ['Permanent+Marker'] }
 
 const loaded = new Set<string>()
 function loadFamilies(families: string[]) {
@@ -187,10 +187,12 @@ export function usePageScheme(theme: ProfileTheme | null | undefined, key: strin
 
 // ───────────────────────── layouts ─────────────────────────
 
-export type Chrome = 'card' | 'flat' | 'paper' | 'outline' | 'glass'
+export type Chrome = 'card' | 'flat' | 'paper' | 'outline' | 'glass' | 'frame'
 export type TitleStyle = 'caps' | 'ornament' | 'fine' | 'chalk' | 'neon' | 'bold' | 'serif' | 'rule'
-export type MenuStyle = 'list' | 'leaders' | 'grid' | 'fine' | 'board' | 'bar' | 'street'
-export type Texture = 'none' | 'paper' | 'chalk' | 'dots' | 'grid' | 'glow' | 'stripes' | 'rays' | 'waves'
+export type MenuStyle = 'list' | 'leaders' | 'grid' | 'fine' | 'board' | 'bar' | 'street' | 'spotlight' | 'boxed' | 'bars' | 'columns' | 'dashes' | 'ledger' | 'pricebox' | 'numbered'
+/** Category heading style inside menus (overrides the menu style's own). */
+export type CatStyle = 'default' | 'accent-caps' | 'rule-center' | 'script' | 'brush' | 'ornament' | 'pill' | 'pill-dark' | 'split' | 'spaced' | 'bar'
+export type Texture = 'none' | 'paper' | 'chalk' | 'dots' | 'grid' | 'glow' | 'stripes' | 'rays' | 'waves' | 'gingham' | 'pattern' | 'grain' | 'kraft'
 
 export interface LayoutSpec {
   id: string
@@ -201,12 +203,13 @@ export interface LayoutSpec {
   chrome: Chrome
   titles: TitleStyle
   menu: MenuStyle
+  cat: CatStyle
   products: 'grid' | 'single' | 'list'
   links: 'stack' | 'creator'
   texture: Texture
   align: 'left' | 'center'
   header: PageHeaderStyle
-  decor?: 'chalk'
+  decor?: 'chalk' | 'script' | 'brush'
   /** Uppercase headings (street food, flash sale). */
   upper?: boolean
 }
@@ -219,6 +222,7 @@ const L = (id: string, name: string, forTypes: ProfileType[], spec: Partial<Layo
   chrome: 'card',
   titles: 'caps',
   menu: 'list',
+  cat: 'default',
   products: 'grid',
   links: 'stack',
   texture: 'none',
@@ -235,6 +239,23 @@ export const LAYOUTS: LayoutSpec[] = [
   L('menu-fine', 'Fine dining', ['menu'], { chrome: 'flat', titles: 'fine', menu: 'fine', header: 'logo', align: 'center' }),
   L('menu-bar', 'Neon bar', ['menu'], { chrome: 'glass', titles: 'neon', menu: 'bar', texture: 'glow', header: 'banner' }),
   L('menu-street', 'Street food', ['menu'], { chrome: 'outline', titles: 'bold', menu: 'street', texture: 'stripes', header: 'banner', upper: true }),
+  // Menu layouts modelled on printed restaurant menus (burger flyer, chalk dinner, gold frame, Thai border…).
+  L('menu-burger', 'Burger spotlight', ['menu'], { chrome: 'flat', titles: 'bold', menu: 'spotlight', cat: 'accent-caps', texture: 'grain', header: 'minimal', upper: true }),
+  L('menu-chalk-dinner', 'Chalk dinner', ['menu'], { chrome: 'flat', titles: 'chalk', menu: 'boxed', cat: 'rule-center', texture: 'chalk', header: 'logo', align: 'center', decor: 'chalk', upper: true }),
+  L('menu-specials', 'Daily specials', ['menu'], { chrome: 'card', titles: 'serif', menu: 'bars', cat: 'script', header: 'cover', decor: 'script' }),
+  L('menu-brush', 'Brush bold', ['menu'], { width: 'wide', chrome: 'flat', titles: 'bold', menu: 'columns', cat: 'brush', texture: 'grain', header: 'banner', decor: 'brush' }),
+  L('menu-gold', 'Gold frame', ['menu'], { chrome: 'frame', titles: 'ornament', menu: 'dashes', cat: 'ornament', header: 'logo', align: 'center', decor: 'script' }),
+  L('menu-arch', 'Arch', ['menu'], { width: 'wide', chrome: 'paper', titles: 'fine', menu: 'columns', cat: 'rule-center', texture: 'paper', header: 'logo', align: 'center', upper: true }),
+  L('menu-restaurant', 'Restaurant', ['menu'], { width: 'wide', chrome: 'flat', titles: 'serif', menu: 'columns', cat: 'pill', header: 'minimal' }),
+  L('menu-diner', 'Diner', ['menu'], { chrome: 'card', titles: 'bold', menu: 'leaders', cat: 'pill-dark', texture: 'gingham', header: 'logo', align: 'center' }),
+  L('menu-rustic', 'Rustic', ['menu'], { width: 'wide', chrome: 'flat', titles: 'caps', menu: 'columns', cat: 'accent-caps', texture: 'kraft', header: 'logo', align: 'center', upper: true }),
+  L('menu-pattern', 'Pattern border', ['menu'], { chrome: 'flat', titles: 'serif', menu: 'ledger', cat: 'script', texture: 'pattern', header: 'logo', decor: 'script' }),
+  L('menu-kraft', 'Kraft special', ['menu'], { chrome: 'flat', titles: 'bold', menu: 'pricebox', cat: 'accent-caps', texture: 'kraft', header: 'banner', upper: true }),
+  L('menu-numbered', 'Big flavours', ['menu'], { chrome: 'flat', titles: 'bold', menu: 'numbered', cat: 'split', texture: 'grain', header: 'minimal', upper: true }),
+  L('menu-lounge', 'Lounge', ['menu'], { width: 'wide', chrome: 'flat', titles: 'caps', menu: 'columns', cat: 'pill-dark', header: 'logo', align: 'center' }),
+  L('menu-noir', 'Drinks noir', ['menu'], { width: 'wide', chrome: 'flat', titles: 'bold', menu: 'columns', cat: 'spaced', texture: 'grain', header: 'minimal', upper: true }),
+  L('menu-cocktail', 'Cocktail bars', ['menu'], { chrome: 'flat', titles: 'bold', menu: 'list', cat: 'bar', header: 'logo', align: 'center' }),
+  L('menu-fastfood-chalk', 'Fast food chalk', ['menu'], { chrome: 'flat', titles: 'chalk', menu: 'leaders', cat: 'script', texture: 'chalk', header: 'minimal', decor: 'script', upper: true }),
   L('catalogue-grid', 'Catalogue grid', ['product'], { width: 'wide', chrome: 'flat', titles: 'bold', products: 'grid', header: 'minimal' }),
   L('product-single', 'Single product', ['product'], { chrome: 'flat', titles: 'serif', products: 'single', header: 'minimal' }),
   L('service-list', 'Service list', ['product', 'custom'], { chrome: 'card', titles: 'caps', products: 'list', header: 'cover', texture: 'waves' }),

@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Switch, Textarea } from '@/components/ui/Input'
+import { Field, Input, Switch } from '@/components/ui/Input'
+import { RichText } from '@/components/ui/RichText'
 import type { Action, HoursRow, Section, SectionDataMap, SectionType } from '../api/types'
 import { defaultHours } from '../lib/sections'
 import { sectionData } from '@/public/sectionUtils'
 import { ActionConfigurator } from './ActionConfigurator'
 import { SocialLinksEditor } from './inputs'
-import { EventEditor, FormBuilder, GalleryEditor, LinksEditor, MenuEditor, OfferEditor, ProductsEditor, ServicesEditor, WifiEditor } from './pages/PageSectionEditors'
+import { MenuEditor } from './pages/MenuEditor'
+import { EventEditor, FormBuilder, GalleryEditor, LinksEditor, OfferEditor, ProductsEditor, ServicesEditor, WifiEditor } from './pages/PageSectionEditors'
 
 /** Reorderable list of items with add/remove. */
 function ListEditor<T>({
@@ -67,14 +69,13 @@ export function SectionEditor({ section, onChange }: { section: Section; onChang
   switch (section.type) {
     case 'about': {
       const d = sectionData(section)
-      return <Textarea aria-label="About text" rows={4} value={d.text} onChange={(e) => set<'about'>({ text: e.target.value })} placeholder="Tell customers who you are and what you do." />
+      return <RichText aria-label="About text" rows={4} value={d.text} onChange={(text) => set<'about'>({ text })} placeholder="Tell customers who you are and what you do." />
     }
     case 'text': {
       const d = sectionData(section)
       return (
         <div className="space-y-1">
-          <Textarea aria-label="Text" rows={5} value={d.markdown} onChange={(e) => set<'text'>({ markdown: e.target.value })} className="font-mono text-[13px]" />
-          <p className="text-xs text-subtle">Supports **bold**, *italic*, [links](https://…) and “- ” lists.</p>
+          <RichText aria-label="Text" rows={5} value={d.markdown} onChange={(markdown) => set<'text'>({ markdown })} maxLength={10000} />
         </div>
       )
     }

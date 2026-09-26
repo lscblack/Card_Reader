@@ -3,7 +3,7 @@ import type { Price, ProductItem, SectionDataMap } from '@/business/api/types'
 import { safeHref } from '@/lib/url'
 import { usePage } from '../ctx'
 import { formatPrice, imgSrc } from '../format'
-import { Placeholder, Prose, Sec } from '../ui'
+import { Inline, Placeholder, Prose, Sec } from '../ui'
 
 const initial = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, '').charAt(0).toUpperCase() || '•'
 const num = (p: Price | null | undefined) => (typeof p === 'number' ? p : typeof p === 'string' ? Number(p.replace(/[^0-9.]/g, '')) || null : null)
@@ -41,7 +41,7 @@ function GridCard({ it, currency }: { it: ProductItem; currency?: string }) {
       {it.in_stock === false && <span className="pg-oos">Out of stock</span>}
       <div className="pg-card-body">
         <p className="pg-prod-name">{title(it)}</p>
-        {it.description && <p className="pg-item-desc" style={{ fontSize: 13 }}>{it.description}</p>}
+        {it.description && <p className="pg-item-desc" style={{ fontSize: 13 }}><Inline text={it.description} /></p>}
         <PriceLine it={it} currency={currency} />
         <Cta it={it} />
       </div>
@@ -101,7 +101,7 @@ export function ProductsSection({ d }: { d: SectionDataMap['products'] & { title
                     <p className="pg-item-name">{title(it)}</p>
                     <PriceLine it={it} currency={d.currency} className="pg-price-row" />
                   </div>
-                  {it.description && <p className="pg-item-desc">{it.description}</p>}
+                  {it.description && <p className="pg-item-desc"><Inline text={it.description} /></p>}
                   <Cta it={it} className="pg-accent" />
                 </div>
               </div>
@@ -132,7 +132,7 @@ export function ServicesSection({ d, title: t }: { d: SectionDataMap['services']
           <div key={i} className="pg-svc">
             <div style={{ minWidth: 0 }}>
               <p className="pg-item-name">{it.title}</p>
-              {it.description && <p className="pg-item-desc">{it.description}</p>}
+              {it.description && <p className="pg-item-desc"><Inline text={it.description} /></p>}
             </div>
             {(it.price != null && it.price !== '') || it.duration ? (
               <div className="pg-svc-meta">

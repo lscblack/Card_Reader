@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { Check, Plus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Check, Plus, Search } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Tabs } from '@/components/ui/Tabs'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -15,6 +16,7 @@ import { BizErrorState } from '../BizError'
 const THUMB_W = 188
 const RENDER_W = 390
 const SCALE = THUMB_W / RENDER_W
+const PAGE = 24
 
 /** A live, scaled-down render of a template with the business's name, logo and details applied. */
 export function TemplateThumb({ template, height = 250, dark }: { template: PageTemplate; height?: number; dark?: boolean }) {
@@ -22,11 +24,21 @@ export function TemplateThumb({ template, height = 250, dark }: { template: Page
   const categories = useCategories()
   const cat = categories.data?.find((c) => c.code === business.category)?.label ?? null
   const filled = useMemo(() => templateFor(template, business), [template, business])
+  // Live renders are heavy: only mount them once the card scrolls near the viewport.
+  const ref = useRef<HTMLDivElement>(null)
+  const [seen, setSeen] = useState(typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
+    const el = ref.current
+    if (seen || !el) return
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setSeen(true), { rootMargin: '300px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [seen])
   return (
-    <div className="relative overflow-hidden rounded-lg bg-surface-2 ring-1 ring-border" style={{ width: THUMB_W, height }} aria-hidden="true">
-      <div className="pointer-events-none absolute top-0 left-0 origin-top-left select-none" style={{ width: RENDER_W, height: height / SCALE, transform: `scale(${SCALE})` }} inert>
+    <div ref={ref} className="relative overflow-hidden rounded-lg bg-surface-2 ring-1 ring-border" style={{ width: THUMB_W, height }} aria-hidden="true">
+      {seen && <div className="pointer-events-none absolute top-0 left-0 origin-top-left select-none" style={{ width: RENDER_W, height: height / SCALE, transform: `scale(${SCALE})` }} inert>
         <PageView preview business={previewBusiness(business, cat)} profile={{ type: template.page_type, title: template.name, theme: filled.theme, sections: filled.sections }} scheme={dark ? 'dark' : 'light'} profileSlug={`tpl-${template.id}`} />
-      </div>
+      </div>}
     </div>
   )
 }
@@ -74,24 +86,47 @@ export function TemplateGallery({
   const q = usePageTemplates(business.id, pageType ?? undefined)
   const [tab, setTab] = useState<Tab>('all')
   const [dark, setDark] = useState(false)
+  const [search, setSearch] = useState('')
+  const [limit, setLimit] = useState(PAGE)
   const all = q.data ?? []
   const mine = all.filter((t) => t.scope === 'business')
   const types = PAGE_TYPES.filter((t) => all.some((x) => x.page_type === t))
-  const list = tab === 'all' ? all : tab === 'mine' ? mine : all.filter((t) => t.page_type === tab)
+  const needle = search.trim().toLowerCase()
+  const list = (tab === 'all' ? all : tab === 'mine' ? mine : all.filter((t) => t.page_type === tab)).filter(
+    (t) => !needle || `${t.name} ${t.description ?? ''} ${t.category ?? ''} ${t.theme?.layout ?? ''}`.toLowerCase().includes(needle),
+  )
   const sorted = [...list].sort((a, b) => (a.scope === b.scope ? 0 : a.scope === 'business' ? -1 : 1))
+  const visible = sorted.slice(0, limit)
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs<Tab>
           value={tab}
-          onChange={setTab}
+          onChange={(t) => {
+            setTab(t)
+            setLimit(PAGE)
+          }}
           tabs={[
             { value: 'all', label: 'All', count: all.length },
-            ...(pageType ? [] : types.map((t) => ({ value: t as Tab, label: PAGE_TYPE_META[t].plural }))),
+            ...(pageType ? [] : types.map((t) => ({ value: t as Tab, label: PAGE_TYPE_META[t].plural, count: all.filter((x) => x.page_type === t).length }))),
             { value: 'mine', label: 'My templates', count: mine.length },
           ]}
         />
+        <label className="relative min-w-0 flex-1 sm:max-w-60">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-subtle" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setLimit(PAGE)
+            }}
+            placeholder={`Search ${all.length} templates…`}
+            aria-label="Search templates"
+            className="h-9 w-full rounded-lg border border-border bg-surface pr-2 pl-8 text-[13px] outline-none focus:border-accent"
+          />
+        </label>
         <label className="flex items-center gap-2 text-xs text-muted">
           <input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} className="accent-[var(--color-accent-solid)]" /> Dark previews
         </label>
@@ -115,7 +150,7 @@ export function TemplateGallery({
               <span className="px-1 text-[13px] font-semibold">Start from scratch</span>
             </Card>
           )}
-          {sorted.map((t) => (
+          {visible.map((t) => (
             <Card key={t.id} selected={selectedId === t.id} onClick={() => onPick(t)} label={`Template ${t.name}`}>
               <TemplateThumb template={t} dark={dark} />
               <span className="flex min-w-0 items-center gap-1.5 px-1">
@@ -125,10 +160,15 @@ export function TemplateGallery({
               <span className="line-clamp-2 min-h-[2.4em] px-1 text-xs text-subtle">{t.description || PAGE_TYPE_META[t.page_type as CreatablePageType]?.hint}</span>
             </Card>
           ))}
+          {sorted.length > visible.length && (
+            <div className="flex w-full justify-center pt-1">
+              <Button onClick={() => setLimit((l) => l + PAGE)}>Show more ({sorted.length - visible.length})</Button>
+            </div>
+          )}
           {!sorted.length && (
             <EmptyState
               className="w-full"
-              title={tab === 'mine' ? 'No templates of your own yet' : 'No templates'}
+              title={tab === 'mine' ? 'No templates of your own yet' : needle ? `No templates match “${search}”` : 'No templates'}
               description={tab === 'mine' ? 'Open any page and choose “Save as template” to reuse its layout, theme and content — e.g. for every branch.' : 'Try another page type.'}
             />
           )}

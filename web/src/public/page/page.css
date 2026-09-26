@@ -494,3 +494,157 @@ select.pg-input { appearance: none; background-image: linear-gradient(45deg, tra
 .pg-foot a:hover { color: var(--pg-text) !important; }
 
 @media (prefers-reduced-motion: reduce) { .pg * { transition: none !important; } }
+
+/* ───────────── printed-menu layouts (Part 6+) ───────────── */
+
+/* extra textures */
+.pg-tex-grain::before {
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--pg-text) 7%, transparent) 0.5px, transparent 0.9px),
+    radial-gradient(120% 60% at 90% 0%, color-mix(in srgb, var(--pg-accent) 14%, transparent), transparent 60%);
+  background-size: 5px 5px, 100% 100%;
+}
+.pg-tex-kraft::before {
+  background-image:
+    radial-gradient(color-mix(in srgb, #7c4a1e 16%, transparent) 0.6px, transparent 1px),
+    radial-gradient(color-mix(in srgb, #fff 20%, transparent) 0.5px, transparent 1px);
+  background-size: 6px 6px, 9px 9px;
+  background-position: 0 0, 2px 4px;
+}
+.pg-tex-gingham { padding: 14px; }
+.pg-tex-gingham::before {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--pg-accent) 55%, transparent) 0 14px, transparent 14px 28px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--pg-accent) 55%, transparent) 0 14px, transparent 14px 28px),
+    color-mix(in srgb, var(--pg-accent) 12%, var(--pg-bg));
+}
+.pg-tex-gingham .pg-inner { background: var(--pg-bg); border-radius: calc(var(--pg-radius) + 8px); box-shadow: 0 10px 30px rgb(0 0 0 / 0.18); overflow: hidden; }
+.pg-tex-pattern::before {
+  --tile: color-mix(in srgb, var(--pg-accent) 85%, transparent);
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--pg-accent) 35%, #f5c26b) 0 3px, transparent 3.5px) 0 0 / 22px 22px,
+    conic-gradient(from 45deg, var(--tile) 25%, transparent 0 50%, var(--tile) 0 75%, transparent 0) 0 0 / 22px 22px;
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% 18px no-repeat, linear-gradient(#000 0 0) bottom / 100% 18px no-repeat;
+  mask: linear-gradient(#000 0 0) top / 100% 18px no-repeat, linear-gradient(#000 0 0) bottom / 100% 18px no-repeat;
+}
+.pg-tex-pattern .pg-inner { padding-top: 18px; padding-bottom: 18px; }
+
+/* gold frame */
+.pg-chrome-frame .pg-body { margin: 14px; padding: 26px 18px 18px; border: 1.5px solid var(--pg-accent); outline: 1px solid color-mix(in srgb, var(--pg-accent) 55%, transparent); outline-offset: 5px; border-radius: 2px; position: relative; }
+.pg-chrome-frame .pg-body::before, .pg-chrome-frame .pg-body::after { content: '❖'; position: absolute; left: 50%; transform: translateX(-50%); color: var(--pg-accent-text); background: var(--pg-bg); padding: 0 10px; font-size: 14px; line-height: 1; }
+.pg-chrome-frame .pg-body::before { top: -8px; }
+.pg-chrome-frame .pg-body::after { bottom: -8px; }
+.pg-chrome-frame .pg-sec { padding: 6px 2px; }
+.pg-chrome-frame .pg-head .pg-title { color: var(--pg-accent-text); }
+.pg-l-menu-gold .pg-title { font-family: 'Great Vibes', var(--pg-font-h); font-weight: 400; font-size: 44px; }
+
+/* category heading styles (win over the menu style's own) */
+.pg.pg-cat-accent-caps .pg-cat-h h3 { font-family: var(--pg-font-h); font-size: 20px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: var(--pg-accent-text); font-style: normal; transform: none; background: none; box-shadow: none; border: 0; padding: 0; }
+.pg.pg-cat-rule-center .pg-cat-h { text-align: center; }
+.pg.pg-cat-rule-center .pg-cat-h h3 { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pg-text); transform: none; font-style: normal; }
+.pg.pg-cat-rule-center .pg-cat-h h3::before, .pg.pg-cat-rule-center .pg-cat-h h3::after { content: ''; width: 34px; height: 2.5px; border-radius: 2px; background: var(--pg-accent); }
+.pg.pg-cat-script .pg-cat-h h3 { font-family: 'Great Vibes', 'Caveat', cursive; font-weight: 400; font-size: 38px; line-height: 1.1; color: var(--pg-accent-text); text-transform: none; letter-spacing: 0; transform: none; }
+.pg.pg-cat-brush .pg-cat-h h3 { display: inline-block; font-family: 'Permanent Marker', var(--pg-font-h); font-weight: 400; font-size: 22px; text-transform: uppercase; color: var(--pg-on-accent); background: var(--pg-accent); padding: 4px 16px 3px; transform: rotate(-1.2deg); border-radius: 3px 10px 4px 12px / 10px 4px 12px 3px; letter-spacing: 0.02em; }
+.pg.pg-cat-ornament .pg-cat-h { text-align: center; }
+.pg.pg-cat-ornament .pg-cat-h h3 { font-size: 24px; font-weight: 600; color: var(--pg-accent-text); display: flex; align-items: center; justify-content: center; gap: 12px; }
+.pg.pg-cat-ornament .pg-cat-h h3::before, .pg.pg-cat-ornament .pg-cat-h h3::after { content: '✦'; font-size: 11px; opacity: 0.8; }
+.pg.pg-cat-pill .pg-cat-h h3 { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; transform: none; }
+.pg.pg-cat-pill .pg-cat-h h3::before { content: ''; flex: 1; height: 1.5px; background: var(--pg-accent); }
+.pg.pg-cat-pill .pg-cat-t { background: var(--pg-accent); color: var(--pg-on-accent); padding: 5px 18px; border-radius: 999px 4px 999px 4px; }
+.pg.pg-cat-pill .pg-cat-t .pg-split-a { color: inherit; }
+.pg.pg-cat-pill-dark .pg-cat-h { text-align: center; }
+.pg.pg-cat-pill-dark .pg-cat-h h3 { display: inline-block; background: var(--pg-text); color: var(--pg-bg); border-radius: 999px; padding: 5px 22px; font-size: 16px; font-weight: 700; letter-spacing: 0.02em; transform: none; font-style: normal; }
+.pg.pg-cat-split .pg-cat-h h3 { font-family: var(--pg-font-h); font-size: 30px; font-weight: 700; text-transform: uppercase; line-height: 1.05; color: var(--pg-text); padding-bottom: 6px; border-bottom: 2px solid var(--pg-accent); display: inline-block; }
+.pg-split-a { color: var(--pg-accent-text); }
+.pg.pg-cat-spaced .pg-cat-h h3 { font-size: 22px; font-weight: 800; letter-spacing: 0.42em; text-transform: uppercase; color: var(--pg-text); }
+.pg.pg-cat-spaced .pg-cat-h h3::after { content: ''; display: block; width: 44px; height: 3px; margin-top: 8px; background: var(--pg-accent); }
+.pg.pg-cat-bar .pg-cat-h { margin: 0 -16px 10px; }
+.pg.pg-cat-bar .pg-cat-h h3 { background: var(--pg-text); color: var(--pg-bg); text-align: center; padding: 10px 12px; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.pg.pg-cat-bar .pg-cat-h p { text-align: center; padding: 0 16px; }
+.pg.pg-cat-bar .pg-price { color: var(--pg-accent-text); }
+
+/* shared item media (thumbnails beside list-style items) */
+.pg-mi.pg-has-media { display: flex; gap: 12px; align-items: flex-start; }
+.pg-mi-main { flex: 1; min-width: 0; }
+.pg-mi-media { width: 64px; height: 64px; border-radius: var(--pg-radius-sm); object-fit: cover; flex-shrink: 0; aspect-ratio: 1; }
+.pg-food-ph.pg-mi-media { font-size: 0; }
+.pg-mi-media-fine { width: 100%; height: auto; aspect-ratio: 16 / 9; margin-bottom: 12px; border-radius: var(--pg-radius); }
+.pg-card-img.pg-food-ph { aspect-ratio: 4 / 3; }
+
+/* spotlight: round photo with a price pill (burger flyer) */
+.pg-menu-spotlight .pg-mi { padding: 14px 0; border-bottom: 1px dashed var(--pg-border); display: flex; gap: 14px; align-items: center; }
+.pg-menu-spotlight .pg-mi:last-child { border-bottom: 0; }
+.pg-menu-spotlight .pg-item-name { font-family: var(--pg-font-h); font-size: 16.5px; font-weight: 700; }
+.pg-menu-spotlight .pg-mi-aside { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+.pg-menu-spotlight .pg-mi-media { width: 104px; height: 104px; border-radius: 999px; box-shadow: 0 0 0 3px var(--pg-bg), 0 0 0 5px color-mix(in srgb, var(--pg-text) 55%, transparent); }
+.pg-menu-spotlight .pg-mi-aside .pg-price { background: var(--pg-accent); color: var(--pg-on-accent); border-radius: 10px; padding: 3px 10px; font-size: 16px; font-weight: 800; margin-top: -16px; position: relative; box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }
+.pg-menu-spotlight .pg-mi:not(.pg-has-media) .pg-mi-aside .pg-price { margin-top: 0; }
+.pg-menu-spotlight .pg-mi:nth-child(even) { flex-direction: row-reverse; text-align: right; }
+.pg-menu-spotlight .pg-mi:nth-child(even) .pg-badges, .pg-menu-spotlight .pg-mi:nth-child(even) .pg-variants { justify-content: flex-end; }
+
+/* boxed: each category in an outlined box (chalk dinner) */
+.pg-menu-boxed .pg-cat { border: 2px solid color-mix(in srgb, var(--pg-text) 45%, transparent); border-radius: calc(var(--pg-radius) + 2px); padding: 18px 16px 8px; }
+.pg-menu-boxed .pg-cat + .pg-cat { margin-top: 18px; }
+.pg-menu-boxed .pg-cat-h { margin-bottom: 8px; }
+.pg-menu-boxed .pg-mi { padding: 10px 0; border: 0; text-align: left; }
+.pg-menu-boxed .pg-item-name { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+.pg-menu-boxed .pg-price { color: var(--pg-accent-text); font-size: 15px; }
+.pg-menu-boxed .pg-item-desc { font-family: Georgia, serif; font-size: 13.5px; }
+.pg-menu-boxed .pg-chip { background: var(--pg-accent); color: var(--pg-on-accent); border-color: transparent; border-radius: 3px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+
+/* bars: item name on an accent bar, photo on the right (special dishes) */
+.pg-menu-bars .pg-mi { padding: 10px 0; display: flex; gap: 12px; align-items: flex-start; border-bottom: 0; }
+.pg-menu-bars .pg-mi-row { background: var(--pg-accent); color: var(--pg-on-accent); padding: 5px 10px; border-radius: calc(var(--pg-radius-sm) * 0.5); align-items: center; }
+.pg-menu-bars .pg-item-name { font-size: 14.5px; font-weight: 700; }
+.pg-menu-bars .pg-mi-row .pg-price { color: var(--pg-on-accent); }
+.pg-menu-bars .pg-item-desc { font-size: 12.5px; margin-top: 5px; }
+.pg-menu-bars .pg-mi-media { width: 92px; height: 70px; aspect-ratio: auto; border-radius: var(--pg-radius); }
+
+/* columns: two-column list on wider screens (restaurant, lounge, noir) */
+.pg-menu-cols { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 28px; }
+@container (min-width: 540px) { .pg-menu-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pg-l-menu-noir .pg-menu-cols { background: radial-gradient(circle, color-mix(in srgb, var(--pg-text) 45%, transparent) 1px, transparent 1.5px) center top / 2px 8px repeat-y; } }
+.pg-menu-columns .pg-mi { padding: 10px 0; }
+.pg-menu-columns .pg-item-name { font-weight: 700; }
+.pg-menu-columns .pg-price { color: var(--pg-accent-text); }
+.pg-menu-columns .pg-item-desc { font-size: 13px; }
+.pg-center .pg-menu-columns .pg-mi { text-align: left; }
+
+/* dashes: accent names, "– price" (gold frame) */
+.pg-menu-dashes .pg-mi { padding: 11px 0; text-align: left; }
+.pg-menu-dashes .pg-item-name { color: var(--pg-accent-text); font-size: 16px; font-weight: 600; }
+.pg-menu-dashes .pg-price::before { content: '– '; }
+.pg-menu-dashes .pg-price { font-weight: 700; }
+.pg-menu-dashes .pg-item-desc { font-size: 12.5px; }
+
+/* ledger: price column behind a thin rule (Thai) */
+.pg-menu-ledger .pg-mi { padding: 10px 0; }
+.pg-menu-ledger .pg-mi-row { align-items: stretch; }
+.pg-menu-ledger .pg-price { border-left: 1.5px solid var(--pg-accent); padding-left: 14px; min-width: 64px; text-align: right; color: var(--pg-accent-text); }
+.pg-menu-ledger .pg-item-name { font-size: 16px; font-weight: 600; color: var(--pg-accent-text); }
+.pg-menu-ledger .pg-chip { background: color-mix(in srgb, #f59e0b 22%, var(--pg-surface)); color: var(--pg-text); border-color: transparent; }
+
+/* pricebox: price in a filled square (kraft breakfast) */
+.pg-menu-pricebox .pg-mi { padding: 12px 0; display: flex; gap: 14px; align-items: center; border-bottom: 1px solid var(--pg-border); }
+.pg-menu-pricebox .pg-mi:last-child { border-bottom: 0; }
+.pg-menu-pricebox .pg-item-name { font-style: italic; font-weight: 800; font-size: 17px; }
+.pg-pricebox .pg-price { display: flex; align-items: center; justify-content: center; min-width: 58px; height: 52px; padding: 0 8px; border-radius: 12px; background: var(--pg-text); color: var(--pg-bg); font-family: var(--pg-font-h); font-size: 19px; }
+.pg-menu-pricebox .pg-mi:nth-child(3n + 2) .pg-pricebox .pg-price { background: var(--pg-accent); color: var(--pg-on-accent); }
+
+/* numbered: "1. Cheese burger ····· $19" (big flavours) */
+.pg-menu-numbered .pg-mi { padding: 7px 0; }
+.pg-menu-numbered .pg-mi-row { gap: 8px; }
+.pg-menu-numbered .pg-mi-n { font-family: var(--pg-font-h); color: var(--pg-subtle); font-weight: 600; font-size: 18px; }
+.pg-menu-numbered .pg-item-name { font-family: var(--pg-font-h); font-size: 19px; font-weight: 500; text-transform: none; }
+.pg-menu-numbered .pg-leader { flex: 1; border-bottom: 2px dotted color-mix(in srgb, var(--pg-text) 25%, transparent); transform: translateY(-5px); min-width: 16px; }
+.pg-menu-numbered .pg-price { font-family: var(--pg-font-h); color: var(--pg-accent-text); font-size: 19px; }
+.pg-menu-numbered .pg-price::before { content: '-'; }
+.pg-menu-numbered .pg-item-desc { padding-left: 24px; font-size: 13px; }
+.pg-menu-numbered .pg-cat + .pg-cat { margin-top: 30px; }
+
+/* leaders with a description-free "diner" feel */
+.pg-l-menu-diner .pg-menu-leaders .pg-item-name { font-family: var(--pg-font-b); font-size: 16px; font-weight: 500; }
+.pg-l-menu-diner .pg-menu-leaders .pg-item-desc { font-style: normal; }
+.pg-l-menu-fastfood-chalk .pg-menu-leaders .pg-item-name { font-family: 'Caveat', var(--pg-font-h); font-size: 23px; font-weight: 600; text-transform: uppercase; }
+.pg-l-menu-fastfood-chalk .pg-menu-leaders .pg-price { font-family: 'Caveat', var(--pg-font-h); font-size: 23px; color: var(--pg-text); }
+.pg-l-menu-noir .pg-title, .pg-l-menu-burger .pg-title, .pg-l-menu-numbered .pg-title { font-size: 40px; letter-spacing: 0.02em; }
+.pg-l-menu-noir .pg-title { letter-spacing: 0.3em; }

@@ -42,6 +42,20 @@ function inline(text: string, keyBase: string): ReactNode[] {
   return out
 }
 
+/** One short rich-text value (descriptions): **bold**, *italic*, links and line breaks. */
+export function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('\n').map((l, i) => (
+        <Fragment key={i}>
+          {i > 0 && <br />}
+          {inline(l, `i${i}`)}
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
 export function Prose({ text, className }: { text: string; className?: string }) {
   const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean)
   return (

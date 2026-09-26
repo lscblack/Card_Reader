@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { ArrowRight, Briefcase, Code2, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Briefcase, Code2, IdCard, type LucideIcon } from 'lucide-react'
 import { CodeBlock } from '../components/Code'
 import { B, C, Callout, DocHeader, DocLink, H2, P, PrevNext, UL } from '../components/Prose'
 import { Figure } from '../components/Figure'
@@ -34,6 +34,7 @@ const legacyAnchors: Record<string, string> = {
   errors: '/docs/errors',
   'rate-limits': '/docs/rate-limits',
   reference: '/docs/api-reference',
+  'two-ways': '/docs#three-ways',
 }
 
 function Choice({ to, icon: Icon, title, body }: { to: string; icon: LucideIcon; title: string; body: string }) {
@@ -69,11 +70,12 @@ export default function Introduction() {
       </P>
       <P>
         The platform never interprets what a card ID means. Whether a tap is an attendance check-in, a loyalty stamp, a ticket scan or a
-        stock count is entirely up to you (developers) or to the action you configure (businesses).
+        stock count is entirely up to you (developers) or to the action you configure (businesses). Individuals use the same app to share a
+        digital business card from their phone.
       </P>
 
-      <H2 id="two-ways">Two ways to use it</H2>
-      <div className="my-5 grid gap-4 sm:grid-cols-2">
+      <H2 id="three-ways">Three ways to use it</H2>
+      <div className="my-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Choice
           to="/docs/quickstart-developers"
           icon={Code2}
@@ -84,12 +86,19 @@ export default function Introduction() {
           to="/docs/quickstart-businesses"
           icon={Briefcase}
           title="Businesses"
-          body="NFC business cards and tags with no-code actions, employee profiles, public pages, analytics, team roles and reader devices."
+          body="NFC business cards and tags with no-code actions, employee profiles, public pages and menus, analytics, team roles and reader devices."
+        />
+        <Choice
+          to="/docs/personal-guide"
+          icon={IdCard}
+          title="Individuals"
+          body="Your business card on your phone. Design it from a template, share it by NFC, QR code or link, and keep everyone you meet in Contacts."
         />
       </div>
       <P>
-        Both sides share the same readers, cards and signed delivery pipeline. A business can add developer webhooks at any time with the{' '}
-        <C>developer_webhook</C> action.
+        All three share the same app, cards and signed delivery pipeline. A business can add developer webhooks at any time with the{' '}
+        <C>developer_webhook</C> action, can issue branded digital cards to its employees&apos; personal accounts, and one phone can be a
+        reader and share your personal card at the same time.
       </P>
 
       <H2 id="architecture">Architecture</H2>
@@ -107,10 +116,12 @@ export default function Introduction() {
           the error catalog.
         </li>
         <li>
-          <B>Dashboard</B> — manage everything, watch events and taps live, pair phones with a QR code.
+          <B>Dashboard</B> — manage everything, watch events and taps live, pair phones with a QR code. Personal accounts get their own
+          dashboard at <C>/me</C>.
         </li>
         <li>
-          <B>Public pages</B> — business and employee profiles at <C>/b/{'{slug}'}</C> that open when a customer taps a card.
+          <B>Public pages</B> — business and employee profiles at <C>/b/{'{slug}'}</C> that open when a customer taps a card, and personal
+          digital cards at <C>/p/{'{slug}'}</C>.
         </li>
       </UL>
 
@@ -131,7 +142,10 @@ export default function Introduction() {
           <DocLink to="/docs/webhooks">Webhooks &amp; signatures</DocLink> — payload, headers and verification code.
         </li>
         <li>
-          <DocLink to="/docs/business-guide">Business guide</DocLink> — cards, actions, profiles, roles and analytics.
+          <DocLink to="/docs/business-guide">Business guide</DocLink> — cards, actions, pages and menus, roles and analytics.
+        </li>
+        <li>
+          <DocLink to="/docs/personal-guide">Personal guide</DocLink> — make, share and manage your digital card.
         </li>
         <li>
           <DocLink to="/docs/errors">Error codes</DocLink> — every error with its ref, cause and fix.

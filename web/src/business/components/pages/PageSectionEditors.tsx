@@ -1,16 +1,18 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, ImagePlus, Link2, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ImagePlus, Link2, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { RichText } from '@/components/ui/RichText'
 import { Field, Input, Select, Switch, Textarea } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/toastContext'
 import { ApiError } from '@/api/client'
 import { cn } from '@/lib/cn'
 import { imgSrc } from '@/public/page/format'
-import type { FormField, FormFieldType, LinkIcon, MenuBadge, MenuItem, Price, ProductItem, SectionDataMap } from '../../api/types'
+import type { FormField, FormFieldType, LinkIcon, Price, ProductItem, SectionDataMap } from '../../api/types'
 import { pageMediaApi } from '../../api/profiles'
 import { checkImage } from '../../api/upload'
 import { useBusiness } from '../../hooks/context'
 import { DragHandle, SortableList } from './Sortable'
+import { CurrencySelect } from './MenuEditor'
 
 // ─────────────────────────── shared bits ───────────────────────────
 
@@ -121,137 +123,6 @@ function SectionTitle({ value, onChange, placeholder }: { value?: string; onChan
   )
 }
 
-// ─────────────────────────── menu ───────────────────────────
-
-const BADGES: { id: MenuBadge; label: string }[] = [
-  { id: 'vegetarian', label: 'Vegetarian' },
-  { id: 'vegan', label: 'Vegan' },
-  { id: 'spicy', label: 'Spicy' },
-  { id: 'gluten_free', label: 'Gluten-free' },
-  { id: 'new', label: 'New' },
-  { id: 'popular', label: 'Popular' },
-  { id: 'sold_out', label: 'Sold out' },
-]
-
-function MenuItemEditor({ it, onChange, showImages }: { it: MenuItem; onChange: (v: MenuItem) => void; showImages: boolean }) {
-  const [more, setMore] = useState(!!it.variants?.length)
-  const up = (patch: Partial<MenuItem>) => onChange({ ...it, ...patch })
-  const badges = it.badges ?? []
-  return (
-    <div className="space-y-2">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_110px]">
-        <Input aria-label="Item name" placeholder="Name (e.g. Flat white)" value={it.name} onChange={(e) => up({ name: e.target.value })} maxLength={120} />
-        {!it.variants?.length && <PriceInput value={it.price} onChange={(price) => up({ price })} />}
-      </div>
-      <Input aria-label="Item description" placeholder="Short description (optional)" value={it.description ?? ''} onChange={(e) => up({ description: e.target.value })} maxLength={500} />
-      <div className="flex flex-wrap gap-1" role="group" aria-label="Badges">
-        {BADGES.map((b) => {
-          const on = badges.includes(b.id)
-          return (
-            <button
-              key={b.id}
-              type="button"
-              aria-pressed={on}
-              onClick={() => up({ badges: on ? badges.filter((x) => x !== b.id) : [...badges, b.id] })}
-              className={cn('h-6 rounded-full border px-2 text-[11.5px] font-medium transition-colors', on ? 'border-accent bg-accent-soft text-accent' : 'border-border text-muted hover:text-fg')}
-            >
-              {b.label}
-            </button>
-          )
-        })}
-        {!!it.tags?.length && <span className="self-center text-[11px] text-subtle">+ tags: {it.tags.join(', ')}</span>}
-      </div>
-      {showImages && <ImageField compact label="Photo" value={it.image_url} onChange={(image_url) => up({ image_url })} />}
-      <button type="button" onClick={() => setMore((m) => !m)} className="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-fg" aria-expanded={more}>
-        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', more && 'rotate-180')} /> Sizes / variants {it.variants?.length ? `(${it.variants.length})` : ''}
-      </button>
-      {more && (
-        <div className="space-y-1.5 rounded-md bg-surface-2/60 p-2">
-          {(it.variants ?? []).map((v, i) => (
-            <div key={i} className="flex gap-1.5">
-              <Input aria-label="Variant label" placeholder="e.g. Large" value={v.label} onChange={(e) => up({ variants: it.variants!.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} maxLength={60} />
-              <PriceInput value={v.price} onChange={(price) => up({ variants: it.variants!.map((x, j) => (j === i ? { ...x, price } : x)) })} className="w-28" />
-              <Button size="icon-sm" variant="ghost" aria-label="Remove variant" onClick={() => up({ variants: it.variants!.filter((_, j) => j !== i) })}>
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ))}
-          <Button size="sm" variant="ghost" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => up({ variants: [...(it.variants ?? []), { label: '', price: '' }] })} disabled={(it.variants?.length ?? 0) >= 10}>
-            Add variant
-          </Button>
-          <p className="text-[11px] text-subtle">With variants, each size shows its own price (the item price is hidden).</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function MenuEditor({ d, onChange }: { d: SectionDataMap['menu'] & { title?: string }; onChange: (d: SectionDataMap['menu'] & { title?: string }) => void }) {
-  const cats = d.categories ?? []
-  const [open, setOpen] = useState<number | null>(0)
-  const setCats = (categories: typeof cats) => onChange({ ...d, categories })
-  const total = cats.reduce((n, c) => n + (c.items?.length ?? 0), 0)
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Currency" hint="ISO code (USD, EUR, RWF…) or a symbol.">
-          {(p) => <Input {...p} value={d.currency ?? ''} onChange={(e) => onChange({ ...d, currency: e.target.value.slice(0, 8) || undefined })} placeholder="USD" className="uppercase" />}
-        </Field>
-        <div className="sm:col-span-2">
-          <SectionTitle value={d.title} onChange={(title) => onChange({ ...d, title })} placeholder="e.g. Dinner" />
-        </div>
-      </div>
-      <label className="flex items-center gap-2.5 text-[13px]">
-        <Switch checked={!!d.show_images} onChange={(show_images) => onChange({ ...d, show_images })} label="Show photos" /> Show photos for items
-      </label>
-      <p className="text-xs text-subtle">
-        {cats.length} categor{cats.length === 1 ? 'y' : 'ies'} · {total} item{total === 1 ? '' : 's'} · drag <span aria-hidden="true">⠿</span> to reorder. Long menus get search and a sticky category bar automatically.
-      </p>
-      <SortableList items={cats} onReorder={setCats} className="space-y-2" idPrefix="cat">
-        {(cat, ci, h) => (
-          <div className="rounded-lg border border-border bg-surface-2/40">
-            <div className="flex items-center gap-1.5 p-2">
-              <DragHandle handle={h.handle} label={`Drag category ${cat.name || ci + 1}`} />
-              <Input aria-label="Category name" placeholder="Category (e.g. Coffee)" value={cat.name} onChange={(e) => setCats(cats.map((c, j) => (j === ci ? { ...c, name: e.target.value } : c)))} className="h-8 font-medium" maxLength={80} />
-              <Button size="icon-sm" variant="ghost" aria-label={open === ci ? 'Collapse category' : 'Expand category'} aria-expanded={open === ci} onClick={() => setOpen(open === ci ? null : ci)}>
-                <ChevronDown className={cn('h-4 w-4 transition-transform', open === ci && 'rotate-180')} />
-              </Button>
-              <Button size="icon-sm" variant="ghost" aria-label="Remove category" onClick={() => setCats(cats.filter((_, j) => j !== ci))}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            {open === ci && (
-              <div className="space-y-2 border-t border-border p-2">
-                <Input aria-label="Category description" placeholder="Category note (optional)" value={cat.description ?? ''} onChange={(e) => setCats(cats.map((c, j) => (j === ci ? { ...c, description: e.target.value || undefined } : c)))} maxLength={300} />
-                <SortableList items={cat.items ?? []} onReorder={(items) => setCats(cats.map((c, j) => (j === ci ? { ...c, items } : c)))} className="space-y-2" idPrefix={`c${ci}`}>
-                  {(it, ii, hh) => (
-                    <Row handle={hh.handle} label={it.name || `item ${ii + 1}`} onRemove={() => setCats(cats.map((c, j) => (j === ci ? { ...c, items: c.items.filter((_, k) => k !== ii) } : c)))}>
-                      <MenuItemEditor it={it} showImages={!!d.show_images} onChange={(v) => setCats(cats.map((c, j) => (j === ci ? { ...c, items: c.items.map((x, k) => (k === ii ? v : x)) } : c)))} />
-                    </Row>
-                  )}
-                </SortableList>
-                <Button size="sm" variant="ghost" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => setCats(cats.map((c, j) => (j === ci ? { ...c, items: [...(c.items ?? []), { name: '', price: '', badges: [] }] } : c)))}>
-                  Add item
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </SortableList>
-      <Button
-        size="sm"
-        leftIcon={<Plus className="h-3.5 w-3.5" />}
-        onClick={() => {
-          setCats([...cats, { name: '', items: [{ name: '', price: '', badges: [] }] }])
-          setOpen(cats.length)
-        }}
-      >
-        Add category
-      </Button>
-    </div>
-  )
-}
-
 // ─────────────────────────── products & services ───────────────────────────
 
 export function ProductsEditor({ d, onChange }: { d: SectionDataMap['products'] & { title?: string }; onChange: (d: SectionDataMap['products'] & { title?: string }) => void }) {
@@ -259,7 +130,10 @@ export function ProductsEditor({ d, onChange }: { d: SectionDataMap['products'] 
   const set = (xs: ProductItem[]) => onChange({ ...d, items: xs })
   return (
     <div className="space-y-3">
-      <SectionTitle value={d.title} onChange={(title) => onChange({ ...d, title })} placeholder="e.g. Best sellers" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SectionTitle value={d.title} onChange={(title) => onChange({ ...d, title })} placeholder="e.g. Best sellers" />
+        <Field label="Currency">{(p) => <CurrencySelect id={p.id} value={d.currency} onChange={(currency) => onChange({ ...d, currency })} />}</Field>
+      </div>
       <SortableList items={items} onReorder={set} className="space-y-2" idPrefix="p">
         {(it, i, h) => {
           const up = (patch: Partial<ProductItem>) => set(items.map((x, j) => (j === i ? { ...x, ...patch } : x)))
@@ -268,10 +142,10 @@ export function ProductsEditor({ d, onChange }: { d: SectionDataMap['products'] 
               <div className="space-y-2">
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_100px_100px]">
                   <Input aria-label="Product name" placeholder="Product name" value={it.title} onChange={(e) => up({ title: e.target.value })} maxLength={120} />
-                  <PriceInput value={it.price} onChange={(price) => up({ price })} placeholder="$0" />
+                  <PriceInput value={it.price} onChange={(price) => up({ price })} placeholder="0.00" />
                   <PriceInput label="Was (compare-at price)" value={it.compare_at_price} onChange={(v) => up({ compare_at_price: v === '' ? null : v })} placeholder="Was" />
                 </div>
-                <Textarea aria-label="Description" rows={2} placeholder="Description" value={it.description ?? ''} onChange={(e) => up({ description: e.target.value })} maxLength={1000} className="min-h-[60px]" />
+                <RichText inline rows={2} aria-label="Description" placeholder="Description" value={it.description ?? ''} onChange={(description) => up({ description })} maxLength={1000} />
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <Input aria-label="Badge" placeholder="Badge (e.g. New, Sale, -20%)" value={it.badge ?? ''} onChange={(e) => up({ badge: e.target.value || null })} maxLength={30} />
                   <label className="flex items-center gap-2 text-[13px] text-muted">
@@ -390,7 +264,7 @@ export function OfferEditor({ d, onChange }: { d: SectionDataMap['offer']; onCha
         {(p) => <Input {...p} value={d.discount_label ?? ''} onChange={(e) => up({ discount_label: e.target.value || undefined })} maxLength={40} />}
       </Field>
       <Field label="Description" optional className="sm:col-span-2">
-        {(p) => <Textarea {...p} rows={2} value={d.description ?? ''} onChange={(e) => up({ description: e.target.value })} maxLength={2000} />}
+        {(p) => <RichText {...p} rows={2} value={d.description ?? ''} onChange={(description) => up({ description })} maxLength={2000} />}
       </Field>
       <Field label="Coupon code" optional hint="Customers get a “Copy” button.">
         {(p) => <Input {...p} value={d.code ?? ''} onChange={(e) => up({ code: e.target.value.toUpperCase() || undefined })} maxLength={40} className="font-mono" />}
@@ -433,7 +307,7 @@ export function EventEditor({ d, onChange }: { d: SectionDataMap['event']; onCha
         {(p) => <Input {...p} value={d.map_query ?? ''} onChange={(e) => up({ map_query: e.target.value || undefined })} maxLength={300} />}
       </Field>
       <Field label="Description" optional className="sm:col-span-2">
-        {(p) => <Textarea {...p} rows={3} value={d.description ?? ''} onChange={(e) => up({ description: e.target.value || undefined })} maxLength={4000} />}
+        {(p) => <RichText {...p} rows={3} value={d.description ?? ''} onChange={(v) => up({ description: v || undefined })} maxLength={4000} />}
       </Field>
       <div className="space-y-1.5 sm:col-span-2">
         <p className="text-[13px] font-medium">Button <span className="font-normal text-subtle">(optional — tickets, RSVP site…)</span></p>

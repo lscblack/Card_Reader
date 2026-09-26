@@ -113,8 +113,8 @@ export default function BusinessGuide() {
       </P>
       <UL>
         <li>
-          <B>New page</B> opens a gallery of 20+ professional templates per type (Bistro classic, Café chalkboard, Link hub, Coupon, Event
-          invite, Feedback & rating…). Previews use your name and logo; <C>{'{{business.name}}'}</C>-style placeholders are filled in when the
+          <B>New page</B> opens a gallery of 40+ templates per type (Bistro classic, Café chalkboard, Link hub, Coupon, Event invite,
+          Feedback & rating…). Previews use your name and logo; <C>{'{{business.name}}'}</C>-style placeholders are filled in when the
           page is created.
         </li>
         <li>
@@ -134,14 +134,14 @@ export default function BusinessGuide() {
       <Table
         head={['Section', 'Content']}
         rows={[
-          [<C key="s">menu</C>, 'Categories with items, prices (with a currency), badges (vegan, spicy, sold out…), sizes and photos; sticky category bar and search'],
+          [<C key="s">menu</C>, 'Categories with items, prices (with a currency), tags (vegan, spicy, sold out, or your own), sizes and photos; sticky category bar and search'],
           [<C key="s">products</C>, 'Photo, price, sale price, badge, stock status and a buy button'],
           [<C key="s">links</C>, 'Link-in-bio buttons with icons; highlight one'],
           [<C key="s">offer</C>, 'Discount, code to copy, expiry date (shows “Expired” after) and terms'],
           [<C key="s">event</C>, 'Date/time, venue, map, “Add to calendar” (.ics) and a button'],
           [<C key="s">wifi</C>, 'Network name, copy password and a camera-scannable QR code'],
           [<C key="s">form</C>, 'Up to 12 fields: text, long text, email, phone, star rating, choice, checkbox'],
-          [<span key="s"><C>about</C> / <C>text</C></span>, 'Text (simple Markdown)'],
+          [<span key="s"><C>about</C> / <C>text</C></span>, 'Formatted text: bold, italic, links and bullet lists'],
           [<C key="s">contact</C>, 'Phone, email, website, address'],
           [<C key="s">hours</C>, 'Opening hours with “Open now”'],
           [<C key="s">social</C>, 'Social links'],
@@ -160,6 +160,65 @@ export default function BusinessGuide() {
       </P>
 
       <Figure shot="profile" narrow caption="A published business profile on a customer’s phone." />
+
+      <H2 id="pages-menus">Pages &amp; menus</H2>
+      <H3 id="page-templates">Templates</H3>
+      <P>
+        Every page type — <C>menu</C>, <C>product</C>, <C>links</C>, <C>offer</C>, <C>event</C>, <C>gallery</C>, <C>form</C> and{' '}
+        <C>wifi</C> — has 40+ templates. Menus include layouts such as a burger spotlight with round photos, chalk dinner boxes, gold
+        frame, pattern border, numbered specials, price boxes, cocktail bar and a two-column lounge.
+      </P>
+      <P>
+        You can switch template while editing a page. Choose whether to apply <B>design only</B> (your content stays as it is) or{' '}
+        <B>design + sample content</B> (replaces your sections with the template&apos;s examples, to start over).
+      </P>
+
+      <H3 id="menu-editor">Editing a menu</H3>
+      <UL>
+        <li>Categories open one at a time; items are compact rows with a name and price. Drag to reorder.</li>
+        <li>
+          Add items quickly with just a <B>name and price</B>, then click an item to open its details in a dialog: photo, description, tags
+          and sizes.
+        </li>
+        <li>
+          <B>Photos</B> — upload a PNG, JPEG or WebP up to 2 MB, or paste an <C>https://</C> image URL.
+        </li>
+        <li>
+          <B>Tags</B> — built-in ones keep their icon and colour (Popular, New, Spicy, Vegetarian, Vegan, Gluten-free, Sold out); type any
+          other tag, such as “Halal” or “Chef’s pick”.
+        </li>
+        <li>
+          <B>Sizes &amp; options</B> — e.g. Small / Large, each with its own price. The single price is then hidden.
+        </li>
+        <li>
+          <B>Currency</B> — pick from 40 currencies in the menu settings.
+        </li>
+      </UL>
+
+      <H3 id="formatting">Formatting &amp; appearance</H3>
+      <UL>
+        <li>
+          Descriptions support <B>bold</B>, <i>italic</i> and links from the small toolbar above the field; longer texts also support bullet
+          lists.
+        </li>
+        <li>
+          Use <B>full screen</B> in the page editor to hide the dashboard sidebar and top bar while you work. Press <C>Esc</C> to exit.
+        </li>
+        <li>
+          Set the page scheme to <B>Light</B>, <B>Dark</B> or <B>Auto</B> (follows each visitor&apos;s phone) under Design.
+        </li>
+      </UL>
+
+      <H2 id="dashboard-tips">Dashboard tips</H2>
+      <UL>
+        <li>
+          Collapse the sidebar to icons with the button at its top or <C>Ctrl/Cmd+B</C>. The choice is remembered on that browser.
+        </li>
+        <li>
+          Switch the dashboard between <B>Light</B>, <B>Dark</B> and <B>System</B> with the theme button in the top bar. This is separate
+          from each page&apos;s own light/dark scheme.
+        </li>
+      </UL>
 
       <H2 id="employees">Employees &amp; customers</H2>
       <UL>

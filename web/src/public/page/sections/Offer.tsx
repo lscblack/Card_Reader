@@ -4,7 +4,7 @@ import type { SectionDataMap } from '@/business/api/types'
 import { safeHref } from '@/lib/url'
 import { usePage } from '../ctx'
 import { fmtDate, fmtTime, parseWhen } from '../format'
-import { CopyBtn, Prose, Sec } from '../ui'
+import { Inline, CopyBtn, Prose, Sec } from '../ui'
 
 function useNow(tick: boolean) {
   const [now, setNow] = useState(() => Date.now())
@@ -49,7 +49,7 @@ export function OfferSection({ d }: { d: SectionDataMap['offer'] }) {
           <h2 className="pg-hf" style={{ fontSize: 22, fontWeight: 700, marginTop: 10, textTransform: 'uppercase' }}>
             {d.title}
           </h2>
-          {d.description && <p style={{ marginTop: 6, fontSize: 15, opacity: 0.85 }}>{d.description}</p>}
+          {d.description && <p style={{ marginTop: 6, fontSize: 15, opacity: 0.85 }}><Inline text={d.description} /></p>}
           {until && !expired && (
             <div className="pg-count" role="timer" aria-label={untilLabel ?? undefined}>
               {(['days', 'hours', 'mins', 'secs'] as const).map((l, i) => (

@@ -3,7 +3,8 @@ import { Flame, Leaf, Search, Sparkles, Sprout, Star, WheatOff, XCircle } from '
 import type { MenuBadge, MenuItem, SectionDataMap } from '@/business/api/types'
 import { usePage } from '../ctx'
 import { formatPrice, imgSrc } from '../format'
-import { Placeholder, Sec } from '../ui'
+import { FoodPlaceholder } from '../food'
+import { Inline, Sec } from '../ui'
 
 const BADGES: Record<MenuBadge, { label: string; icon: typeof Leaf; color: string }> = {
   vegetarian: { label: 'Vegetarian', icon: Leaf, color: '#16a34a' },
@@ -51,21 +52,34 @@ function Variants({ item, currency }: { item: MenuItem; currency?: string }) {
   )
 }
 
-const initial = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, '').charAt(0).toUpperCase() || '•'
+/** Styles that reserve room for a photo, so a missing one gets a food-icon tile instead of a gap. */
+const PHOTO_STYLES = new Set(['grid', 'spotlight', 'bars'])
 
-function Item({ it, style, currency, showImages }: { it: MenuItem; style: string; currency?: string; showImages: boolean }) {
+function Media({ it, style, img }: { it: MenuItem; style: string; img: string | null }) {
+  const cls = `pg-mi-media pg-mi-media-${style}`
+  if (img) return <img className={cls} src={img} alt="" loading="lazy" />
+  if (!PHOTO_STYLES.has(style)) return null
+  return <FoodPlaceholder name={it.name} className={cls} />
+}
+
+function Item({ it, style, currency, showImages, n }: { it: MenuItem; style: string; currency?: string; showImages: boolean; n: number }) {
   const sold = it.badges?.includes('sold_out')
   const price = it.variants?.length ? null : formatPrice(it.price, currency)
   const fromPrice = it.variants?.length ? formatPrice(it.variants[0].price, currency) : null
   const img = showImages ? imgSrc(it.image_url) : null
+  const desc = it.description ? (
+    <p className="pg-item-desc">
+      <Inline text={it.description} />
+    </p>
+  ) : null
   if (style === 'grid') {
     return (
       <article className={`pg-card${sold ? ' pg-soldout' : ''}`}>
-        {showImages && (img ? <img className="pg-card-img" src={img} alt="" loading="lazy" /> : <Placeholder label={initial(it.name)} />)}
+        {showImages && (img ? <img className="pg-card-img" src={img} alt="" loading="lazy" /> : <FoodPlaceholder name={it.name} className="pg-card-img" />)}
         <Badges badges={it.badges} tags={it.tags} />
         <div className="pg-card-body">
           <p className="pg-item-name">{it.name}</p>
-          {it.description && <p className="pg-item-desc">{it.description}</p>}
+          {desc}
           <Variants item={it} currency={currency} />
           {(price || fromPrice) && !it.variants?.length && <p className="pg-price">{price}</p>}
         </div>
@@ -73,30 +87,56 @@ function Item({ it, style, currency, showImages }: { it: MenuItem; style: string
     )
   }
   const name: ReactNode = <p className="pg-item-name">{it.name}</p>
+  if (style === 'fine') {
+    return (
+      <div className={`pg-mi${sold ? ' pg-soldout' : ''}`}>
+        {img && <img className="pg-mi-media pg-mi-media-fine" src={img} alt="" loading="lazy" />}
+        {name}
+        {desc}
+        {price && <span className="pg-price">{price}</span>}
+        <Variants item={it} currency={currency} />
+        <Badges badges={it.badges?.filter((b) => b !== 'sold_out')} tags={it.tags} />
+      </div>
+    )
+  }
+  const media = showImages ? <Media it={it} style={style} img={img} /> : null
+  const priceEl = price && <span className="pg-price">{price}</span>
   return (
-    <div className={`pg-mi${sold ? ' pg-soldout' : ''}`}>
-      {style === 'fine' ? (
-        <>
+    <div className={`pg-mi${sold ? ' pg-soldout' : ''}${media ? ' pg-has-media' : ''}`}>
+      {style === 'spotlight' || style === 'bars' || style === 'pricebox' ? null : media}
+      <div className="pg-mi-main">
+        <div className="pg-mi-row">
+          {style === 'numbered' && <span className="pg-mi-n">{n}.</span>}
           {name}
-          {it.description && <p className="pg-item-desc">{it.description}</p>}
-          {price && <span className="pg-price">{price}</span>}
-        </>
-      ) : (
-        <div style={{ display: 'flex', gap: 12 }}>
-          {img && <img src={img} alt="" loading="lazy" style={{ width: 64, height: 64, borderRadius: 'var(--pg-radius-sm)', objectFit: 'cover', flexShrink: 0 }} />}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="pg-mi-row">
-              {name}
-              {style === 'leaders' && price && <span className="pg-leader" aria-hidden="true" />}
-              {price && <span className="pg-price">{price}</span>}
-            </div>
-            {it.description && <p className="pg-item-desc">{it.description}</p>}
-          </div>
+          {(style === 'leaders' || style === 'numbered') && price && <span className="pg-leader" aria-hidden="true" />}
+          {style !== 'spotlight' && style !== 'pricebox' && priceEl}
+        </div>
+        {desc}
+        <Variants item={it} currency={currency} />
+        <Badges badges={it.badges} tags={it.tags} />
+      </div>
+      {style === 'pricebox' && priceEl && <span className="pg-pricebox">{priceEl}</span>}
+      {(style === 'spotlight' || style === 'bars') && (media || priceEl) && (
+        <div className="pg-mi-aside">
+          {media}
+          {style === 'spotlight' && priceEl}
         </div>
       )}
-      <Variants item={it} currency={currency} />
-      <Badges badges={it.badges?.filter((b) => style !== 'fine' || b !== 'sold_out')} tags={it.tags} />
     </div>
+  )
+}
+
+const LIST_CLASS: Record<string, string> = { bar: '', columns: 'pg-menu-cols' }
+
+/** "Burger menu" → accent first word, plain rest (split headings). */
+function SplitTitle({ text }: { text: string }) {
+  const [first, ...rest] = text.split(' ')
+  return rest.length ? (
+    <>
+      <span className="pg-split-a">{first}</span> {rest.join(' ')}
+    </>
+  ) : (
+    <>{text}</>
   )
 }
 
@@ -112,7 +152,7 @@ export function MenuSection({ d, sectionId }: { d: SectionDataMap['menu'] & { ti
   const showImages = d.show_images ?? style === 'grid'
   const needle = q.trim().toLowerCase()
   const shown = needle
-    ? cats.map((c) => ({ ...c, items: (c.items ?? []).filter((i) => `${i.name} ${i.description ?? ''} ${(i.badges ?? []).join(' ')}`.toLowerCase().includes(needle)) })).filter((c) => c.items.length)
+    ? cats.map((c) => ({ ...c, items: (c.items ?? []).filter((i) => `${i.name} ${i.description ?? ''} ${(i.badges ?? []).join(' ')} ${(i.tags ?? []).join(' ')}`.toLowerCase().includes(needle)) })).filter((c) => c.items.length)
     : cats
 
   useEffect(() => {
@@ -164,19 +204,25 @@ export function MenuSection({ d, sectionId }: { d: SectionDataMap['menu'] & { ti
               aria-label={c.name}
             >
               <div className="pg-cat-h">
-                <h3>{c.name}</h3>
-                {c.description && <p>{c.description}</p>}
+                <h3>
+                  <span className="pg-cat-t">{style === 'numbered' || layout.cat === 'split' ? <SplitTitle text={c.name} /> : c.name}</span>
+                </h3>
+                {c.description && (
+                  <p>
+                    <Inline text={c.description} />
+                  </p>
+                )}
               </div>
               {style === 'grid' ? (
                 <div className="pg-grid">
                   {(c.items ?? []).map((it, i) => (
-                    <Item key={i} it={it} style={style} currency={d.currency} showImages={showImages} />
+                    <Item key={i} it={it} style={style} currency={d.currency} showImages={showImages} n={i + 1} />
                   ))}
                 </div>
               ) : (
-                <div className={style === 'bar' ? '' : 'pg-menu-list'}>
+                <div className={LIST_CLASS[style] ?? 'pg-menu-list'}>
                   {(c.items ?? []).map((it, i) => (
-                    <Item key={i} it={it} style={style} currency={d.currency} showImages={showImages} />
+                    <Item key={i} it={it} style={style} currency={d.currency} showImages={showImages} n={i + 1} />
                   ))}
                 </div>
               )}
