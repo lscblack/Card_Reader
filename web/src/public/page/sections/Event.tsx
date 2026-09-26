@@ -44,7 +44,7 @@ export function EventSection({ d, sectionId }: { d: SectionDataMap['event']; sec
   const cta = safeHref(d.cta?.url)
   const sameDay = end && end.toDateString() === start.toDateString()
   const when = `${fmtTime(start)}${end ? ` – ${sameDay ? fmtTime(end) : `${fmtDate(end, { day: 'numeric', month: 'short' })}, ${fmtTime(end)}`}` : ''}`
-  const invite = layout.id === 'event-invite'
+  const invite = layout.event === 'invite'
   return (
     <Sec bare={invite} className="pg-ev" id={`ev-${sectionId}`}>
       <div style={invite ? { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 } : { display: 'flex', gap: 16, alignItems: 'center' }}>

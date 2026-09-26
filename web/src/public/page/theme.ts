@@ -210,6 +210,10 @@ export interface LayoutSpec {
   align: 'left' | 'center'
   header: PageHeaderStyle
   decor?: 'chalk' | 'script' | 'brush'
+  /** Offer section style: a coupon card or a loud flash-sale block. */
+  offer: 'coupon' | 'flash'
+  /** Event section style: a centred invitation or a details card. */
+  event: 'card' | 'invite'
   /** Uppercase headings (street food, flash sale). */
   upper?: boolean
 }
@@ -223,6 +227,8 @@ const L = (id: string, name: string, forTypes: ProfileType[], spec: Partial<Layo
   titles: 'caps',
   menu: 'list',
   cat: 'default',
+  offer: 'coupon',
+  event: 'card',
   products: 'grid',
   links: 'stack',
   texture: 'none',
@@ -262,14 +268,49 @@ export const LAYOUTS: LayoutSpec[] = [
   L('link-hub', 'Link hub', ['links'], { chrome: 'flat', titles: 'caps', links: 'stack', header: 'logo', align: 'center', texture: 'dots' }),
   L('link-creator', 'Creator', ['links'], { chrome: 'flat', titles: 'bold', links: 'creator', header: 'logo', align: 'center', texture: 'glow' }),
   L('offer-coupon', 'Coupon', ['offer'], { chrome: 'card', titles: 'caps', header: 'minimal', align: 'center', texture: 'rays' }),
-  L('offer-flash', 'Flash sale', ['offer'], { chrome: 'outline', titles: 'bold', header: 'banner', texture: 'stripes', upper: true }),
-  L('event-invite', 'Invitation', ['event'], { chrome: 'card', titles: 'serif', header: 'cover', align: 'center', texture: 'paper' }),
+  L('offer-flash', 'Flash sale', ['offer'], { offer: 'flash', chrome: 'outline', titles: 'bold', header: 'banner', texture: 'stripes', upper: true }),
+  L('event-invite', 'Invitation', ['event'], { event: 'invite', chrome: 'card', titles: 'serif', header: 'cover', align: 'center', texture: 'paper' }),
   L('event-workshop', 'Workshop', ['event'], { chrome: 'card', titles: 'rule', header: 'minimal', texture: 'grid' }),
   L('wifi-guest', 'Guest Wi-Fi', ['wifi'], { chrome: 'card', titles: 'caps', header: 'logo', align: 'center', texture: 'waves' }),
   L('gallery-portfolio', 'Portfolio', ['gallery'], { width: 'wide', chrome: 'flat', titles: 'rule', header: 'minimal' }),
   L('form-feedback', 'Feedback', ['form'], { chrome: 'card', titles: 'caps', header: 'logo', align: 'center', texture: 'dots' }),
   L('form-contact', 'Contact form', ['form'], { chrome: 'card', titles: 'rule', header: 'minimal' }),
   L('form-booking', 'Booking', ['form'], { chrome: 'card', titles: 'serif', header: 'cover', texture: 'paper' }),
+  // More looks for every page type, composed from the same chrome / title / texture building blocks.
+  L('product-boutique', 'Boutique', ['product'], { width: 'wide', chrome: 'paper', titles: 'ornament', products: 'grid', texture: 'paper', header: 'logo', align: 'center' }),
+  L('product-tech', 'Tech store', ['product'], { width: 'wide', chrome: 'glass', titles: 'neon', products: 'grid', texture: 'glow', header: 'banner' }),
+  L('product-bold', 'Bold shop', ['product'], { chrome: 'outline', titles: 'bold', products: 'list', texture: 'stripes', header: 'banner', upper: true }),
+  L('service-elegant', 'Elegant services', ['product', 'custom'], { chrome: 'flat', titles: 'fine', products: 'list', header: 'logo', align: 'center' }),
+  L('service-studio', 'Studio', ['product', 'custom'], { chrome: 'card', titles: 'rule', products: 'list', texture: 'dots', header: 'minimal' }),
+  L('link-glass', 'Glass', ['links'], { chrome: 'glass', titles: 'neon', links: 'creator', texture: 'glow', header: 'logo', align: 'center' }),
+  L('link-paper', 'Paper', ['links'], { chrome: 'paper', titles: 'ornament', links: 'stack', texture: 'paper', header: 'logo', align: 'center' }),
+  L('link-bold', 'Bold', ['links'], { chrome: 'outline', titles: 'bold', links: 'stack', texture: 'stripes', header: 'banner', upper: true }),
+  L('link-minimal', 'Minimal', ['links'], { chrome: 'flat', titles: 'rule', links: 'stack', header: 'minimal' }),
+  L('link-cover', 'Cover', ['links'], { chrome: 'card', titles: 'caps', links: 'creator', texture: 'grain', header: 'cover', align: 'center' }),
+  L('offer-poster', 'Poster', ['offer'], { offer: 'flash', chrome: 'flat', titles: 'bold', texture: 'rays', header: 'cover', align: 'center', upper: true }),
+  L('offer-ticket', 'Ticket', ['offer'], { chrome: 'paper', titles: 'ornament', texture: 'paper', header: 'logo', align: 'center' }),
+  L('offer-neon', 'Neon promo', ['offer'], { offer: 'flash', chrome: 'glass', titles: 'neon', texture: 'glow', header: 'banner' }),
+  L('offer-minimal', 'Minimal offer', ['offer'], { chrome: 'flat', titles: 'fine', header: 'minimal', align: 'center' }),
+  L('offer-kraft', 'Kraft flyer', ['offer'], { offer: 'flash', chrome: 'card', titles: 'bold', texture: 'kraft', header: 'banner', upper: true }),
+  L('offer-gingham', 'Picnic', ['offer'], { chrome: 'card', titles: 'caps', texture: 'gingham', header: 'logo', align: 'center' }),
+  L('event-gala', 'Gala', ['event'], { event: 'invite', chrome: 'frame', titles: 'ornament', header: 'logo', align: 'center' }),
+  L('event-neon', 'Night event', ['event'], { chrome: 'glass', titles: 'neon', texture: 'glow', header: 'banner' }),
+  L('event-poster', 'Poster', ['event'], { chrome: 'outline', titles: 'bold', texture: 'stripes', header: 'banner', upper: true }),
+  L('event-minimal', 'Minimal event', ['event'], { event: 'invite', chrome: 'flat', titles: 'fine', header: 'minimal', align: 'center' }),
+  L('event-garden', 'Garden party', ['event'], { event: 'invite', chrome: 'paper', titles: 'serif', texture: 'paper', header: 'cover', align: 'center' }),
+  L('gallery-dark', 'Dark room', ['gallery'], { width: 'wide', chrome: 'flat', titles: 'bold', texture: 'grain', header: 'minimal' }),
+  L('gallery-frame', 'Framed', ['gallery'], { chrome: 'frame', titles: 'ornament', header: 'logo', align: 'center' }),
+  L('gallery-paper', 'Scrapbook', ['gallery'], { chrome: 'paper', titles: 'serif', texture: 'paper', header: 'cover' }),
+  L('gallery-cover', 'Showcase', ['gallery'], { width: 'wide', chrome: 'card', titles: 'caps', texture: 'dots', header: 'cover', align: 'center' }),
+  L('form-glass', 'Glass form', ['form'], { chrome: 'glass', titles: 'neon', texture: 'glow', header: 'banner' }),
+  L('form-paper', 'Paper form', ['form'], { chrome: 'paper', titles: 'ornament', texture: 'paper', header: 'logo', align: 'center' }),
+  L('form-bold', 'Bold form', ['form'], { chrome: 'outline', titles: 'bold', texture: 'stripes', header: 'banner', upper: true }),
+  L('form-minimal', 'Minimal form', ['form'], { chrome: 'flat', titles: 'fine', header: 'minimal', align: 'center' }),
+  L('wifi-neon', 'Neon Wi-Fi', ['wifi'], { chrome: 'glass', titles: 'neon', texture: 'glow', header: 'banner', align: 'center' }),
+  L('wifi-paper', 'Paper Wi-Fi', ['wifi'], { chrome: 'paper', titles: 'ornament', texture: 'paper', header: 'logo', align: 'center' }),
+  L('wifi-bold', 'Bold Wi-Fi', ['wifi'], { chrome: 'outline', titles: 'bold', texture: 'stripes', header: 'banner', upper: true }),
+  L('wifi-minimal', 'Minimal Wi-Fi', ['wifi'], { chrome: 'flat', titles: 'rule', header: 'minimal' }),
+  L('wifi-frame', 'Framed Wi-Fi', ['wifi'], { chrome: 'frame', titles: 'fine', header: 'logo', align: 'center' }),
 ]
 
 export const layoutOf = (id: string | null | undefined): LayoutSpec => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0]

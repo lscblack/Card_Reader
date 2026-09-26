@@ -30,7 +30,7 @@ export const SECTION_META: Record<SectionType, { label: string; icon: LucideIcon
   social: { label: 'Social links', icon: Share2, hint: 'Instagram, LinkedIn, TikTok…' },
   services: { label: 'Services', icon: Wrench, hint: 'What you offer, with optional prices.' },
   products: { label: 'Products', icon: Package, hint: 'Items with photo, price, sale price, stock and a buy button.' },
-  menu: { label: 'Menu', icon: UtensilsCrossed, hint: 'Categories, dishes, prices, badges, sizes and photos.' },
+  menu: { label: 'Menu', icon: UtensilsCrossed, hint: 'Categories, dishes, prices, photos, tags and sizes.' },
   buttons: { label: 'Buttons', icon: MousePointerClick, hint: 'Big call-to-action buttons.' },
   gallery: { label: 'Gallery', icon: Images, hint: 'A grid of photos.' },
   text: { label: 'Text', icon: LayoutList, hint: 'Free text with simple formatting.' },

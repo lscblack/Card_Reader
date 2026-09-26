@@ -410,10 +410,10 @@
 .pg-map-pin { width: 44px; height: 44px; border-radius: 999px 999px 999px 0; transform: rotate(-45deg); background: var(--pg-accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px color-mix(in srgb, var(--pg-accent) 40%, transparent); }
 .pg-map-pin i { width: 14px; height: 14px; border-radius: 999px; background: var(--pg-on-accent); }
 .pg-ended { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--pg-surface-2); color: var(--pg-muted); border: 1px solid var(--pg-border); }
-.pg-l-event-invite .pg-ev { text-align: center; }
-.pg-l-event-invite .pg-ev-title { font-size: 34px; font-weight: 600; font-style: italic; }
-.pg-l-event-invite .pg-ev-rows { align-items: center; }
-.pg-l-event-invite .pg-ev-row { flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.pg-ev-invite .pg-ev { text-align: center; }
+.pg-ev-invite .pg-ev-title { font-size: 34px; font-weight: 600; font-style: italic; }
+.pg-ev-invite .pg-ev-rows { align-items: center; }
+.pg-ev-invite .pg-ev-row { flex-direction: column; align-items: center; gap: 4px; text-align: center; }
 
 /* ── wifi ── */
 .pg-wifi { text-align: center; }
@@ -579,8 +579,7 @@ select.pg-input { appearance: none; background-image: linear-gradient(45deg, tra
 .pg-menu-spotlight .pg-mi-media { width: 104px; height: 104px; border-radius: 999px; box-shadow: 0 0 0 3px var(--pg-bg), 0 0 0 5px color-mix(in srgb, var(--pg-text) 55%, transparent); }
 .pg-menu-spotlight .pg-mi-aside .pg-price { background: var(--pg-accent); color: var(--pg-on-accent); border-radius: 10px; padding: 3px 10px; font-size: 16px; font-weight: 800; margin-top: -16px; position: relative; box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }
 .pg-menu-spotlight .pg-mi:not(.pg-has-media) .pg-mi-aside .pg-price { margin-top: 0; }
-.pg-menu-spotlight .pg-mi:nth-child(even) { flex-direction: row-reverse; text-align: right; }
-.pg-menu-spotlight .pg-mi:nth-child(even) .pg-badges, .pg-menu-spotlight .pg-mi:nth-child(even) .pg-variants { justify-content: flex-end; }
+.pg-menu-spotlight .pg-mi:nth-child(even) { flex-direction: row-reverse; }
 
 /* boxed: each category in an outlined box (chalk dinner) */
 .pg-menu-boxed .pg-cat { border: 2px solid color-mix(in srgb, var(--pg-text) 45%, transparent); border-radius: calc(var(--pg-radius) + 2px); padding: 18px 16px 8px; }
@@ -637,7 +636,6 @@ select.pg-input { appearance: none; background-image: linear-gradient(45deg, tra
 .pg-menu-numbered .pg-item-name { font-family: var(--pg-font-h); font-size: 19px; font-weight: 500; text-transform: none; }
 .pg-menu-numbered .pg-leader { flex: 1; border-bottom: 2px dotted color-mix(in srgb, var(--pg-text) 25%, transparent); transform: translateY(-5px); min-width: 16px; }
 .pg-menu-numbered .pg-price { font-family: var(--pg-font-h); color: var(--pg-accent-text); font-size: 19px; }
-.pg-menu-numbered .pg-price::before { content: '-'; }
 .pg-menu-numbered .pg-item-desc { padding-left: 24px; font-size: 13px; }
 .pg-menu-numbered .pg-cat + .pg-cat { margin-top: 30px; }
 

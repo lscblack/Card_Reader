@@ -33,7 +33,7 @@ function Terms({ text }: { text?: string }) {
 export function OfferSection({ d }: { d: SectionDataMap['offer'] }) {
   const { layout } = usePage()
   const until = parseWhen(d.valid_until ?? null, true)
-  const flash = layout.id === 'offer-flash'
+  const flash = layout.offer === 'flash'
   const now = useNow(flash && !!until)
   const expired = !!until && until.getTime() < now
   const cta = safeHref(d.cta?.url)

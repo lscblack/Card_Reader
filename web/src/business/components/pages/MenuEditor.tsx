@@ -7,7 +7,7 @@ import { RichText } from '@/components/ui/RichText'
 import { cn } from '@/lib/cn'
 import { formatPrice, imgSrc } from '@/public/page/format'
 import type { MenuItem, Price, SectionDataMap } from '../../api/types'
-import { CURRENCIES, PRESET_TAGS, TAG_IDEAS, itemTags, withTags } from '../../lib/menu'
+import { CURRENCIES, PRESET_TAGS, TAG_IDEAS, itemTags, uniqueTags, withTags } from '../../lib/menu'
 import { DragHandle, SortableList } from './Sortable'
 import { ImageField } from './PageSectionEditors'
 
@@ -164,7 +164,9 @@ function ItemDialog({
               {variants.map((v, i) => (
                 <div key={i} className="flex gap-2">
                   <Input aria-label="Size or option" placeholder="e.g. Large" value={v.label} onChange={(e) => up({ variants: variants.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} maxLength={60} />
-                  <Input aria-label="Price" inputMode="decimal" placeholder="0.00" value={priceText(v.price)} onChange={(e) => up({ variants: variants.map((x, j) => (j === i ? { ...x, price: toPrice(e.target.value) } : x)) })} className="w-28 tabular-nums" maxLength={24} />
+                  <div className="w-28 shrink-0">
+                    <Input aria-label="Price" inputMode="decimal" placeholder="0.00" value={priceText(v.price)} onChange={(e) => up({ variants: variants.map((x, j) => (j === i ? { ...x, price: toPrice(e.target.value) } : x)) })} className="tabular-nums" maxLength={24} />
+                  </div>
                   <Button size="icon" variant="ghost" aria-label="Remove option" onClick={() => up({ variants: variants.filter((_, j) => j !== i) })}>
                     <X className="h-4 w-4" />
                   </Button>
@@ -232,8 +234,12 @@ function QuickAdd({ onAdd, currency }: { onAdd: (name: string, price: Price) => 
   return (
     // Not a <form>: this sits inside the page editor, and nested forms are invalid HTML.
     <div className="flex gap-1.5 rounded-lg border border-dashed border-border-strong p-1.5" onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT' && submit(e as unknown as FormEvent)}>
-      <Input ref={nameRef} aria-label="New item name" placeholder="Add an item — name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className="h-9" />
-      <Input aria-label="New item price" inputMode="decimal" placeholder={currency ? `Price (${currency})` : 'Price'} value={price} onChange={(e) => setPrice(e.target.value)} className="h-9 w-28 shrink-0 tabular-nums" maxLength={24} />
+      <div className="min-w-0 flex-1">
+        <Input ref={nameRef} aria-label="New item name" placeholder="Add an item — name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+      </div>
+      <div className="w-24 shrink-0 sm:w-32">
+        <Input aria-label="New item price" inputMode="decimal" placeholder={currency ? `Price (${currency})` : 'Price'} value={price} onChange={(e) => setPrice(e.target.value)} className="tabular-nums" maxLength={24} />
+      </div>
       <Button variant="primary" className="h-9 shrink-0" leftIcon={<Plus className="h-4 w-4" />} onClick={() => submit()}>
         <span className="hidden sm:inline">Add</span>
       </Button>
@@ -246,7 +252,7 @@ function QuickAdd({ onAdd, currency }: { onAdd: (name: string, price: Price) => 
  * for photo, rich description, tags and sizes.
  */
 export function MenuEditor({ d, onChange }: { d: MenuData; onChange: (d: MenuData) => void }) {
-  const cats = d.categories ?? []
+  const cats = useMemo(() => d.categories ?? [], [d.categories])
   const [open, setOpen] = useState<number | null>(cats.length ? 0 : null)
   const [editing, setEditing] = useState<{ c: number; i: number } | null>(null)
   const [settings, setSettings] = useState(false)
@@ -258,7 +264,7 @@ export function MenuEditor({ d, onChange }: { d: MenuData; onChange: (d: MenuDat
 
   const suggestions = useMemo(() => {
     const used = cats.flatMap((c) => (c.items ?? []).flatMap((it) => it.tags ?? []))
-    return [...new Set([...PRESET_TAGS.map((t) => t.label), ...used, ...TAG_IDEAS])]
+    return uniqueTags([...PRESET_TAGS.map((t) => t.label), ...used, ...TAG_IDEAS])
   }, [cats])
 
   const current = editing ? cats[editing.c]?.items?.[editing.i] : null

@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/context'
 import { ApiError, errorMessage, USE_MOCKS } from '@/api/client'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Input'
+import { Field, Input, PasswordInput } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
@@ -55,13 +55,13 @@ export default function LoginPage() {
         {error && <Alert tone="danger">{error}</Alert>}
         <Field label="Email">
           {(p) => (
-            <Input {...p} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+            <Input {...p} inputSize="lg" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
           )}
         </Field>
         <div className="space-y-1.5">
           <Field label="Password">
             {(p) => (
-              <Input {...p} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <PasswordInput {...p} inputSize="lg" placeholder="Enter your password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             )}
           </Field>
           <div className="text-right">

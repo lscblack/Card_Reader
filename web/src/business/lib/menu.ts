@@ -58,13 +58,17 @@ export const PRESET_TAGS: { id: MenuBadge; label: string }[] = [
 /** Ideas shown under the tag input (all stored as custom tags). */
 export const TAG_IDEAS = ['Signature', 'Chef’s pick', 'Halal', 'Kids', 'Sharing', 'Seasonal', 'Organic', 'Local', 'Contains nuts', 'Dairy-free', 'Sugar-free', 'Hot', 'Iced', 'Limited', 'Best seller']
 
-const presetByLabel = new Map(PRESET_TAGS.map((t) => [t.label.toLowerCase(), t.id]))
+const norm = (s: string) => s.toLowerCase().replace(/[\s_-]+/g, '')
+const presetByLabel = new Map(PRESET_TAGS.flatMap((t) => [[norm(t.label), t.id] as const, [norm(t.id), t.id] as const]))
 
-/** One flat list of tag labels for an item (preset badges first). */
+/** One flat list of tag labels for an item (preset badges first; legacy "vegan"-style tags shown as the preset). */
 export function itemTags(it: MenuItem): string[] {
-  const presets = (it.badges ?? []).map((b) => PRESET_TAGS.find((t) => t.id === b)?.label).filter((x): x is string => !!x)
-  return [...presets, ...(it.tags ?? [])]
+  const labels = [...(it.badges ?? []), ...(it.tags ?? [])].map((t) => PRESET_TAGS.find((p) => p.id === presetByLabel.get(norm(t)))?.label ?? t)
+  return labels.filter((l, i) => labels.findIndex((x) => norm(x) === norm(l)) === i)
 }
+
+/** Unique by letters only, first spelling wins ("Gluten-free" hides "gluten free"). */
+export const uniqueTags = (xs: string[]) => xs.filter((x, i) => xs.findIndex((y) => norm(y) === norm(x)) === i)
 
 /** Splits labels back into preset badges (icons, sold-out styling) and custom tags. */
 export function withTags(it: MenuItem, labels: string[]): MenuItem {
@@ -73,10 +77,10 @@ export function withTags(it: MenuItem, labels: string[]): MenuItem {
   for (const raw of labels) {
     const l = raw.trim().slice(0, 30)
     if (!l) continue
-    const preset = presetByLabel.get(l.toLowerCase())
+    const preset = presetByLabel.get(norm(l))
     if (preset) {
       if (!badges.includes(preset)) badges.push(preset)
-    } else if (!tags.some((t) => t.toLowerCase() === l.toLowerCase())) tags.push(l)
+    } else if (!tags.some((t) => norm(t) === norm(l))) tags.push(l)
   }
   return { ...it, badges, tags: tags.slice(0, 10) }
 }

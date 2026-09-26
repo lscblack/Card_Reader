@@ -16,7 +16,7 @@ function inlineHtml(s: string) {
     .replace(/\*([^*]+)\*/g, '<i>$1</i>')
 }
 
-export function mdToHtml(md: string, inline = false): string {
+function mdToHtml(md: string, inline = false): string {
   if (!md) return ''
   if (inline) return md.split('\n').map(inlineHtml).join('<br>')
   return md
@@ -30,7 +30,7 @@ export function mdToHtml(md: string, inline = false): string {
 }
 
 function inlineMd(node: Node): string {
-  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? '').replace(/ /g, ' ')
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? '').replace(/\u00a0/g, ' ')
   if (!(node instanceof HTMLElement)) return ''
   const inner = () => Array.from(node.childNodes).map(inlineMd).join('')
   const tag = node.tagName
@@ -55,7 +55,7 @@ function inlineMd(node: Node): string {
   return text
 }
 
-export function htmlToMd(root: HTMLElement, inline = false): string {
+function htmlToMd(root: HTMLElement, inline = false): string {
   const blocks: string[] = []
   let para = ''
   const flush = () => {
@@ -79,6 +79,26 @@ export function htmlToMd(root: HTMLElement, inline = false): string {
   flush()
   const md = blocks.join('\n\n').replace(/\n{3,}/g, '\n\n')
   return inline ? md.replace(/\n{2,}/g, '\n') : md
+}
+
+function ToolBtn({ label, on = false, disabled, onPress, icon: Icon }: { label: string; on?: boolean; disabled?: boolean; onPress: () => void; icon: typeof Bold }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={on}
+      disabled={disabled}
+      // Keep the text selection: act on mousedown, before the editor loses focus.
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onPress()
+      }}
+      className={cn('inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-fg sm:h-7 sm:w-7', on && 'bg-surface-2 text-fg')}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  )
 }
 
 export interface RichTextProps {
@@ -176,24 +196,6 @@ export function RichText({ value, onChange, placeholder, rows = 3, inline = fals
     }
   }
 
-  const btn = (label: string, on: boolean, onClick: () => void, Icon: typeof Bold) => (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      aria-pressed={on}
-      disabled={disabled}
-      // Keep the text selection: act on mousedown, before the editor loses focus.
-      onMouseDown={(e) => {
-        e.preventDefault()
-        onClick()
-      }}
-      className={cn('inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-fg sm:h-7 sm:w-7', on && 'bg-surface-2 text-fg')}
-    >
-      <Icon className="h-3.5 w-3.5" />
-    </button>
-  )
-
   const empty = !value.trim()
   return (
     <div
@@ -205,11 +207,11 @@ export function RichText({ value, onChange, placeholder, rows = 3, inline = fals
       )}
     >
       <div className="flex items-center gap-0.5 border-b border-border px-1 py-0.5" role="toolbar" aria-label="Text formatting" aria-controls={id ?? autoId}>
-        {btn('Bold (Ctrl+B)', active.bold, () => exec('bold'), Bold)}
-        {btn('Italic (Ctrl+I)', active.italic, () => exec('italic'), Italic)}
-        {btn('Link (Ctrl+K)', false, startLink, Link2)}
-        {!inline && btn('Bulleted list', active.list, () => exec('insertUnorderedList'), List)}
-        {btn('Clear formatting', false, () => exec('removeFormat'), RemoveFormatting)}
+        <ToolBtn label="Bold (Ctrl+B)" on={active.bold} disabled={disabled} onPress={() => exec('bold')} icon={Bold} />
+        <ToolBtn label="Italic (Ctrl+I)" on={active.italic} disabled={disabled} onPress={() => exec('italic')} icon={Italic} />
+        <ToolBtn label="Link (Ctrl+K)" disabled={disabled} onPress={startLink} icon={Link2} />
+        {!inline && <ToolBtn label="Bulleted list" on={active.list} disabled={disabled} onPress={() => exec('insertUnorderedList')} icon={List} />}
+        <ToolBtn label="Clear formatting" disabled={disabled} onPress={() => exec('removeFormat')} icon={RemoveFormatting} />
         {maxLength && value.length > maxLength * 0.8 && <span className="ml-auto pr-1.5 text-[11px] text-subtle tabular-nums">{value.length}/{maxLength}</span>}
       </div>
       {linking != null && (

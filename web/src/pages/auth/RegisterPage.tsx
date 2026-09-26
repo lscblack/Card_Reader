@@ -8,7 +8,7 @@ import { ApiError, request } from '@/api/client'
 import type { AccountType } from '@/api/types'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select, Textarea } from '@/components/ui/Input'
+import { Field, Input, PasswordInput, Select, Textarea } from '@/components/ui/Input'
 import { ErrorAlert } from '@/components/ui/ErrorMeta'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Spinner'
@@ -227,7 +227,7 @@ export default function RegisterPage() {
   const accountFields = (lockedEmail = false): ReactNode => (
     <>
       <Field label="Your full name" error={show(accountErrors.fullName) ?? fe('full_name')}>
-        {(p) => <Input {...p} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />}
+        {(p) => <Input {...p} inputSize="lg" placeholder="e.g. Jane Uwase" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />}
       </Field>
       <Field
         label={type === 'business' ? 'Login email' : type === 'personal' ? 'Email' : 'Work email'}
@@ -235,11 +235,11 @@ export default function RegisterPage() {
         error={show(accountErrors.email) ?? fe('email')}
       >
         {(p) => (
-          <Input {...p} type="email" autoComplete="email" value={loginEmail} onChange={(e) => setEmail(e.target.value)} readOnly={lockedEmail} disabled={lockedEmail} />
+          <Input {...p} inputSize="lg" type="email" placeholder="you@example.com" autoComplete="email" value={loginEmail} onChange={(e) => setEmail(e.target.value)} readOnly={lockedEmail} disabled={lockedEmail} />
         )}
       </Field>
       <Field label="Password" hint="At least 10 characters. A passphrase works well." error={show(accountErrors.password) ?? fe('password')}>
-        {(p) => <Input {...p} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
+        {(p) => <PasswordInput {...p} inputSize="lg" placeholder="At least 10 characters" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
       </Field>
       <PasswordStrength password={password} />
     </>
@@ -366,7 +366,7 @@ export default function RegisterPage() {
           {error != null && <ErrorAlert error={error} />}
           {accountFields()}
           <Field label="Phone" optional hint="Shown on your card only if you choose to." error={show(phoneErr) ?? fe('phone')}>
-            {(p) => <Input {...p} type="tel" inputMode="tel" autoComplete="tel" value={personalPhone} onChange={(e) => setPersonalPhone(e.target.value)} placeholder="+250 788 000 000" />}
+            {(p) => <Input {...p} inputSize="lg" type="tel" inputMode="tel" autoComplete="tel" value={personalPhone} onChange={(e) => setPersonalPhone(e.target.value)} placeholder="+250 788 000 000" />}
           </Field>
           <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
             {cardInvite ? 'Create account & accept card' : 'Create my card'}
@@ -404,7 +404,7 @@ export default function RegisterPage() {
       {step === 0 && (
         <form onSubmit={next} className="space-y-4" noValidate>
           <Field label="Business name" error={show(stepErrors[0].bizName) ?? fe('name')}>
-            {(p) => <Input {...p} value={bizName} onChange={(e) => setBizName(e.target.value)} autoComplete="organization" autoFocus maxLength={120} />}
+            {(p) => <Input {...p} inputSize="lg" placeholder="e.g. Acme Café" value={bizName} onChange={(e) => setBizName(e.target.value)} autoComplete="organization" autoFocus maxLength={120} />}
           </Field>
           <Field label="Category" error={show(stepErrors[0].category) ?? fe('category')}>
             {(p) =>
@@ -441,11 +441,11 @@ export default function RegisterPage() {
       {step === 1 && (
         <form onSubmit={next} className="space-y-4" noValidate>
           <Field label="Business email" error={show(stepErrors[1].bizEmail) ?? fe('email')}>
-            {(p) => <Input {...p} type="email" value={bizEmail} onChange={(e) => setBizEmail(e.target.value)} autoFocus />}
+            {(p) => <Input {...p} inputSize="lg" type="email" placeholder="hello@yourbusiness.com" value={bizEmail} onChange={(e) => setBizEmail(e.target.value)} autoFocus />}
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Phone" error={show(stepErrors[1].phone) ?? fe('phone')}>
-              {(p) => <Input {...p} type="tel" inputMode="tel" autoComplete="tel" placeholder="+250 788 000 000" value={phone} onChange={(e) => setPhone(e.target.value)} />}
+              {(p) => <Input {...p} inputSize="lg" type="tel" inputMode="tel" autoComplete="tel" placeholder="+250 788 000 000" value={phone} onChange={(e) => setPhone(e.target.value)} />}
             </Field>
             <Field label="Country" error={show(stepErrors[1].country) ?? fe('country')}>
               {(p) => (
@@ -461,10 +461,10 @@ export default function RegisterPage() {
             </Field>
           </div>
           <Field label="Website" optional error={show(stepErrors[1].website) ?? fe('website')}>
-            {(p) => <Input {...p} type="url" inputMode="url" placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} />}
+            {(p) => <Input {...p} inputSize="lg" type="url" inputMode="url" placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} />}
           </Field>
           <Field label="Address" optional error={fe('address')}>
-            {(p) => <Input {...p} autoComplete="street-address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={255} />}
+            {(p) => <Input {...p} inputSize="lg" placeholder="Street, city" autoComplete="street-address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={255} />}
           </Field>
           <Button type="submit" variant="primary" size="lg" className="w-full">
             Continue

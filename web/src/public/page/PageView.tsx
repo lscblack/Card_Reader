@@ -149,6 +149,7 @@ export function PageView({
           `pg-titles-${layout.titles}`,
           `pg-tex-${layout.texture}`,
           `pg-cat-${layout.cat}`,
+          layout.event === 'invite' && 'pg-ev-invite',
           layout.width === 'wide' && 'pg-wide',
           layout.align === 'center' && 'pg-center',
           layout.upper && 'pg-upper',

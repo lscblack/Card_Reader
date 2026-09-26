@@ -198,7 +198,7 @@ def validate_section(section: Any, field: str) -> dict[str, Any]:
         return _compact({**base, "title": _s(section, "title", field, 120), "currency": cur,
                          "show_images": _b(section, "show_images", field), "categories": cats})
     if t == "products":
-        _keys(section, {"type", "id", "title", "items"}, field)
+        _keys(section, {"type", "id", "title", "currency", "items"}, field)
         items = []
         for j, item in enumerate(_list(section, "items", field, 100)):
             itf = f"{field}.items.{j}"
@@ -212,7 +212,8 @@ def validate_section(section: Any, field: str) -> dict[str, Any]:
                 "compare_at_price": _price(item, "compare_at_price", itf),
                 "image_url": check_image(item.get("image_url"), f"{itf}.image_url"),
                 "badge": _s(item, "badge", itf, 30), "cta": _cta(item, itf), "in_stock": _b(item, "in_stock", itf)}))
-        return _compact({**base, "title": _s(section, "title", field, 120), "items": items})
+        return _compact({**base, "title": _s(section, "title", field, 120), "currency": _s(section, "currency", field, 8),
+                         "items": items})
     if t == "links":
         _keys(section, {"type", "id", "title", "items"}, field)
         items = []

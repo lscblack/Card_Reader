@@ -18,6 +18,9 @@ import { TemplateGallery, TemplateThumb } from './TemplateGallery'
 
 type Step = 'type' | 'template' | 'details'
 
+/** "Burger joint · Ember" → "Burger joint": the design name is for the gallery, not the page title. */
+const baseName = (n: string | null | undefined) => (n ?? '').split(' · ')[0]
+
 /**
  * "New page" (Part 6): page type → template gallery (system + mine, live thumbnails) → title & URL.
  * With `pageType` the type is fixed (e.g. from the action configurator); `onCreated` replaces navigating to the editor.
@@ -43,7 +46,7 @@ export function NewPageModal({
   const [tpl, setTpl] = useState<PageTemplate | null>(initialTemplate ?? null)
   const [blank, setBlank] = useState(false)
   const [step, setStep] = useState<Step>(initialTemplate ? 'details' : fixed ? 'template' : 'type')
-  const [title, setTitle] = useState(initialTemplate?.name ?? '')
+  const [title, setTitle] = useState(baseName(initialTemplate?.name))
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
   const effSlug = slugTouched ? slug : slugify(title)
@@ -74,7 +77,7 @@ export function NewPageModal({
   const pick = (t: PageTemplate) => {
     setTpl(t)
     setBlank(false)
-    if (!title.trim() || title === tpl?.name) setTitle(t.name)
+    if (!title.trim() || title === baseName(tpl?.name)) setTitle(baseName(t.name))
     setStep('details')
   }
   const back = () => setStep(step === 'details' ? (initialTemplate ? 'details' : 'template') : fixed ? 'template' : 'type')

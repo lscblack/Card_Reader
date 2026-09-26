@@ -4,7 +4,7 @@ import { authApi } from '@/api/auth'
 import { errorMessage } from '@/api/client'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Input'
+import { Field, Input, PasswordInput } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PasswordStrength } from './PasswordStrength'
@@ -58,12 +58,12 @@ export default function ResetPasswordPage() {
           {error && <Alert tone="danger">{error}</Alert>}
           <Field label="New password" hint="At least 10 characters." error={password && password.length < 10 ? 'Use at least 10 characters.' : null}>
             {(p) => (
-              <Input {...p} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+              <PasswordInput {...p} inputSize="lg" placeholder="At least 10 characters" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
             )}
           </Field>
           <PasswordStrength password={password} />
           <Field label="Confirm password" error={mismatch ? 'Passwords do not match.' : null}>
-            {(p) => <Input {...p} type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />}
+            {(p) => <PasswordInput {...p} inputSize="lg" placeholder="Repeat the new password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />}
           </Field>
           <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading} disabled={password.length < 10 || confirm !== password}>
             Update password

@@ -1,10 +1,12 @@
 import {
   forwardRef,
   useId,
+  useState,
   type InputHTMLAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
 } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 export { Select, type SelectProps } from './Select'
@@ -14,11 +16,35 @@ const control =
   'focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 ' +
   'aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:ring-red-500/20'
 
-export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
-  { className, ...rest },
-  ref,
-) {
-  return <input ref={ref} className={cn(control, 'h-9', className)} {...rest} />
+export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+  /** `lg`: taller, roomier field for auth and other short, focused forms. */
+  inputSize?: 'md' | 'lg'
+}
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, inputSize = 'md', ...rest }, ref) {
+  return <input ref={ref} className={cn(control, inputSize === 'lg' ? 'h-11 text-[15px]' : 'h-9', className)} {...rest} />
+})
+
+/** Password field with a show / hide toggle. */
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputProps, 'type'>>(function PasswordInput({ inputSize, style, ...rest }, ref) {
+  const [shown, setShown] = useState(false)
+  const lg = inputSize === 'lg'
+  return (
+    <div className="relative">
+      <Input ref={ref} {...rest} inputSize={inputSize} type={shown ? 'text' : 'password'} style={{ ...style, paddingRight: lg ? 48 : 40 }} />
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        aria-label={shown ? 'Hide password' : 'Show password'}
+        aria-pressed={shown}
+        title={shown ? 'Hide password' : 'Show password'}
+        disabled={rest.disabled}
+        className={cn('absolute top-1/2 right-1 flex -translate-y-1/2 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-fg', lg ? 'h-9 w-10' : 'h-7 w-8')}
+      >
+        {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  )
 })
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(
