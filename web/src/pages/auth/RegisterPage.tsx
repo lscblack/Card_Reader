@@ -418,7 +418,7 @@ export default function RegisterPage() {
                   </button>
                 </p>
               ) : (
-                <Select {...p} value={category} onChange={(e) => setCategory(e.target.value)}>
+                <Select {...p} controlSize="lg" value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="">Choose a category…</option>
                   {categories.data?.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -449,7 +449,7 @@ export default function RegisterPage() {
             </Field>
             <Field label="Country" error={show(stepErrors[1].country) ?? fe('country')}>
               {(p) => (
-                <Select {...p} value={country} onChange={(e) => setCountry(e.target.value)}>
+                <Select {...p} controlSize="lg" value={country} onChange={(e) => setCountry(e.target.value)}>
                   <option value="">Choose…</option>
                   {countryList.map((c) => (
                     <option key={c.code} value={c.code}>

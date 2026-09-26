@@ -77,6 +77,8 @@ export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   searchable?: boolean
   /** Placeholder for the search box. */
   searchPlaceholder?: string
+  /** `lg` matches `<Input inputSize="lg">`. */
+  controlSize?: 'md' | 'lg'
 }
 
 /**
@@ -85,20 +87,20 @@ export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
  * clipped. A hidden native select keeps form semantics (name, required, onChange events).
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { searchable, searchPlaceholder, className, children, multiple, size, ...rest },
+  { searchable, searchPlaceholder, className, children, multiple, size, controlSize = 'md', ...rest },
   ref,
 ) {
   const options = useMemo(() => readOptions(children), [children])
   const useList = !multiple && !size && (searchable ?? options.length > SEARCH_THRESHOLD)
   if (!useList) {
     return (
-      <select ref={ref} multiple={multiple} size={size} className={cn(selectControl, multiple ? 'py-1.5' : 'h-9 pr-8', className)} {...rest}>
+      <select ref={ref} multiple={multiple} size={size} className={cn(selectControl, multiple ? 'py-1.5' : cn(controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9', 'pr-8'), className)} {...rest}>
         {children}
       </select>
     )
   }
   return (
-    <SearchableSelect ref={ref} options={options} className={className} searchPlaceholder={searchPlaceholder} {...rest}>
+    <SearchableSelect ref={ref} options={options} controlSize={controlSize} className={className} searchPlaceholder={searchPlaceholder} {...rest}>
       {children}
     </SearchableSelect>
   )
@@ -106,8 +108,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
 
 const SearchableSelect = forwardRef<
   HTMLSelectElement,
-  SelectHTMLAttributes<HTMLSelectElement> & { options: Opt[]; searchPlaceholder?: string }
->(function SearchableSelect({ options, searchPlaceholder = 'Search…', className, children, id, style, ...rest }, ref) {
+  SelectHTMLAttributes<HTMLSelectElement> & { options: Opt[]; searchPlaceholder?: string; controlSize?: 'md' | 'lg' }
+>(function SearchableSelect({ options, searchPlaceholder = 'Search…', controlSize = 'md', className, children, id, style, ...rest }, ref) {
   const nativeRef = useRef<HTMLSelectElement>(null)
   useImperativeHandle(ref, () => nativeRef.current as HTMLSelectElement)
   const anchorRef = useRef<HTMLButtonElement>(null)
@@ -229,7 +231,7 @@ const SearchableSelect = forwardRef<
         disabled={rest.disabled}
         onClick={() => (open ? close() : openList())}
         onKeyDown={onTriggerKey}
-        className={cn(selectControl, 'relative flex h-9 items-center pr-8 text-left')}
+        className={cn(selectControl, 'relative flex items-center pr-8 text-left', controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9')}
       >
         <span className={cn('min-w-0 flex-1 truncate', !selected?.label && 'text-subtle')}>{selected?.label || 'Select…'}</span>
         <ChevronDown
