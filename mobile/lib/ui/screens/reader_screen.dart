@@ -29,6 +29,59 @@ import '../widgets/status_indicator.dart';
 class ReaderScreen extends StatelessWidget {
   const ReaderScreen({super.key});
 
+  void _openProgram(BuildContext context, AppState app, ReaderController reader) =>
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => ProgramCardScreen(
+          api: app.api!,
+          programmer: CardProgrammer(writer: context.read<NfcWriter>(), api: app.api!, reader: reader),
+        ),
+      ));
+
+  /// "Register cards" / "Program a card": icons, or one menu on narrow screens (320 dp).
+  List<Widget> _cardActions(BuildContext context, AppState app, ReaderController reader) {
+    final canRegister = (app.config?.can(Capability.registerCards) ?? false) && app.api != null;
+    final canProgram = (app.config?.can(Capability.programCards) ?? false) && app.api != null;
+    if (!canRegister && !canProgram) return const [];
+    if (canRegister && canProgram && MediaQuery.sizeOf(context).width < 400) {
+      return [
+        PopupMenuButton<String>(
+          key: const Key('cardsMenu'),
+          tooltip: 'Cards',
+          icon: const Icon(Icons.add_card),
+          onSelected: (v) => v == 'register' ? openRegisterCards(context, app, reader) : _openProgram(context, app, reader),
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              key: Key('registerCardsAction'),
+              value: 'register',
+              child: ListTile(leading: Icon(Icons.add_card), title: Text('Register cards'), contentPadding: EdgeInsets.zero),
+            ),
+            PopupMenuItem(
+              key: Key('programCardAction'),
+              value: 'program',
+              child: ListTile(leading: Icon(Icons.edit_note), title: Text('Program a card'), contentPadding: EdgeInsets.zero),
+            ),
+          ],
+        ),
+      ];
+    }
+    return [
+      if (canRegister)
+        IconButton(
+          key: const Key('registerCardsAction'),
+          tooltip: 'Register cards',
+          icon: const Icon(Icons.add_card),
+          onPressed: () => openRegisterCards(context, app, reader),
+        ),
+      if (canProgram)
+        IconButton(
+          key: const Key('programCardAction'),
+          tooltip: 'Program a card',
+          icon: const Icon(Icons.edit_note),
+          onPressed: () => _openProgram(context, app, reader),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
@@ -38,25 +91,7 @@ class ReaderScreen extends StatelessWidget {
       appBar: AppBar(
         title: _Title(config: app.config),
         actions: [
-          if ((app.config?.can(Capability.registerCards) ?? false) && app.api != null)
-            IconButton(
-              key: const Key('registerCardsAction'),
-              tooltip: 'Register cards',
-              icon: const Icon(Icons.add_card),
-              onPressed: () => openRegisterCards(context, app, reader),
-            ),
-          if ((app.config?.can(Capability.programCards) ?? false) && app.api != null)
-            IconButton(
-              key: const Key('programCardAction'),
-              tooltip: 'Program a card',
-              icon: const Icon(Icons.edit_note),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => ProgramCardScreen(
-                  api: app.api!,
-                  programmer: CardProgrammer(writer: context.read<NfcWriter>(), api: app.api!, reader: reader),
-                ),
-              )),
-            ),
+          ..._cardActions(context, app, reader),
           IconButton(
             key: const Key('tapHelpAction'),
             tooltip: 'What happens when I tap a card?',

@@ -524,7 +524,8 @@ export interface Analytics {
   by_country: { country: string; taps: number }[]
   by_hour: { hour: number; taps: number }[]
   /** Taps by owner type (employee / customer / business / unassigned). */
-  by_assignee_type?: { assignee_type: string | null; taps: number }[]
+  /** Tap counts in the range by holder type at tap time. */
+  by_assignee_type?: { employee: number; customer: number; business: number; unassigned: number }
   last_activity: CardTap | null
 }
 

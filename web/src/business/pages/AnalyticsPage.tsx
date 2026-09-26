@@ -160,11 +160,13 @@ export default function AnalyticsPage() {
                     <Skeleton className="h-24" />
                   ) : (
                     <BarList
-                      items={(a.by_assignee_type ?? []).map((x) => ({
-                        key: x.assignee_type ?? 'none',
-                        label: x.assignee_type === 'business' ? `${business.name} (company)` : assigneeTypeLabel(x.assignee_type),
-                        value: x.taps,
-                      }))}
+                      items={(['business', 'employee', 'customer', 'unassigned'] as const)
+                        .map((k) => ({
+                          key: k,
+                          label: k === 'business' ? `${business.name} (company)` : k === 'unassigned' ? 'Unassigned' : `${assigneeTypeLabel(k)}s`,
+                          value: a.by_assignee_type?.[k] ?? 0,
+                        }))
+                        .filter((x) => x.value > 0)}
                       color={CHART.tertiary}
                     />
                   )}

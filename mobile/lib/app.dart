@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/config.dart';
 import 'core/links.dart';
 import 'core/pairing.dart';
 import 'data/event_repository.dart';
 import 'services/app_state.dart';
 import 'services/deep_links.dart';
 import 'services/digital_card_scanner.dart';
+import 'services/guest_tap.dart';
+import 'ui/widgets/guest_tap.dart';
 import 'services/nfc_service.dart';
 import 'services/personal_state.dart';
 import 'ui/personal/exchange_flow.dart';
@@ -27,7 +30,13 @@ class NfcTerminalApp extends StatefulWidget {
     this.deepLinks = const NoDeepLinks(),
     this.personal,
     this.scanner,
+    this.guestTap,
+    this.linkOpener,
   });
+
+  /// Guest tap reading (not a registered terminal): a tapped nexTap card opens its link.
+  final GuestTapReader? guestTap;
+  final LinkOpener? linkOpener;
 
   final AppState appState;
   final EventRepository repository;
@@ -49,6 +58,11 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
   String? _pendingLink;
   late final PersonalState _personal;
   late final DigitalCardScanner _scanner = widget.scanner ?? AndroidDigitalCardScanner();
+  late final GuestTapConfig _guest = GuestTapConfig(
+    reader: widget.guestTap ?? AndroidGuestTapReader(),
+    opener: widget.linkOpener ?? openExternally,
+    knownServers: () => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl],
+  );
 
   @override
   void initState() {
@@ -166,6 +180,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         ChangeNotifierProvider.value(value: _personal),
         Provider<EventRepository>.value(value: widget.repository),
         Provider<DigitalCardScanner>.value(value: _scanner),
+        Provider<GuestTapConfig?>.value(value: _guest),
       ],
       child: MaterialApp(
         title: 'nexTap',

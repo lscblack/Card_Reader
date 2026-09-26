@@ -1,5 +1,6 @@
 // Small-screen / large-text sweep: every main screen at 320×568 dp with a 1.3× text scale,
 // light and dark, must lay out without RenderFlex overflows or other exceptions.
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -26,7 +27,15 @@ import 'package:nfc_terminal/ui/screens/pair_confirm_screen.dart';
 import 'package:nfc_terminal/ui/screens/settings_screen.dart';
 import 'package:nfc_terminal/ui/screens/setup_screen.dart';
 
+import 'package:nfc_terminal/data/models/card_read.dart';
+import 'package:nfc_terminal/services/card_programmer.dart';
+import 'package:nfc_terminal/services/card_registrar.dart';
+import 'package:nfc_terminal/services/reader_controller.dart';
+import 'package:nfc_terminal/ui/screens/register_cards_screen.dart';
+import 'package:nfc_terminal/ui/theme.dart';
+
 import 'fakes.dart';
+import 'part2_test.dart' show businessConfig, FakeNfcWriter;
 import 'personal_fakes.dart';
 import 'personal_fixtures.dart';
 
@@ -191,5 +200,76 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       });
     }
+  }
+
+  for (final dark in [false, true]) {
+    testWidgets('320dp @1.3x (${dark ? 'dark' : 'light'}): business Reader app bar + Register cards (sheet, success, list)',
+        (tester) async {
+      tester.view.physicalSize = const Size(640, 1136);
+      tester.view.devicePixelRatio = 2;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      final theme = dark ? AppTheme.dark() : AppTheme.light();
+
+      // Reader tab of a business device with both capabilities (4 app-bar actions).
+      final cfg = businessConfig();
+      final repo = InMemoryEventRepository();
+      final app = AppState(
+        credentials: CredentialStore(MemorySecureStore()),
+        httpClient: MockClient((req) async {
+          if (req.url.path.endsWith('/device/register')) {
+            return http.Response.bytes(utf8.encode(jsonEncode({'device': {}, 'device_token': 'nfcd_t', 'config': cfg})), 201);
+          }
+          if (req.url.path.endsWith('/device/config')) return http.Response.bytes(utf8.encode(jsonEncode(cfg)), 200);
+          return http.Response(jsonEncode({'status': 'active'}), 200);
+        }),
+        platform: FakePlatformInfo(),
+        repository: repo,
+      );
+      tester.platformDispatcher.platformBrightnessTestValue = dark ? Brightness.dark : Brightness.light;
+      await tester.runAsync(() async {
+        await app.init();
+        await app.register(serverUrl: 'https://api.example.com', apiKey: 'nfc_k', deviceName: 'x');
+      });
+      await tester.pumpWidget(NfcTerminalApp(appState: app, repository: repo, nfc: FakeNfcService()));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'reader app bar');
+      await tester.tap(find.byKey(const Key('cardsMenu')));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(const Key('registerCardsAction')), findsOneWidget, reason: 'menu on narrow screens');
+      expect(tester.takeException(), isNull, reason: 'cards menu');
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pump(const Duration(milliseconds: 400));
+      app.onPaused();
+      await tester.pumpWidget(const SizedBox());
+
+      final nfc = FakeNfcService();
+      final reader = ReaderController(nfc: nfc, repository: InMemoryEventRepository(), platform: FakePlatformInfo(),
+          deliveryProvider: () => null, configProvider: () => null, haptic: () async {});
+      await reader.init();
+      final api = FakeDeviceApi();
+      final r = CardRegistrar(api: api, nfc: nfc, reader: reader, businessName: 'Acme Café International Holdings',
+          programmer: CardProgrammer(writer: FakeNfcWriter((_) async => '04AA0001'), api: api, reader: reader), haptic: () async {});
+      await tester.pumpWidget(MaterialApp(theme: theme, home: RegisterCardsScreen(registrar: r)));
+      Future<void> frames() async {
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+      }
+      await frames();
+      expect(tester.takeException(), isNull, reason: 'waiting');
+      nfc.onCard!(CardRead(uid: '04AA0001', technologies: const ['NfcA'], type: CardType.unknown, detectedAt: DateTime.now().toUtc()));
+      await frames();
+      expect(find.byKey(const Key('registerCardSubmit')), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'sheet');
+      await tester.ensureVisible(find.byKey(const Key('registerCardSubmit')));
+      await tester.tap(find.byKey(const Key('registerCardSubmit')));
+      await frames();
+      expect(tester.takeException(), isNull, reason: 'success');
+      expect(find.textContaining('Registered · Card 1'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await frames();
+    });
   }
 }

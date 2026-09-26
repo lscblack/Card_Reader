@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/setup_screen.dart';
 import '../widgets/common.dart';
+import '../widgets/guest_tap.dart';
 import 'personal_auth_screen.dart';
 
 /// First run: choose Personal digital card and/or Terminal (both can be set up).
@@ -12,7 +13,8 @@ class WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
+    return GuestTapScope(
+      child: Scaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
@@ -38,11 +40,14 @@ class WelcomeScreen extends StatelessWidget {
               body: 'Turn this phone into a card reader for an application or a business (check-ins, badges, tags).',
               onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SetupScreen())),
             ),
+            const SizedBox(height: 20),
+            const TapACardPanel(),
             const SizedBox(height: 28),
             const Center(child: UidOnlyNote(compact: true)),
           ],
         ),
       ),
+    ),
     );
   }
 }

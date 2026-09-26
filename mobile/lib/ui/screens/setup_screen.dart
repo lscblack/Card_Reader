@@ -10,6 +10,7 @@ import '../../services/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/guest_tap.dart';
 import 'pair_confirm_screen.dart';
 import 'qr_scan_screen.dart';
 
@@ -94,7 +95,8 @@ class _SetupScreenState extends State<SetupScreen> {
     final t = Theme.of(context).textTheme;
     final insecure = ServerUrl.validate(_url.text) == null && ServerUrl.isInsecure(_url.text);
 
-    return Scaffold(
+    return GuestTapScope(
+      child: Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -240,6 +242,7 @@ class _SetupScreenState extends State<SetupScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

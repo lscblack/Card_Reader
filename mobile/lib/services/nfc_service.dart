@@ -31,6 +31,18 @@ abstract class NfcService {
   Future<bool> openNfcSettings();
 }
 
+/// Reader mode is one activity-wide session: whoever enabled it last owns it. Sessions that may
+/// be stopped late (e.g. a screen disposed after the next one started reading) only disable it
+/// while they are still the current owner.
+class ReaderModeLease {
+  ReaderModeLease._();
+  static int _current = 0;
+
+  /// Call right before enabling reader mode; returns this session's lease.
+  static int take() => ++_current;
+  static bool isCurrent(int lease) => lease == _current;
+}
+
 /// Ignores the same UID seen again within [window].
 class UidDebouncer {
   UidDebouncer({this.window = AppConfig.debounceWindow});
@@ -87,6 +99,7 @@ class AndroidNfcService implements NfcService {
     required void Function(CardRead card) onCard,
     required void Function(Object error) onError,
   }) {
+    ReaderModeLease.take();
     return NfcManagerAndroid.instance.enableReaderMode(
       // Reader mode: this app gets the tag, Android doesn't dispatch it to
       // other apps. IsoDep / MIFARE are discovered through NfcA/NfcB polling.

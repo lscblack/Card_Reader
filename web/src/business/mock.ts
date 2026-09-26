@@ -772,9 +772,12 @@ function analytics(db: Db, q: Query): Analytics {
     by_card: countBy(cur, (t) => t.card_id).slice(0, 10).map(([card_id, taps]) => ({ card_id, name: cardName.get(card_id) ?? 'Deleted card', taps })),
     by_employee: countBy(cur, (t) => (t.assignee?.type === 'employee' ? t.assignee.id : null)).slice(0, 10).map(([employee_id, taps]) => ({ employee_id, name: empName.get(employee_id) ?? '—', taps })),
     by_action: countBy(cur, (t) => t.action_type).map(([action_type, taps]) => ({ action_type, taps })),
-    by_assignee_type: (['business', 'employee', 'customer', null] as const)
-      .map((assignee_type) => ({ assignee_type, taps: cur.filter((t) => (t.assignee?.type ?? null) === assignee_type).length }))
-      .filter((r) => r.taps > 0),
+    by_assignee_type: {
+      employee: cur.filter((t) => t.assignee?.type === 'employee').length,
+      customer: cur.filter((t) => t.assignee?.type === 'customer').length,
+      business: cur.filter((t) => t.assignee?.type === 'business').length,
+      unassigned: cur.filter((t) => !t.assignee).length,
+    },
     by_device_type: countBy(cur, (t) => t.device_type).map(([device_type, taps]) => ({ device_type: device_type as DeviceType, taps })),
     by_country: countBy(cur, (t) => t.country).map(([country, taps]) => ({ country, taps })),
     by_hour: Array.from({ length: 24 }, (_, hour) => ({ hour, taps: cur.filter((t) => new Date(t.created_at).getHours() === hour).length })),

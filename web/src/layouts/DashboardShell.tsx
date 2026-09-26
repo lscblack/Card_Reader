@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { Bell, BookOpen, ChevronDown, Compass, LogOut, Menu as MenuIcon, Settings, X, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, Building2, ChevronDown, Code2, Compass, IdCard, LogOut, ShieldCheck, Menu as MenuIcon, Settings, X, type LucideIcon } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { USE_MOCKS } from '@/api/client'
 import { Logo } from '@/components/Logo'
@@ -63,6 +63,46 @@ export interface DashboardShellProps {
   /** Show the "verify your email" banner for unverified users (default true). */
   showVerifyBanner?: boolean
   children?: ReactNode
+}
+
+const ACCOUNT_TYPES = {
+  admin: { label: 'Admin', icon: ShieldCheck, tone: 'text-red-700 bg-red-50 ring-red-600/20 dark:text-red-300 dark:bg-red-500/10 dark:ring-red-400/20' },
+  developer: { label: 'Developer account', icon: Code2, tone: 'text-sky-700 bg-sky-50 ring-sky-600/20 dark:text-sky-300 dark:bg-sky-500/10 dark:ring-sky-400/20' },
+  business: { label: 'Business account', icon: Building2, tone: 'text-amber-800 bg-amber-50 ring-amber-600/25 dark:text-amber-300 dark:bg-amber-500/10 dark:ring-amber-400/20' },
+  personal: { label: 'Personal account', icon: IdCard, tone: 'text-emerald-700 bg-emerald-50 ring-emerald-600/20 dark:text-emerald-300 dark:bg-emerald-500/10 dark:ring-emerald-400/20' },
+} as const
+
+/** Which kind of account is signed in — shown under the name in every dashboard's top bar and user menu. */
+function AccountTypeLabel({
+  user,
+  badge = false,
+  className,
+}: {
+  user: { role?: string; account_type?: string } | null | undefined
+  badge?: boolean
+  className?: string
+}) {
+  if (!user) return null
+  const key = user.role === 'admin' ? 'admin' : ((user.account_type ?? 'developer') as keyof typeof ACCOUNT_TYPES)
+  const t = ACCOUNT_TYPES[key] ?? ACCOUNT_TYPES.developer
+  const Icon = t.icon
+  if (!badge) {
+    return (
+      <span className={cn('flex items-center gap-1 text-[11px] text-subtle', className)} data-testid="account-type">
+        <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+        {t.label}
+      </span>
+    )
+  }
+  return (
+    <span
+      className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset', t.tone, className)}
+      data-testid="account-type-badge"
+    >
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+      {t.label}
+    </span>
+  )
 }
 
 function UnreadBadge({ count }: { count: number }) {
@@ -260,7 +300,10 @@ export function DashboardShell({
             trigger={
               <span className="flex items-center gap-2 rounded-lg py-1 pr-1.5 pl-1 hover:bg-surface-2">
                 <Avatar src={user?.avatar_url} name={user?.full_name} email={user?.email} size="sm" />
-                <span className="hidden max-w-[160px] truncate text-[13px] font-medium sm:block">{user?.full_name || user?.email}</span>
+                <span className="hidden min-w-0 flex-col text-left leading-tight sm:flex">
+                  <span className="max-w-[160px] truncate text-[13px] font-medium">{user?.full_name || user?.email}</span>
+                  <AccountTypeLabel user={user} />
+                </span>
                 <ChevronDown className="hidden h-3.5 w-3.5 text-subtle sm:block" />
               </span>
             }
@@ -270,6 +313,7 @@ export function DashboardShell({
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-medium">{user?.full_name}</p>
                   <p className="truncate text-xs text-subtle">{user?.email}</p>
+                  <AccountTypeLabel user={user} badge className="mt-1.5" />
                 </div>
               </div>
             }

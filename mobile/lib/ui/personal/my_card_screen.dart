@@ -17,6 +17,7 @@ import 'card_editor_screen.dart';
 import 'exchange_flow.dart';
 import 'invites_screen.dart';
 import 'qr_share_screen.dart';
+import '../widgets/guest_tap.dart';
 import 'share_ripple.dart';
 
 enum _Mode { share, scan }
@@ -69,6 +70,14 @@ class _MyCardScreenState extends State<MyCardScreen> {
       await runExchange(context, token, via: 'nfc');
     } on ScanException catch (e) {
       if (!mounted) return;
+      final guest = e.guestTag;
+      final config = Provider.of<GuestTapConfig?>(context, listen: false);
+      if (guest != null && guest.uris.isNotEmpty && config != null) {
+        // Not a phone but a nexTap card/tag with a link: open it like a guest tap.
+        setState(() => _scanning = false);
+        await showGuestTag(context, guest, knownServers: config.knownServers(), opener: config.opener);
+        return;
+      }
       setState(() {
         _scanning = false;
         _scanMessage = e.error == MobError.programmingTimeout ? null : '${e.error.title}. ${e.error.fix} (${e.error.ref})';

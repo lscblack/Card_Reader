@@ -23,6 +23,13 @@ import 'part2_test.dart' show businessConfig, part1Config, FakeNfcWriter;
 
 CardRead tap(String uid) => CardRead(uid: uid, technologies: const ['NfcA'], type: CardType.unknown, detectedAt: DateTime.now().toUtc());
 
+/// The NFC ripple animates forever: pump a few frames instead of settling.
+Future<void> settle(WidgetTester tester) async {
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+}
+
 void main() {
   late FakeDeviceApi api;
   late FakeNfcService nfc;
@@ -155,7 +162,7 @@ void main() {
       expect(find.text('Tap a card to register it'), findsOneWidget);
 
       nfc.onCard!(tap('04AA0001'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       final name = tester.widget<TextField>(find.byKey(const Key('registerCardName')));
       expect(name.controller!.text, 'Card 1');
       expect(find.text('Company (Acme Café)'), findsOneWidget);
@@ -163,7 +170,7 @@ void main() {
       await tester.pump();
       expect(tester.widget<TextField>(find.byKey(const Key('registerCardName'))).controller!.text, 'Tag 1');
       await tester.tap(find.byKey(const Key('registerCardSubmit')));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('Registered · Tag 1'), findsOneWidget);
       expect(find.byKey(const Key('tapNext')), findsOneWidget);
       expect(find.descendant(of: find.byKey(const Key('registeredCount')), matching: find.text('1')), findsOneWidget);
@@ -171,23 +178,23 @@ void main() {
 
       // Next tap: kind remembered, owner changed to unassigned is remembered after.
       nfc.onCard!(tap('04AA0002'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(tester.widget<TextField>(find.byKey(const Key('registerCardName'))).controller!.text, 'Tag 2');
       await tester.tap(find.byKey(const Key('ownerUnassigned')));
       await tester.pump();
       await tester.tap(find.byKey(const Key('registerCardSubmit')));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(api.registeredOptions.last['assign_to_business'], isFalse);
       expect(r.assignToBusiness, isFalse);
 
       // Dismissing the sheet goes back to waiting; leaving resumes delivery.
       nfc.onCard!(tap('04AA0003'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       await tester.tapAt(const Offset(10, 10));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(r.phase, RegisterPhase.waiting);
       await tester.pumpWidget(const SizedBox());
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(reader.programming, isFalse);
     });
 

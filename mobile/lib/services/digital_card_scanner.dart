@@ -5,10 +5,15 @@ import 'package:nfc_manager/nfc_manager_android.dart';
 
 import '../core/digital_card_token.dart';
 import '../core/error_catalog.dart';
+import 'guest_tap.dart';
+import 'nfc_service.dart';
 
 class ScanException implements Exception {
-  const ScanException(this.error);
+  const ScanException(this.error, {this.guestTag});
   final MobError error;
+
+  /// For [MobError.notADigitalCard]: the tag's NDEF links (a nexTap card → guest tap flow).
+  final GuestTag? guestTag;
   @override
   String toString() => '${error.ref} ${error.code}';
 }
@@ -55,11 +60,14 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
       final availability = await NfcManager.instance.checkAvailability();
       if (availability == NfcAvailability.unsupported) throw const ScanException(MobError.nfcUnsupported);
       if (availability == NfcAvailability.disabled) throw const ScanException(MobError.nfcDisabled);
+      ReaderModeLease.take();
       await NfcManagerAndroid.instance.enableReaderMode(
+        // NDEF check on: a tapped nexTap card (not a phone) opens its link (guest tap).
         flags: {
           NfcReaderFlagAndroid.nfcA,
           NfcReaderFlagAndroid.nfcB,
-          NfcReaderFlagAndroid.skipNdefCheck,
+          NfcReaderFlagAndroid.nfcF,
+          NfcReaderFlagAndroid.nfcV,
           NfcReaderFlagAndroid.noPlatformSounds,
         },
         onTagDiscovered: (tag) async {
@@ -67,7 +75,7 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
           final token = await probeDigitalCard(tag, timeout: const Duration(milliseconds: 400));
           if (c.isCompleted) return;
           if (token == null) {
-            c.completeError(const ScanException(MobError.notADigitalCard));
+            c.completeError(ScanException(MobError.notADigitalCard, guestTag: guestTagFrom(tag)));
           } else {
             c.complete(token);
           }

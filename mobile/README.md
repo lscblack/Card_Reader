@@ -194,6 +194,34 @@ Token format: see `docs/PART4_CONTRACT.md` §3. Dart (`lib/core/digital_card_tok
 Kotlin (`DigitalCardToken.kt`) are both tested against the contract's vectors. Kotlin tests:
 `cd android && ./gradlew :app:testDebugUnitTest`.
 
+## Tapping a card without signing in (guest tap)
+
+When the phone is **not** a registered terminal (fresh install, setup, signed out, personal-only),
+the welcome and setup screens keep NFC reading on ("Tap a card"). A tapped tag's NDEF message is read:
+
+- a nexTap tap link (`http(s)://<host>/t/{code}`, code 8–16 URL-safe characters) or a digital-card
+  page (`/p/{slug}`, what phones sharing a card expose) on this phone's server (or the build's
+  `API_BASE_URL`) opens straight away in the browser — the server resolves the card's action;
+- the same links on another host show the host and need a tap on **Open**;
+- any other link is shown with an **Open** button (never opened automatically);
+- a tag without a link shows "This card isn't set up yet" and its UID.
+
+In My Card → **Scan a card**, a tag that is not a phone sharing a digital card gets the same handling.
+Registered terminals are unchanged: every tap is an event.
+
+**App closed:** the tag-dispatch alias (`.NfcTagLauncher`) is only enabled on registered terminals
+with background reading on. Otherwise it stays disabled, so Android's own NDEF dispatch opens a
+programmed card's link in the browser (or offers a chooser) without the app.
+
+## Registering cards (business devices)
+
+With the `cards.register` capability, Reader → **Register cards** (also "Register this card" on an
+unknown-card result) starts a continuous flow: tap a card → name (prefilled "Card N" / "Tag N"),
+card/tag, owner (company or unassigned) and an optional note → registered → tap the next one.
+Kind and owner are remembered between taps. Already registered cards show their name instead.
+With `cards.program`, **Also write the tap link to each card** writes the link right after
+registering (only to that same card). Taps are not sent as events while this screen is open.
+
 ## Business devices (Part 2)
 
 When the device config says `account_type: "business"`, the app changes in these ways:

@@ -303,6 +303,9 @@ CATALOG_LIST: list[ErrorDef] = [
        'Create a new code on the web (Share → Sign in on your phone).'),
     _E('image_pick_failed', 'MOB-1026', None, "mobile", 'Photo not available',
        'The photo could not be picked, cropped or read.', 'Allow photo/camera access and try again.'),
+    _E('wrong_card', 'MOB-1027', None, "mobile", 'Different card',
+       'Another card was held to the phone than the one just registered, so its link was not written.',
+       'Hold the card you just registered and try again.'),
 ]
 
 # Lookup by code for API/delivery errors. Mobile entries may reuse a server code name (e.g.

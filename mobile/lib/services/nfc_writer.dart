@@ -8,6 +8,7 @@ import 'package:nfc_manager/nfc_manager_android.dart';
 
 import '../core/error_catalog.dart';
 import '../data/models/card_read.dart';
+import 'nfc_service.dart';
 
 /// Failure while programming a card, with its `MOB-*` catalog entry.
 class NfcWriteException implements Exception {
@@ -108,6 +109,7 @@ class AndroidNfcWriter implements NfcWriter {
     final message = uriMessage(uri);
     try {
       // Own reader session WITHOUT skipNdefCheck (needed to see the Ndef tech).
+      ReaderModeLease.take();
       await NfcManagerAndroid.instance.enableReaderMode(
         flags: {
           NfcReaderFlagAndroid.nfcA,
