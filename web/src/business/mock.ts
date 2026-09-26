@@ -31,8 +31,28 @@ import type {
   Profile,
   Section,
   TapResult,
+  PageTemplate,
+  FormResponse,
+  FormField,
 } from './api/types'
 import { ROLE_PERMISSIONS } from './lib/permissions'
+import { fillPlaceholders } from '@/public/page/format'
+// Same JSON the backend loads (generated together into backend/app/data/page_templates.json).
+import pageTemplatesRaw from './data/page_templates.json?raw'
+
+const SYSTEM_PAGE_TEMPLATES: PageTemplate[] = (JSON.parse(pageTemplatesRaw) as { templates: Omit<PageTemplate, 'scope' | 'business_id' | 'created_at'>[] }).templates.map((t) => ({
+  ...t,
+  scope: 'system',
+  business_id: null,
+  created_at: null,
+}))
+const PAGE_TYPES = ['custom', 'menu', 'product', 'links', 'offer', 'event', 'gallery', 'form', 'wifi'] as const
+
+/** Hook for the shared mock notification feed (set by api/mock/server.ts). */
+let notifyHook: ((n: { type: string; title: string; body: string; link: string | null; severity: 'info' | 'success' | 'warning' | 'error' }) => void) | null = null
+export function setBusinessNotifier(fn: typeof notifyHook) {
+  notifyHook = fn
+}
 
 type Query = Record<string, string | number | boolean | null | undefined> | undefined
 type Body = Record<string, unknown>
@@ -130,9 +150,14 @@ const actionTypes: ActionTypeDef[] = [
   { type: 'email', label: 'Email', description: 'Opens a new email in the customer’s mail app.', fields: [{ name: 'to', type: 'email', required: true, label: 'To' }, { name: 'subject', type: 'string', required: false, label: 'Subject' }, { name: 'body', type: 'text', required: false, label: 'Body' }] },
   { type: 'maps', label: 'Maps / directions', description: 'Opens Google Maps at an address or coordinates.', fields: [{ name: 'query', type: 'string', required: false, label: 'Address or place', one_of: 'location' }, { name: 'lat', type: 'number', required: false, label: 'Latitude', one_of: 'location' }, { name: 'lng', type: 'number', required: false, label: 'Longitude', one_of: 'location' }] },
   { type: 'social', label: 'Social profile', description: 'Redirects to a social network profile.', fields: [{ name: 'platform', type: 'select', required: true, label: 'Platform', options: ['instagram', 'facebook', 'linkedin', 'x', 'tiktok', 'youtube'] }, { name: 'url', type: 'url', required: true, label: 'Profile URL' }] },
-  { type: 'digital_menu', label: 'Digital menu', description: 'Opens your menu page (or an external menu link).', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Menu page', one_of: 'target', profile_types: ['menu'] }, { name: 'url', type: 'url', required: false, label: 'External menu URL', one_of: 'target' }] },
-  { type: 'product_info', label: 'Product info', description: 'Opens a product page (or an external link).', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Product page', one_of: 'target', profile_types: ['product'] }, { name: 'url', type: 'url', required: false, label: 'External product URL', one_of: 'target' }] },
-  { type: 'wifi', label: 'Wi-Fi', description: 'Shows the network name, a copy-password button and a Wi-Fi QR code.', fields: [{ name: 'ssid', type: 'string', required: true, label: 'Network name (SSID)' }, { name: 'password', type: 'string', required: false, label: 'Password' }, { name: 'security', type: 'select', required: true, label: 'Security', options: [{ value: 'WPA', label: 'WPA/WPA2/WPA3' }, { value: 'WEP', label: 'WEP' }, { value: 'nopass', label: 'Open network' }], default: 'WPA' }, { name: 'hidden', type: 'boolean', required: false, label: 'Hidden network' }] },
+  { type: 'digital_menu', label: 'Digital menu', description: 'Opens your menu page (or an external menu link).', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Menu page', one_of: 'target', profile_types: ['menu'], page_type: 'menu' }, { name: 'url', type: 'url', required: false, label: 'External menu URL', one_of: 'target' }] },
+  { type: 'product_info', label: 'Product info', description: 'Opens a product page (or an external link).', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Product page', one_of: 'target', profile_types: ['product'], page_type: 'product' }, { name: 'url', type: 'url', required: false, label: 'External product URL', one_of: 'target' }] },
+  { type: 'links_page', label: 'Links page', description: 'Opens one of your link-in-bio pages.', fields: [{ name: 'profile_id', type: 'profile', required: true, label: 'Links page', profile_types: ['links'], page_type: 'links' }] },
+  { type: 'offer_page', label: 'Offer / coupon', description: 'Opens an offer page with a code to copy (or an external link).', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Offer page', one_of: 'target', profile_types: ['offer'], page_type: 'offer' }, { name: 'url', type: 'url', required: false, label: 'External offer URL', one_of: 'target' }] },
+  { type: 'event_page', label: 'Event', description: 'Opens an event page with “Add to calendar” (or an external link).', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Event page', one_of: 'target', profile_types: ['event'], page_type: 'event' }, { name: 'url', type: 'url', required: false, label: 'External event URL', one_of: 'target' }] },
+  { type: 'feedback_form', label: 'Feedback form', description: 'Opens a form page — ratings and comments land in Form responses.', fields: [{ name: 'profile_id', type: 'profile', required: true, label: 'Form page', profile_types: ['form'], page_type: 'form' }] },
+  { type: 'gallery_page', label: 'Gallery', description: 'Opens a photo gallery page.', fields: [{ name: 'profile_id', type: 'profile', required: true, label: 'Gallery page', profile_types: ['gallery'], page_type: 'gallery' }] },
+  { type: 'wifi', label: 'Wi-Fi', description: 'Shows the network name, a copy-password button and a Wi-Fi QR code — or opens one of your Wi-Fi pages.', fields: [{ name: 'profile_id', type: 'profile', required: false, label: 'Wi-Fi page', one_of: 'net', profile_types: ['wifi'], page_type: 'wifi' }, { name: 'ssid', type: 'string', required: false, one_of: 'net', label: 'Network name (SSID)' }, { name: 'password', type: 'string', required: false, label: 'Password' }, { name: 'security', type: 'select', required: true, label: 'Security', options: [{ value: 'WPA', label: 'WPA/WPA2/WPA3' }, { value: 'WEP', label: 'WEP' }, { value: 'nopass', label: 'Open network' }], default: 'WPA' }, { name: 'hidden', type: 'boolean', required: false, label: 'Hidden network' }] },
   { type: 'developer_webhook', label: 'Developer webhook', description: 'Sends a signed card.tapped event to an application endpoint, then runs a follow-up action.', fields: [{ name: 'application_id', type: 'application', required: true, label: 'Application' }, { name: 'then', type: 'action', required: false, label: 'Then', help: 'What the customer sees afterwards. Default: business profile.' }] },
 ]
 
@@ -165,6 +190,8 @@ interface Db {
   deliveries: Delivery[]
   members: Member[]
   invitations: (Invitation & { token: string })[]
+  pageTemplates: PageTemplate[]
+  responses: FormResponse[]
 }
 
 const dbs: Db[] = []
@@ -195,6 +222,22 @@ type SeedSection = { type: Section['type']; data: Record<string, unknown> }
 const flat = (xs: (SeedSection | Section)[]): Section[] =>
   xs.map((x) => ('data' in x && x.data && typeof x.data === 'object' ? ({ type: x.type, ...(x.data as object) } as Section) : (x as Section)))
 
+/** Like the backend: every section gets a short unique id (forms are addressed by it). */
+function withIds(xs: Section[]): Section[] {
+  const seen = new Set<string>()
+  return xs.map((x) => {
+    let id = x.id && /^[a-z0-9_-]{1,40}$/.test(x.id) && !seen.has(x.id) ? x.id : ''
+    while (!id || seen.has(id)) id = `${x.type.slice(0, 10)}-${hex(3).toLowerCase()}`
+    seen.add(id)
+    return { ...x, id }
+  })
+}
+
+function fromTemplate(b: Business, t: PageTemplate): { theme: Profile['theme']; sections: Section[] } {
+  const f = fillPlaceholders({ theme: t.theme, sections: t.sections }, b)
+  return { theme: { ...f.theme, accent: f.theme.accent || '#b91c1c', ...(f.theme.logo_url || !b.logo_url ? {} : { logo_url: b.logo_url }) }, sections: withIds(f.sections) }
+}
+
 function makeProfile(b: Business, p: Omit<Partial<Profile>, 'sections'> & { type: Profile['type']; slug: string; title: string; sections: (SeedSection | Section)[] }): Profile {
   return {
     id: uuid(),
@@ -205,7 +248,7 @@ function makeProfile(b: Business, p: Omit<Partial<Profile>, 'sections'> & { type
     public_url: p.type === 'business' ? `${WEB_BASE}/b/${b.slug}` : `${WEB_BASE}/b/${b.slug}/${p.slug}`,
     updated_at: ago(rand(20) * DAY + HOUR),
     ...p,
-    sections: flat(p.sections),
+    sections: withIds(flat(p.sections)),
   }
 }
 
@@ -234,7 +277,7 @@ function seedAcme(): Db {
     address: '42 Market Street, San Francisco, CA 94105',
     verified: true,
   })
-  const db: Db = { business, role: 'owner', employees: [], customers: [], cards: [], history: new Map(), taps: [], profiles: [], apps: [], keys: [], devices: [], events: [], deliveries: [], members: [], invitations: [] }
+  const db: Db = { business, role: 'owner', employees: [], customers: [], cards: [], history: new Map(), taps: [], profiles: [], apps: [], keys: [], devices: [], events: [], deliveries: [], members: [], invitations: [], pageTemplates: [], responses: [] }
 
   const people: [string, string, string, string][] = [
     ['John', 'Doe', 'Sales Manager', 'Sales'],
@@ -356,6 +399,36 @@ function seedAcme(): Db {
     ],
   })
   db.profiles = [bizProfile, menu, product, eventProfile]
+  const tpl = (id: string) => SYSTEM_PAGE_TEMPLATES.find((t) => t.id === id)!
+  const fromT = (id: string, type: Profile['type'], slug: string, title: string, published = true) =>
+    makeProfile(business, { type, slug, title, published, ...fromTemplate(business, tpl(id)) })
+  const feedbackPage = fromT('form_feedback', 'form', 'feedback', 'Tell us how we did')
+  db.profiles.push(
+    fromT('menu_bistro_classic', 'menu', 'dinner', 'Dinner menu'),
+    feedbackPage,
+    fromT('offer_coupon', 'offer', 'welcome-offer', 'Welcome offer'),
+    fromT('links_hub', 'links', 'links', 'Find us online'),
+    fromT('event_invite', 'event', 'winter-evening', 'Winter menu launch', false),
+    fromT('wifi_guest', 'wifi', 'wifi', 'Guest Wi-Fi'),
+  )
+  db.pageTemplates = [
+    { ...tpl('menu_cafe_chalkboard'), id: `b_${hex(8).toLowerCase()}`, scope: 'business', business_id: business.id, name: 'Branch menu (Market St)', description: 'Our chalkboard menu with house prices — reuse it for every branch.', category: 'Mine', created_at: ago(6 * DAY) },
+  ]
+  {
+    const fid = feedbackPage.sections.find((x) => x.type === 'form')!.id!
+    const comments = ['Lovely flat white and friendly staff!', 'A bit slow at lunch time.', '', 'Best croissant in town.', 'Music was a little loud.', '', 'Great place to work for an hour.', 'The oat latte was perfect.']
+    for (let i = 0; i < 23; i++) {
+      const overall = [5, 5, 4, 5, 3, 4, 5, 2, 4, 5][i % 10]
+      db.responses.push({
+        id: uuid(),
+        profile_id: feedbackPage.id,
+        section_id: fid,
+        answers: { overall, ...(i % 3 ? { service: Math.max(1, overall - (i % 2)) } : {}), ...(i % 4 !== 1 ? { quality: overall } : {}), ...(comments[i % comments.length] ? { comments: comments[i % comments.length] } : {}), ...(i % 5 === 0 ? { email: `guest${i}@example.com`, consent: true } : {}) },
+        card_id: i % 2 ? null : (db.cards.find((c) => c.kind === 'tag')?.id ?? null),
+        created_at: ago(i * 9 * HOUR + rand(5) * HOUR),
+      })
+    }
+  }
   for (const e of db.employees) {
     db.profiles.push(
       makeProfile(business, {
@@ -567,7 +640,7 @@ function seedNorthwind(): Db {
     settings: { devices_can_register_cards: false, default_card_action: null, timezone: 'Europe/London' },
     created_at: ago(9 * DAY),
   })
-  const db: Db = { business, role: 'manager', employees: [], customers: [], cards: [], history: new Map(), taps: [], profiles: [], apps: [], keys: [], devices: [], events: [], deliveries: [], members: [], invitations: [] }
+  const db: Db = { business, role: 'manager', employees: [], customers: [], cards: [], history: new Map(), taps: [], profiles: [], apps: [], keys: [], devices: [], events: [], deliveries: [], members: [], invitations: [], pageTemplates: [], responses: [] }
   db.profiles = [
     makeProfile(business, {
       type: 'business',
@@ -781,6 +854,15 @@ function analytics(db: Db, q: Query): Analytics {
     by_device_type: countBy(cur, (t) => t.device_type).map(([device_type, taps]) => ({ device_type: device_type as DeviceType, taps })),
     by_country: countBy(cur, (t) => t.country).map(([country, taps]) => ({ country, taps })),
     by_hour: Array.from({ length: 24 }, (_, hour) => ({ hour, taps: cur.filter((t) => new Date(t.created_at).getHours() === hour).length })),
+    feedback: (() => {
+      const rs = db.responses.filter((r) => new Date(r.created_at).getTime() >= from)
+      const ratings = rs.flatMap((r) => {
+        const form = db.profiles.find((p) => p.id === r.profile_id)?.sections.find((x) => x.id === r.section_id) as { fields?: FormField[] } | undefined
+        const vals = (form?.fields ?? []).filter((f) => f.type === 'rating').map((f) => r.answers[f.id]).filter((v): v is number => typeof v === 'number')
+        return vals.length ? [vals.reduce((a, x) => a + x, 0) / vals.length] : []
+      })
+      return { responses: rs.length, avg_rating: ratings.length ? Math.round((ratings.reduce((a, x) => a + x, 0) / ratings.length) * 100) / 100 : null }
+    })(),
     last_activity: cur[0] ?? null,
   }
 }
@@ -829,7 +911,12 @@ function preview(db: Db, action: Action, cardId?: string): { resolved_url: strin
     }
     case 'profile':
     case 'digital_menu':
-    case 'product_info': {
+    case 'product_info':
+    case 'links_page':
+    case 'offer_page':
+    case 'event_page':
+    case 'feedback_form':
+    case 'gallery_page': {
       const p = prof(c.profile_id)
       return { resolved_url: p?.public_url ?? (str(c.url) || null), kind: 'redirect' }
     }
@@ -846,6 +933,7 @@ function preview(db: Db, action: Action, cardId?: string): { resolved_url: strin
     case 'maps':
       return { resolved_url: c.query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(str(c.query))}` : `https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}`, kind: 'redirect' }
     case 'wifi':
+      if (prof(c.profile_id)) return { resolved_url: prof(c.profile_id)!.public_url, kind: 'redirect' }
       return { resolved_url: card ? `${WEB_BASE}/w/${card.public_code}` : `${WEB_BASE}/w/PREVIEW`, kind: 'page' }
     case 'developer_webhook':
       return { resolved_url: c.then ? preview(db, c.then as Action, cardId).resolved_url : `${WEB_BASE}/b/${b.slug}`, kind: 'webhook' }
@@ -869,8 +957,45 @@ function unavailable(reason: string): RawResponse {
   return fail(404, 'profile_unavailable', 'This page is not available.', { reason })
 }
 
-function handlePublic(seg: string[]): RawResponse | null {
+function validateAnswers(fields: FormField[], answers: Record<string, unknown>): { clean: Record<string, unknown>; errors: { field: string; message: string }[] } {
+  const errors: { field: string; message: string }[] = []
+  const clean: Record<string, unknown> = {}
+  for (const k of Object.keys(answers)) if (!fields.some((f) => f.id === k)) errors.push({ field: `body.answers.${k}`, message: 'unknown field' })
+  for (const f of fields) {
+    const v = answers[f.id]
+    const empty = v == null || (typeof v === 'string' && !v.trim()) || (f.type === 'checkbox' && v === false)
+    const where = `body.answers.${f.id}`
+    if (empty) {
+      if (f.required) errors.push({ field: where, message: `${f.label} is required` })
+      continue
+    }
+    if (f.type === 'rating' && !(Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5)) errors.push({ field: where, message: 'a whole number 1-5' })
+    else if (f.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v))) errors.push({ field: where, message: 'invalid email address' })
+    else if (f.type === 'phone' && !/^\+?[0-9][0-9 ()\-.]{4,24}$/.test(String(v))) errors.push({ field: where, message: 'invalid phone number' })
+    else if (f.type === 'select' && !(f.options ?? []).includes(String(v))) errors.push({ field: where, message: 'not one of the options' })
+    else clean[f.id] = typeof v === 'string' ? v.trim() : v
+  }
+  return { clean, errors }
+}
+
+function handlePublic(seg: string[], method = 'GET', body: Body = {}): RawResponse | null {
   if (seg[0] !== 'public') return null
+  if (method === 'POST' && seg[1] === 'b' && seg[4] === 'forms' && seg[5]) {
+    const db = dbs.find((d) => d.business.slug === seg[2])
+    const profile = db?.profiles.find((p) => p.slug === seg[3] && p.published)
+    if (!db || !profile) return unavailable('not_found')
+    const form = profile.sections.find((x) => x.id === seg[5] && x.type === 'form') as (Section & { type: 'form' }) | undefined
+    if (!form) return fail(404, 'not_found', 'Form not found')
+    const recent = db.responses.filter((r) => r.profile_id === profile.id && Date.now() - new Date(r.created_at).getTime() < 10 * MIN && (r as { _mine?: boolean })._mine).length
+    if (recent >= 5) return fail(429, 'rate_limited', 'Too many submissions — try again in a few minutes.')
+    if (typeof body.website === 'string' && body.website.trim()) return ok({ ok: true }, 201)
+    const { clean, errors } = validateAnswers(form.fields ?? [], (body.answers as Record<string, unknown>) ?? {})
+    if (errors.length) return fail(422, 'validation_error', 'Validation failed', errors)
+    const r: FormResponse & { _mine?: boolean } = { id: uuid(), profile_id: profile.id, section_id: form.id!, answers: clean, card_id: null, created_at: now(), _mine: true }
+    db.responses.unshift(r)
+    notifyHook?.({ type: 'form.response', title: `New response: ${profile.title}`, body: form.title, link: `/business/${db.business.id}/responses?profile_id=${profile.id}`, severity: 'info' })
+    return ok({ id: r.id }, 201)
+  }
   if (seg[1] === 'b' && seg[2]) {
     const db = dbs.find((d) => d.business.slug === seg[2])
     if (!db) return unavailable('not_found')
@@ -938,7 +1063,8 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
   if (is('GET', '/meta/business-categories')) return ok(categories)
   if (is('GET', '/actions/types')) return ok(actionTypes)
   if (is('GET', '/billing/plans')) return ok(q?.audience === 'business' ? bizPlans : q?.audience === 'developer' ? devPlans : [...devPlans, ...bizPlans])
-  const pub = handlePublic(seg)
+  if (is('GET', '/page-templates')) return ok(SYSTEM_PAGE_TEMPLATES.filter((t) => !q?.page_type || t.page_type === q.page_type))
+  const pub = handlePublic(seg, method, body)
   if (pub) return pub
   if (is('GET', '/invitations/:token')) {
     for (const db of dbs) {
@@ -1296,14 +1422,62 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
 
   // ---- profiles ----
   if (at('GET', '/profiles')) return ok(paginate(db.profiles.filter((p) => !q?.type || p.type === q.type), q, 100))
+  // ---- page templates (Part 6 §2) ----
+  if (at('GET', '/page-templates')) return ok([...SYSTEM_PAGE_TEMPLATES, ...db.pageTemplates].filter((t) => !q?.page_type || t.page_type === q.page_type))
+  if (seg[2] === 'page-templates' && seg[3]) {
+    const t = db.pageTemplates.find((x) => x.id === seg[3])
+    if (!t) return SYSTEM_PAGE_TEMPLATES.some((x) => x.id === seg[3]) ? fail(403, 'forbidden', 'System templates can’t be changed.') : fail(404, 'not_found', 'Template not found')
+    const denied = need(db, 'profiles.manage')
+    if (denied) return denied
+    if (at('PATCH', '/page-templates/:tid')) {
+      if (typeof body.name === 'string') {
+        if (!body.name.trim()) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.name', message: 'Name is required' }])
+        t.name = body.name.trim().slice(0, 80)
+      }
+      if (typeof body.description === 'string') t.description = body.description.slice(0, 300)
+      return ok(t)
+    }
+    if (at('DELETE', '/page-templates/:tid')) {
+      db.pageTemplates.splice(db.pageTemplates.indexOf(t), 1)
+      return ok(null, 204)
+    }
+  }
+  // ---- form responses (Part 6 §4) ----
+  if (at('GET', '/form-responses/export.csv')) {
+    const rows = db.responses.filter((r) => !q?.profile_id || r.profile_id === q.profile_id)
+    const keys = [...new Set(rows.flatMap((r) => Object.keys(r.answers)))]
+    const cell = (v: unknown) => {
+      let t = v == null ? '' : typeof v === 'boolean' ? (v ? 'yes' : 'no') : String(v)
+      if (/^[=+\-@\t\r]/.test(t)) t = "'" + t
+      return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+    }
+    const lines = [['created_at', 'page', ...keys].join(','), ...rows.map((r) => [r.created_at, db.profiles.find((p) => p.id === r.profile_id)?.title ?? '', ...keys.map((k) => r.answers[k])].map(cell).join(','))]
+    return { status: 200, headers: new Headers({ 'Content-Type': 'text/csv' }), body: lines.join('\r\n') + '\r\n' }
+  }
+  if (at('GET', '/form-responses')) {
+    const list = db.responses.filter((r) => !q?.profile_id || r.profile_id === q.profile_id).map((r) => ({ ...r, profile_title: db.profiles.find((p) => p.id === r.profile_id)?.title ?? null, _mine: undefined }))
+    return ok(paginate(list, q, 25))
+  }
+  if (at('DELETE', '/form-responses/:rid')) {
+    const i = db.responses.findIndex((r) => r.id === seg[3])
+    if (i < 0) return fail(404, 'not_found', 'Response not found')
+    db.responses.splice(i, 1)
+    return ok(null, 204)
+  }
   if (at('POST', '/profiles')) {
     const type = (body.type as Profile['type']) ?? 'custom'
-    if (type === 'business' || type === 'employee') return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.type', message: 'Only custom, menu and product profiles can be created' }])
+    if (!(PAGE_TYPES as readonly string[]).includes(type)) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.type', message: `one of: ${PAGE_TYPES.join(', ')}` }])
+    let fromTpl: { theme: Profile['theme']; sections: Section[] } | null = null
+    if (typeof body.template_id === 'string') {
+      const t = [...SYSTEM_PAGE_TEMPLATES, ...db.pageTemplates].find((x) => x.id === body.template_id)
+      if (!t) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.template_id', message: 'Unknown template' }])
+      fromTpl = fromTemplate(b, t)
+    }
     const title = str(body.title).trim()
     if (!title) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.title', message: 'Field required' }])
     const slug = str(body.slug).trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     if (db.profiles.some((p) => p.slug === slug)) return fail(409, 'slug_taken', 'Another page already uses this URL.', { field: 'slug' })
-    const p = makeProfile(b, { type, slug, title, published: false, updated_at: now(), sections: (body.sections as Section[]) ?? [], theme: (body.theme as Profile['theme']) ?? { accent: '#b91c1c' } })
+    const p = makeProfile(b, { type, slug, title, published: body.published === true, updated_at: now(), sections: fromTpl?.sections ?? (body.sections as Section[]) ?? [], theme: fromTpl?.theme ?? (body.theme as Profile['theme']) ?? { accent: '#b91c1c' } })
     db.profiles.push(p)
     return ok(p, 201)
   }
@@ -1311,6 +1485,28 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
     const p = db.profiles.find((x) => x.id === seg[3])
     if (!p) return fail(404, 'not_found', 'Profile not found')
     if (at('GET', '/profiles/:pid')) return ok(p)
+    if (at('POST', '/profiles/:pid/duplicate')) {
+      if (p.type === 'business' || p.type === 'employee') return fail(422, 'validation_error', 'Validation failed', [{ field: 'path.profile_id', message: 'Business and employee profiles can’t be duplicated' }])
+      const title = (typeof body.title === 'string' && body.title.trim()) || `${p.title} (copy)`
+      let slug = typeof body.slug === 'string' && body.slug ? body.slug : `${p.slug}-copy`
+      if (db.profiles.some((x) => x.slug === slug)) {
+        if (typeof body.slug === 'string' && body.slug) return fail(409, 'slug_taken', 'Another page already uses this URL.', { field: 'slug' })
+        let n = 2
+        while (db.profiles.some((x) => x.slug === `${slug}-${n}`)) n++
+        slug = `${slug}-${n}`
+      }
+      const copy = makeProfile(b, { type: p.type, slug, title, published: false, updated_at: now(), theme: structuredClone(p.theme), sections: structuredClone(p.sections) })
+      db.profiles.push(copy)
+      return ok(copy, 201)
+    }
+    if (at('POST', '/profiles/:pid/save-as-template')) {
+      const name = str(body.name).trim()
+      if (!name) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.name', message: 'Name is required' }])
+      if (db.pageTemplates.length >= 50) return fail(402, 'plan_limit_reached', 'You can keep up to 50 templates. Delete one first.', { limit: 'page_templates' })
+      const t: PageTemplate = { id: `b_${hex(8).toLowerCase()}`, scope: 'business', business_id: b.id, page_type: p.type === 'business' || p.type === 'employee' ? 'custom' : p.type, name: name.slice(0, 80), description: str(body.description).slice(0, 300), category: 'Mine', preview_image_url: null, theme: structuredClone(p.theme), sections: structuredClone(p.sections), created_at: now() }
+      db.pageTemplates.unshift(t)
+      return ok(t, 201)
+    }
     if (at('PATCH', '/profiles/:pid')) {
       if (typeof body.slug === 'string' && body.slug !== p.slug) {
         if (p.type === 'business') return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.slug', message: 'The business profile uses the business URL — change it in Business Settings' }])
@@ -1321,7 +1517,7 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
       }
       if (typeof body.title === 'string') p.title = body.title
       if (body.theme) p.theme = body.theme as Profile['theme']
-      if (Array.isArray(body.sections)) p.sections = flat(body.sections as Section[])
+      if (Array.isArray(body.sections)) p.sections = withIds(flat(body.sections as Section[]))
       p.updated_at = now()
       return ok(p)
     }

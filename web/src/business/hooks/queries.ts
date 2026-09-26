@@ -2,11 +2,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { businessApi, metaBizApi } from '../api/business'
 import { actionsApi, cardsApi } from '../api/cards'
 import { customersApi, employeesApi } from '../api/people'
-import { profilesApi } from '../api/profiles'
+import { formResponsesApi, pageTemplatesApi, profilesApi } from '../api/profiles'
 import { analyticsApi, tapsApi } from '../api/insights'
 import { bizAppsApi, bizDevicesApi } from '../api/integrations'
 import { teamApi } from '../api/team'
-import type { AnalyticsRange, ApiUsageRange, CardFilters, PeopleFilters, TapFilters } from '../api/types'
+import type { AnalyticsRange, ApiUsageRange, CardFilters, PeopleFilters, ProfileType, TapFilters } from '../api/types'
 import { toList } from '../lib/format'
 
 export const bk = {
@@ -80,6 +80,13 @@ export const useProfiles = (bid: string, enabled = true) =>
 
 export const useProfile = (bid: string, id: string | undefined) =>
   useQuery({ queryKey: k(bid, 'profile', id), queryFn: () => profilesApi.get(bid, id!), enabled: !!id })
+
+/** Part 6 — system + business page templates (optionally for one page type). */
+export const usePageTemplates = (bid: string, pageType?: ProfileType, enabled = true) =>
+  useQuery({ queryKey: k(bid, 'page-templates', pageType ?? 'all'), queryFn: async () => toList(await pageTemplatesApi.list(bid, pageType)), enabled, staleTime: 60_000 })
+
+export const useFormResponses = (bid: string, q: { profile_id?: string; page?: number; page_size?: number }, enabled = true) =>
+  useQuery({ queryKey: k(bid, 'form-responses', q), queryFn: () => formResponsesApi.list(bid, q), placeholderData: keepPreviousData, enabled })
 
 // ---------- Taps & analytics ----------
 

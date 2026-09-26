@@ -29,7 +29,7 @@ import { SearchInput } from '../components/bits'
 
 type Filter = 'all' | ProfileType
 
-const TYPE_LABEL: Record<ProfileType, string> = { business: 'Business', employee: 'Employee', custom: 'Custom', menu: 'Menu', product: 'Product' }
+const TYPE_LABEL: Record<ProfileType, string> = { business: 'Business', employee: 'Employee', custom: 'Custom', menu: 'Menu', product: 'Product', links: 'Links', offer: 'Offer', event: 'Event', gallery: 'Gallery', form: 'Form', wifi: 'Wi-Fi' }
 
 const STARTER: Record<'custom' | 'menu' | 'product', Section[]> = {
   custom: [{ type: 'text', markdown: 'Tell your visitors what this page is about.' }],
@@ -132,7 +132,7 @@ export default function ProfilesPage() {
     for (const p of data ?? []) c[p.type] = (c[p.type] ?? 0) + 1
     return c
   }, [data])
-  const order: Record<ProfileType, number> = { business: 0, menu: 1, product: 2, custom: 3, employee: 4 }
+  const order: Record<ProfileType, number> = { business: 0, menu: 1, product: 2, links: 3, offer: 4, event: 5, form: 6, gallery: 7, wifi: 8, custom: 9, employee: 10 }
   const list = (data ?? [])
     .filter((p) => (filter === 'all' || p.type === filter) && (!q || p.title.toLowerCase().includes(q.toLowerCase()) || p.slug.includes(q.toLowerCase())))
     .sort((a, b) => order[a.type] - order[b.type] || a.title.localeCompare(b.title))

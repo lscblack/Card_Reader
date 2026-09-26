@@ -5,6 +5,7 @@ import {
   Contact,
   CreditCard,
   FileText,
+  Inbox,
   LayoutDashboard,
   Nfc,
   Plug,
@@ -39,7 +40,8 @@ const SECTIONS: { title?: string; items: Item[] }[] = [
   {
     title: 'Experience',
     items: [
-      { path: 'profiles', label: 'Profiles', icon: FileText },
+      { path: 'profiles', label: 'Pages', icon: FileText },
+      { path: 'responses', label: 'Form responses', icon: Inbox },
       { path: 'actions', label: 'Actions', icon: Zap },
       { path: 'analytics', label: 'Analytics', icon: BarChart3, perm: 'analytics.view' },
     ],

@@ -201,15 +201,15 @@ async def submit_form(business_slug: str, profile_slug: str, section_id: str, bo
     form = pages.find_section(profile, section_id, "form")
     if form is None:
         raise AppError(404, "form_not_found", "This form doesn't exist on the page")
-    limit = await hit(f"form:{client_ip(request)}:{profile.id}", 5, 600)
-    if limit is not None and not limit.allowed:
-        raise AppError(429, "rate_limited", "Too many submissions, try again later", {"retry_after": limit.retry_after},
-                       headers={"Retry-After": str(limit.retry_after)})
-    if body.website:
-        return {"status": "received", "message": form.get("success_message")}
     answers, rating = pages.validate_answers(form, body.answers)
     if not answers:
         raise AppError(422, "validation_error", "The form is empty", [{"field": "body.answers", "message": "empty"}])
+    limit = await hit(f"form:{client_ip(request)}:{profile.id}", 5, 600)  # counts accepted submissions only
+    if limit is not None and not limit.allowed:
+        raise AppError(429, "rate_limited", "Too many submissions, try again later", {"retry_after": limit.retry_after},
+                       headers={"Retry-After": str(limit.retry_after)})
+    if body.website:  # honeypot: pretend success, store nothing
+        return {"status": "received", "message": form.get("success_message")}
     card_id = None
     if body.card:
         card_id = (await session.execute(select(Card.id).where(

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/api/client'
 import { publicApi } from './api'
 import { ProfileView } from './ProfileView'
+import { PageView } from './page/PageView'
 import { PublicSkeleton, Unavailable } from './Unavailable'
 import { UNAVAILABLE_REASONS } from './reasons'
 
@@ -32,6 +33,8 @@ export default function PublicProfilePage() {
   }
   if (!data) return <Unavailable />
   const category = categories.data?.find((c) => c.code === data.business.category)?.label ?? null
+  if (data.profile.type !== 'business' && data.profile.type !== 'employee')
+    return <PageView business={{ ...data.business, category }} profile={data.profile} profileSlug={data.profile.slug} />
   return (
     <main className="min-h-screen bg-bg">
       <ProfileView business={{ ...data.business, category }} profile={data.profile} employee={data.employee ?? null} vcardUrl={data.vcard_url} />

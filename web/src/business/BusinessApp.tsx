@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useParams } from "react-router";
 import { Spinner } from "@/components/ui/Spinner";
 import { RequireArea } from "@/auth/guards";
 import { BusinessLayout } from "./layout/BusinessLayout";
@@ -16,6 +16,7 @@ const DevicesPage = lazy(() => import("./pages/DevicesPage"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
 const ProfilesPage = lazy(() => import("./pages/ProfilesPage"));
 const ProfileEditorPage = lazy(() => import("./pages/ProfileEditorPage"));
+const FormResponsesPage = lazy(() => import("./pages/FormResponsesPage"));
 const ActionsPage = lazy(() => import("./pages/ActionsPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage"));
@@ -71,6 +72,9 @@ export default function BusinessApp() {
             path="profiles/:profileId"
             element={page(<ProfileEditorPage />)}
           />
+          <Route path="pages" element={<Navigate to="../profiles" replace />} />
+          <Route path="pages/:profileId" element={<PagesRedirect />} />
+          <Route path="responses" element={page(<FormResponsesPage />)} />
           <Route path="actions" element={page(<ActionsPage />)} />
           <Route path="analytics" element={page(<AnalyticsPage />)} />
           <Route path="integrations" element={page(<IntegrationsPage />)} />
@@ -87,4 +91,10 @@ export default function BusinessApp() {
       </Routes>
     </RequireArea>
   );
+}
+
+/** Part 6: "Pages" is the UI name; the routes keep /profiles. */
+function PagesRedirect() {
+  const { profileId } = useParams();
+  return <Navigate to={`../profiles/${profileId ?? ""}`} replace />;
 }

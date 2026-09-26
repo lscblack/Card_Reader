@@ -383,7 +383,7 @@ def substitute(value: Any, values: dict[str, str]) -> Any:
         out = {k: substitute(v, values) for k, v in value.items()}
         if isinstance(out.get("cta"), dict) and not out["cta"].get("url"):
             out.pop("cta")
-        for key in ("url", "website", "email", "phone", "address"):
+        for key in ("website", "email", "phone", "address"):  # (list items with an empty url are dropped above)
             if out.get(key) == "" and isinstance(value.get(key), str) and PLACEHOLDER_RE.search(value[key]):
                 out.pop(key)
         return out
@@ -526,7 +526,7 @@ def csv_cell(value: Any) -> str:
 # ── .ics ─────────────────────────────────────────────────────────────────────
 def _as_utc(value: str) -> datetime:
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 def _ics_text(value: str | None) -> str:

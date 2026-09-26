@@ -58,7 +58,7 @@ export interface ModalProps {
   description?: ReactNode
   children?: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** When false, Escape / backdrop clicks do nothing (e.g. while showing a one-time secret). */
   dismissible?: boolean
 }
@@ -82,6 +82,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
           size === 'sm' && 'sm:max-w-md',
           size === 'md' && 'sm:max-w-lg',
           size === 'lg' && 'sm:max-w-2xl',
+          size === 'xl' && 'sm:max-w-5xl',
         )}
       >
         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">

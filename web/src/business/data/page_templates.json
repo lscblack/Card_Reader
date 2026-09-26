@@ -1213,7 +1213,7 @@
       {
        "title": "Everyday tote",
        "description": "Heavy canvas, inside pocket, fits a 15\" laptop.",
-       "price": 35,
+       "price": "$35",
        "badge": "Best seller",
        "in_stock": true,
        "cta": {
@@ -1224,8 +1224,8 @@
       {
        "title": "Ceramic mug",
        "description": "Hand-glazed stoneware, 350 ml.",
-       "price": 18,
-       "compare_at_price": 24,
+       "price": "$18",
+       "compare_at_price": "$24",
        "badge": "Sale",
        "in_stock": true,
        "cta": {
@@ -1236,7 +1236,7 @@
       {
        "title": "Linen notebook",
        "description": "A5, 160 dotted pages, lay-flat binding.",
-       "price": 16,
+       "price": "$16",
        "in_stock": true,
        "cta": {
         "label": "Buy now",
@@ -1246,7 +1246,7 @@
       {
        "title": "Scented candle",
        "description": "Cedar & fig, 40-hour burn.",
-       "price": 28,
+       "price": "$28",
        "badge": "New",
        "in_stock": true,
        "cta": {
@@ -1257,13 +1257,13 @@
       {
        "title": "Wool throw",
        "description": "Soft merino blend, 130 × 170 cm.",
-       "price": 89,
+       "price": "$89",
        "in_stock": false
       },
       {
        "title": "Gift card",
        "description": "Any amount, delivered by email.",
-       "price": 25,
+       "price": "$25",
        "in_stock": true,
        "cta": {
         "label": "Send a gift",
@@ -1307,8 +1307,8 @@
       {
        "title": "House Blend coffee beans",
        "description": "A smooth, chocolatey medium roast from small farms in the highlands. Roasted every Tuesday and shipped within 48 hours.",
-       "price": 16,
-       "compare_at_price": 19,
+       "price": "$16",
+       "compare_at_price": "$19",
        "badge": "Freshly roasted",
        "in_stock": true,
        "cta": {
@@ -1326,6 +1326,7 @@
     {
      "id": "brew",
      "type": "services",
+     "title": "How to brew",
      "items": [
       {
        "title": "Espresso",
@@ -1377,35 +1378,36 @@
     {
      "id": "hair",
      "type": "services",
+     "title": "Price list",
      "items": [
       {
        "title": "Haircut & style",
        "description": "Consultation, wash, cut and finish.",
-       "price": 35,
+       "price": "$35",
        "duration": "45 min"
       },
       {
        "title": "Beard trim",
        "description": "Shape, line-up and hot towel.",
-       "price": 15,
+       "price": "$15",
        "duration": "20 min"
       },
       {
        "title": "Colour",
        "description": "Full colour or root touch-up.",
-       "price": 60,
+       "price": "$60",
        "duration": "90 min"
       },
       {
        "title": "Blow-dry",
        "description": "Wash and bouncy blow-dry.",
-       "price": 25,
+       "price": "$25",
        "duration": "30 min"
       },
       {
        "title": "Treatment",
        "description": "Deep-conditioning mask.",
-       "price": 20,
+       "price": "$20",
        "duration": "20 min"
       }
      ]
@@ -1675,7 +1677,7 @@
      "discount_label": "UP TO 50% OFF",
      "description": "48 hours only. Everything marked in store — online too with the code below.",
      "code": "FLASH50",
-     "valid_until": "2026-11-30T23:59:00Z",
+     "valid_until": "2026-11-30T23:59:00",
      "terms": "While stocks last. Discount applied at checkout.",
      "cta": {
       "label": "Shop the sale",
@@ -1688,29 +1690,29 @@
      "items": [
       {
        "title": "Wireless earbuds",
-       "price": 39,
-       "compare_at_price": 79,
+       "price": "$39",
+       "compare_at_price": "$79",
        "badge": "-50%",
        "in_stock": true
       },
       {
        "title": "Smart watch",
-       "price": 99,
-       "compare_at_price": 149,
+       "price": "$99",
+       "compare_at_price": "$149",
        "badge": "-33%",
        "in_stock": true
       },
       {
        "title": "Bluetooth speaker",
-       "price": 45,
-       "compare_at_price": 65,
+       "price": "$45",
+       "compare_at_price": "$65",
        "badge": "-30%",
        "in_stock": true
       },
       {
        "title": "Phone case",
-       "price": 9,
-       "compare_at_price": 15,
+       "price": "$9",
+       "compare_at_price": "$15",
        "badge": "-40%",
        "in_stock": false
       }
@@ -1740,8 +1742,8 @@
      "id": "event",
      "type": "event",
      "title": "An evening at {{business.name}}",
-     "starts_at": "2026-11-14T18:30:00Z",
-     "ends_at": "2026-11-14T22:00:00Z",
+     "starts_at": "2026-11-14T18:30:00",
+     "ends_at": "2026-11-14T22:00:00",
      "venue": "{{business.name}}",
      "address": "{{business.address}}",
      "map_query": "{{business.address}}",
@@ -1826,8 +1828,8 @@
      "id": "event",
      "type": "event",
      "title": "Hands-on workshop: Latte art basics",
-     "starts_at": "2026-11-21T09:30:00Z",
-     "ends_at": "2026-11-21T12:30:00Z",
+     "starts_at": "2026-11-21T09:30:00",
+     "ends_at": "2026-11-21T12:30:00",
      "venue": "{{business.name}}",
      "address": "{{business.address}}",
      "map_query": "{{business.address}}",
@@ -1836,6 +1838,7 @@
     {
      "id": "agenda",
      "type": "services",
+     "title": "Agenda",
      "items": [
       {
        "title": "Espresso fundamentals",
@@ -1977,6 +1980,7 @@
     {
      "id": "services",
      "type": "services",
+     "title": "Services",
      "items": [
       {
        "title": "Portrait session",

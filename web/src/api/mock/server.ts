@@ -45,7 +45,7 @@ import type {
   SignatureStatus,
 } from '../types'
 import { endpointOutsideAllowlist, parseAllowedDomain } from '@/lib/url'
-import { handleBusinessMock } from '@/business/mock'
+import { handleBusinessMock, setBusinessNotifier } from '@/business/mock'
 import { handlePersonalMock } from '@/personal/mock'
 import { mockErrorCatalog } from '@/docs/data/mockErrorCatalog'
 import { mockActivePromotions, mockAppRelease, mockPlans, mockPromotions, mockPublicPlans } from '@/marketing/mockPricing'
@@ -1123,6 +1123,7 @@ const notifications: AppNotification[] = [
 function notify(n: Omit<AppNotification, 'id' | 'read_at' | 'created_at'>) {
   notifications.unshift({ ...n, id: uuid(), read_at: null, created_at: now() })
 }
+setBusinessNotifier((n) => notify(n as Omit<AppNotification, 'id' | 'read_at' | 'created_at'>))
 
 // ---- app releases ----
 const releases: AppRelease[] = [

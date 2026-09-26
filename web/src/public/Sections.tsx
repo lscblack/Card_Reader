@@ -261,9 +261,9 @@ export function SectionView({ section, accent, businessSlug }: { section: Sectio
                       <span className="shrink-0 text-[15px] font-semibold tabular-nums">{it.price}</span>
                     </div>
                     {it.description && <p className="mt-0.5 text-sm text-muted">{it.description}</p>}
-                    {it.tags?.length > 0 && (
+                    {(it.tags?.length ?? 0) > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
-                        {it.tags.map((t) => (
+                        {it.tags!.map((t) => (
                           <span key={t} className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-muted ring-1 ring-border">
                             {t}
                           </span>

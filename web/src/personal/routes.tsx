@@ -11,6 +11,7 @@ import { FullPageSpinner } from '@/components/ui/Spinner'
 const PersonalApp = lazy(() => import('@/personal/PersonalApp'))
 const PublicCardPage = lazy(() => import('@/public/PublicCardPage'))
 const DevTemplatesPage = import.meta.env.DEV ? lazy(() => import('@/personal/pages/DevTemplatesPage')) : null
+const DevPageTemplates = import.meta.env.DEV ? lazy(() => import('@/public/page/DevPageTemplates')) : null
 
 const s = (el: ReactNode) => <Suspense fallback={<FullPageSpinner />}>{el}</Suspense>
 
@@ -20,6 +21,7 @@ export function personalRoutes() {
       <Route path="/me/*" element={s(<RequireAuth><PersonalApp /></RequireAuth>)} />
       <Route path="/p/:slug" element={s(<PublicCardPage />)} />
       {DevTemplatesPage && <Route path="/dev/card-templates" element={s(<DevTemplatesPage />)} />}
+      {DevPageTemplates && <Route path="/dev/page-templates" element={s(<DevPageTemplates />)} />}
     </>
   )
 }
