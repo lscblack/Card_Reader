@@ -37,13 +37,66 @@ class GuestTapConfig {
   final Iterable<String?> Function() knownServers;
 }
 
-/// Keeps guest reading on while at least one [GuestTapScope] is mounted; taps go to the topmost
-/// scope whose route is visible. Paused with the app.
+/// Screens that own NFC for a specific purpose (Register cards, Program card, personal Scan,
+/// pairing/QR, sharing by HCE) claim it: guest reading pauses while any claim is held.
+class NfcClaims {
+  NfcClaims._();
+  static final count = ValueNotifier<int>(0);
+}
+
+/// Holds an [NfcClaims] claim while mounted and [active].
+class NfcClaim extends StatefulWidget {
+  const NfcClaim({super.key, this.active = true, required this.child});
+  final bool active;
+  final Widget child;
+
+  @override
+  State<NfcClaim> createState() => _NfcClaimState();
+}
+
+class _NfcClaimState extends State<NfcClaim> {
+  bool _held = false;
+
+  void _sync() {
+    if (widget.active == _held) return;
+    _held = widget.active;
+    // Not during build: listeners (the hub) may start/stop reader mode.
+    final delta = _held ? 1 : -1;
+    scheduleMicrotask(() => NfcClaims.count.value += delta);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant NfcClaim old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    if (_held) scheduleMicrotask(() => NfcClaims.count.value -= 1);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Keeps guest reading on while an enabled [GuestTapScope] is mounted, no screen claims NFC and the
+/// app is in the foreground. Taps go to the most recently mounted enabled scope (the sheet opens
+/// over whatever screen is showing).
 class _GuestTapHub with WidgetsBindingObserver {
   _GuestTapHub(this.reader);
   final GuestTapReader reader;
   final _scopes = <_GuestTapScopeState>[];
   bool _running = false;
+  bool _foreground = true;
+  Future<void> _chain = Future.value();
 
   /// Reading is actually on (drives the "Tap a card" ripple).
   final active = ValueNotifier<bool>(false);
@@ -51,40 +104,45 @@ class _GuestTapHub with WidgetsBindingObserver {
 
   static _GuestTapHub of(GuestTapReader r) => _hubs[r] ??= _GuestTapHub(r);
 
+  bool get _wanted => _foreground && NfcClaims.count.value == 0 && _scopes.any((s) => s.enabled);
+
   void add(_GuestTapScopeState s) {
     _scopes.add(s);
     if (_scopes.length == 1) {
       WidgetsBinding.instance.addObserver(this);
-      unawaited(_start());
+      NfcClaims.count.addListener(sync);
     }
+    sync();
   }
 
   void remove(_GuestTapScopeState s) {
     _scopes.remove(s);
     if (_scopes.isEmpty) {
       WidgetsBinding.instance.removeObserver(this);
-      unawaited(_stop());
+      NfcClaims.count.removeListener(sync);
     }
+    sync();
   }
 
-  Future<void> _start() async {
-    if (_running || _scopes.isEmpty) return;
-    _running = true;
-    final ok = await reader.start(_onTag);
-    active.value = ok && _running;
-  }
-
-  Future<void> _stop() async {
-    if (!_running) return;
-    _running = false;
-    active.value = false;
-    await reader.stop();
+  /// Starts/stops reading to match [_wanted] (serialised).
+  void sync() {
+    _chain = _chain.then((_) async {
+      if (_wanted && !_running) {
+        _running = true;
+        final ok = await reader.start(_onTag);
+        active.value = ok && _running;
+      } else if (!_wanted && _running) {
+        _running = false;
+        active.value = false;
+        await reader.stop();
+      }
+    });
   }
 
   void _onTag(GuestTag tag) {
     for (final s in _scopes.reversed) {
-      if (s.visible) {
-        unawaited(s.onTag(tag));
+      if (s.enabled && s.mounted) {
+        if (s.accepts) unawaited(s.onTag(tag));
         return;
       }
     }
@@ -92,14 +150,17 @@ class _GuestTapHub with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) unawaited(_stop());
-    if (state == AppLifecycleState.resumed) unawaited(_start());
+    if (state == AppLifecycleState.paused) _foreground = false;
+    if (state == AppLifecycleState.resumed) _foreground = true;
+    sync();
   }
 }
 
-/// Marks a screen where tapping a nexTap card simply opens it (no sign-in, not a terminal).
+/// Marks screens where tapping a card simply runs it (no sign-in, not a terminal): welcome, setup
+/// and — with [enabled] — every tab of the app that the terminal reader doesn't own.
 class GuestTapScope extends StatefulWidget {
-  const GuestTapScope({super.key, required this.child});
+  const GuestTapScope({super.key, this.enabled = true, required this.child});
+  final bool enabled;
   final Widget child;
 
   @override
@@ -113,7 +174,8 @@ class _GuestTapScopeState extends State<GuestTapScope> {
   String? _lastUid;
   DateTime _lastAt = DateTime(0);
 
-  bool get visible => mounted && (ModalRoute.of(context)?.isCurrent ?? true) && !_sheetOpen;
+  bool get enabled => widget.enabled;
+  bool get accepts => widget.enabled && !_sheetOpen && mounted;
 
   @override
   void didChangeDependencies() {
@@ -126,6 +188,12 @@ class _GuestTapScopeState extends State<GuestTapScope> {
   }
 
   @override
+  void didUpdateWidget(covariant GuestTapScope old) {
+    super.didUpdateWidget(old);
+    if (old.enabled != widget.enabled) _hub?.sync();
+  }
+
+  @override
   void dispose() {
     _hub?.remove(this);
     super.dispose();
@@ -133,7 +201,7 @@ class _GuestTapScopeState extends State<GuestTapScope> {
 
   Future<void> onTag(GuestTag tag) async {
     final c = _config;
-    if (c == null) return;
+    if (c == null || _sheetOpen) return;
     final now = DateTime.now();
     if (tag.uid == _lastUid && now.difference(_lastAt) < const Duration(seconds: 2)) return;
     _lastUid = tag.uid;

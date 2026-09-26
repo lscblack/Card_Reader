@@ -52,6 +52,7 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
   Future<String> scanToken({Duration timeout = const Duration(seconds: 60)}) async {
     await cancel();
     final c = _pending = Completer<String>();
+    int? lease;
     // cancel() may fail the completer before anyone awaits it: never an unhandled error.
     unawaited(c.future.then((_) {}, onError: (_) {}));
     final released = Completer<void>();
@@ -60,7 +61,7 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
       final availability = await NfcManager.instance.checkAvailability();
       if (availability == NfcAvailability.unsupported) throw const ScanException(MobError.nfcUnsupported);
       if (availability == NfcAvailability.disabled) throw const ScanException(MobError.nfcDisabled);
-      ReaderModeLease.take();
+      lease = ReaderModeLease.take();
       await NfcManagerAndroid.instance.enableReaderMode(
         // NDEF check on: a tapped nexTap card (not a phone) opens its link (guest tap).
         flags: {
@@ -85,7 +86,7 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
     } finally {
       if (identical(_pending, c)) _pending = null;
       try {
-        await NfcManagerAndroid.instance.disableReaderMode();
+        if (lease != null && ReaderModeLease.isCurrent(lease)) await NfcManagerAndroid.instance.disableReaderMode();
       } catch (_) {}
       released.complete();
     }

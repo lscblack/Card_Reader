@@ -7,6 +7,7 @@ import '../../services/card_registrar.dart';
 import '../personal/share_ripple.dart';
 import '../theme.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/guest_tap.dart';
 import '../widgets/motion.dart';
 import '../widgets/register_card_sheet.dart';
 
@@ -177,7 +178,8 @@ class _RegisterCardsScreenState extends State<RegisterCardsScreen> with WidgetsB
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final list = r.registered;
-    return Scaffold(
+    return NfcClaim(
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Register cards'),
         actions: [
@@ -252,6 +254,7 @@ class _RegisterCardsScreenState extends State<RegisterCardsScreen> with WidgetsB
             ),
         ],
       ),
+    ),
     );
   }
 }

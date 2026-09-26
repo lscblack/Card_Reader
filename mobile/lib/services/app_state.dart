@@ -57,10 +57,33 @@ class AppState extends ChangeNotifier {
   final TagDispatch tagDispatch;
   final AppSettings settings;
 
-  /// "Read cards when app is closed" (Android tag dispatch alias).
+  /// "Read cards when app is closed": background taps on a terminal are delivered as events
+  /// (off: they only run the card's action, like on an unregistered phone).
   bool backgroundReading = true;
 
   AppPhase phase = AppPhase.loading;
+
+  /// Business terminals: open a recognized card's action automatically.
+  bool autoRunActions = true;
+
+  /// `system` | `light` | `dark` (Settings → Appearance).
+  String themeMode = 'system';
+
+  /// Dispatched tags (card tapped while the app wasn't reading) go to the terminal as events;
+  /// otherwise the app runs the card's action (guest tap).
+  bool get terminalTakesDispatchedTags => phase == AppPhase.ready && backgroundReading;
+
+  Future<void> setAutoRunActions(bool on) async {
+    autoRunActions = on;
+    notifyListeners();
+    await settings.setAutoRunActions(on);
+  }
+
+  Future<void> setThemeMode(String mode) async {
+    themeMode = const ['light', 'dark'].contains(mode) ? mode : 'system';
+    notifyListeners();
+    await settings.setThemeMode(themeMode);
+  }
 
   /// Shown on the setup screen (e.g. why the device was signed out).
   String? setupNotice;
@@ -91,6 +114,8 @@ class AppState extends ChangeNotifier {
     });
 
     backgroundReading = await settings.backgroundReading;
+    autoRunActions = await settings.autoRunActions;
+    themeMode = await settings.themeMode;
     final url = await credentials.serverUrl;
     final token = await credentials.deviceToken;
     serverUrl = url;
@@ -103,7 +128,10 @@ class AppState extends ChangeNotifier {
     unawaited(checkForUpdate(force: true));
     _updateTimer = Timer.periodic(UpdateChecker.interval, (_) => checkForUpdate());
     // Keep the alias in sync with the stored choice (and off when not registered).
-    await tagDispatch.setDispatchEnabled(phase == AppPhase.ready && backgroundReading);
+    // Always on: a card tapped while the app is closed opens nexTap, which runs the card's action
+    // (guest) or — on terminals with background reading — delivers the event. Cards with an http(s)
+    // NDEF link are still opened by Android's NDEF dispatch (NDEF_DISCOVERED wins over our TECH filter).
+    await tagDispatch.setDispatchEnabled(true);
     notifyListeners();
   }
 
@@ -246,7 +274,7 @@ class AppState extends ChangeNotifier {
       try {
         await _endSession();
         await credentials.wipeRegistration();
-        await tagDispatch.setDispatchEnabled(false);
+        await tagDispatch.setDispatchEnabled(true); // guest taps keep working
         await _abandonQueued('Not sent: device signed out (${e.code})');
         setupNotice = e.isRevoked
             ? 'This device was revoked from the dashboard. Register it again with a valid API key.'
@@ -263,7 +291,7 @@ class AppState extends ChangeNotifier {
   Future<void> unregister() async {
     await _endSession();
     await credentials.wipeRegistration();
-    await tagDispatch.setDispatchEnabled(false);
+    await tagDispatch.setDispatchEnabled(true); // guest taps keep working
     await _abandonQueued('Not sent: device unregistered');
     setupNotice = 'Device unregistered. Its record stays in the dashboard until you delete it there.';
     phase = AppPhase.setup;
@@ -276,7 +304,6 @@ class AppState extends ChangeNotifier {
     backgroundReading = on;
     notifyListeners();
     await settings.setBackgroundReading(on);
-    if (phase == AppPhase.ready) await tagDispatch.setDispatchEnabled(on);
     if (on) return tagDispatch.requestNotificationPermission();
     return true;
   }

@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../core/logger.dart';
 import '../data/event_repository.dart';
+import '../data/models/business.dart';
 import '../data/models/card_read.dart';
 import '../data/models/device_config.dart';
 import '../data/models/event_record.dart';
@@ -37,6 +38,7 @@ class ReaderController extends ChangeNotifier {
     required this.configProvider,
     UidDebouncer? debouncer,
     Future<void> Function()? haptic,
+    this.runAction,
   }) : _debouncer = debouncer ?? UidDebouncer(),
        _haptic = haptic ?? HapticFeedback.heavyImpact;
 
@@ -46,6 +48,9 @@ class ReaderController extends ChangeNotifier {
   final DeliveryService? Function() deliveryProvider;
   final DeviceConfig? Function() configProvider;
   final UidDebouncer _debouncer;
+
+  /// Business terminals: runs a recognized card's action (e.g. opens `action.url`) after delivery.
+  final Future<void> Function(BusinessResult result)? runAction;
   final Future<void> Function() _haptic;
 
   NfcState nfcState = NfcState.enabled;
@@ -241,6 +246,15 @@ class ReaderController extends ChangeNotifier {
     final result = await delivery.deliver(record, config) ?? record;
     // A newer card may have been read meanwhile; only show the latest.
     if (lastEvent?.eventId == record.eventId) _showResult(result);
+    final b = result.business;
+    final run = runAction;
+    if (run != null && b != null && b.isRecognized && b.actionUrl != null) {
+      try {
+        await run(b);
+      } catch (e) {
+        Log.e('reader', 'card action failed', e);
+      }
+    }
     return result;
   }
 

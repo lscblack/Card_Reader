@@ -1,26 +1,28 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
 import 'core/config.dart';
+
 import 'core/links.dart';
 import 'core/pairing.dart';
+
+import 'dart:async';
 import 'data/event_repository.dart';
-import 'services/card_resolver.dart';
+import 'data/models/card_read.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'services/app_state.dart';
+import 'services/card_resolver.dart';
 import 'services/deep_links.dart';
 import 'services/digital_card_scanner.dart';
 import 'services/guest_tap.dart';
-import 'ui/widgets/guest_tap.dart';
 import 'services/nfc_service.dart';
 import 'services/personal_state.dart';
+import 'services/tag_dispatch.dart';
 import 'ui/personal/exchange_flow.dart';
 import 'ui/personal/personal_auth_screen.dart';
 import 'ui/personal/welcome_screen.dart';
 import 'ui/screens/pair_confirm_screen.dart';
 import 'ui/screens/root_shell.dart';
 import 'ui/theme.dart';
+import 'ui/widgets/guest_tap.dart';
 
 class NfcTerminalApp extends StatefulWidget {
   const NfcTerminalApp({
@@ -84,9 +86,57 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     widget.appState.addListener(_tryPendingLink);
     _personal.addListener(_tryPendingLink);
     _linkSub = widget.deepLinks.links.listen(_onLink);
+    _tagSub = widget.appState.tagDispatch.tags.listen(_onDispatchedTag);
+    widget.appState.addListener(_takePendingTags);
+    _personal.addListener(_takePendingTags);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takePendingTags());
     widget.deepLinks.initialLink().then((l) {
       if (l != null) _onLink(l);
     });
+  }
+
+  final _lightTheme = AppTheme.light();
+  final _darkTheme = AppTheme.dark();
+
+  // ------------------------------------------------------------ guest dispatch --
+  // A card tapped while no reader session was on (app closed, or a screen without reading)
+  // reaches us through Android tag dispatch. Terminals with background reading deliver it as an
+  // event (RootShell's BackgroundReading); otherwise we run the card's action (guest tap).
+  StreamSubscription<DispatchedTag>? _tagSub;
+  bool _pendingTagsTaken = false;
+  final _guestQueue = <DispatchedTag>[];
+  bool _guestBusy = false;
+
+  void _takePendingTags() {
+    if (_pendingTagsTaken || widget.appState.phase == AppPhase.loading || _personal.loading) return;
+    _pendingTagsTaken = true;
+    if (widget.appState.terminalTakesDispatchedTags) return; // RootShell takes them
+    unawaited(widget.appState.tagDispatch.takePending().then((l) => l.forEach(_onDispatchedTag)));
+  }
+
+  void _onDispatchedTag(DispatchedTag t) {
+    if (widget.appState.terminalTakesDispatchedTags) return;
+    _guestQueue.add(t);
+    unawaited(_runGuestQueue());
+  }
+
+  Future<void> _runGuestQueue() async {
+    if (_guestBusy) return;
+    _guestBusy = true;
+    try {
+      while (_guestQueue.isNotEmpty) {
+        final t = _guestQueue.removeAt(0);
+        final ctx = _navigator.currentContext;
+        if (ctx == null) continue;
+        final uid = CardUtils.normalizeUid(t.uidHex) ?? t.uidHex;
+        await showGuestTag(ctx, GuestTag(uid: uid, uris: t.ndefUris, hasNdef: t.ndefUris.isNotEmpty),
+            knownServers: _guest.knownServers(), opener: _guest.opener, resolver: _guest.resolver);
+        // Launched by the tap from another app: go back to it (like background terminal reads).
+        if (t.launchedFromBackground) await widget.appState.tagDispatch.moveToBack();
+      }
+    } finally {
+      _guestBusy = false;
+    }
   }
 
   void _onLink(String link) {
@@ -176,6 +226,9 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     widget.appState.removeListener(_tryPendingLink);
     _personal.removeListener(_tryPendingLink);
     _linkSub?.cancel();
+    _tagSub?.cancel();
+    widget.appState.removeListener(_takePendingTags);
+    _personal.removeListener(_takePendingTags);
     super.dispose();
   }
 
@@ -189,13 +242,20 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         Provider<DigitalCardScanner>.value(value: _scanner),
         Provider<GuestTapConfig?>.value(value: _guest),
       ],
-      child: MaterialApp(
+      child: ListenableBuilder(
+        listenable: widget.appState,
+        builder: (context, _) => MaterialApp(
+        themeMode: switch (widget.appState.themeMode) {
+          'light' => ThemeMode.light,
+          'dark' => ThemeMode.dark,
+          _ => ThemeMode.system,
+        },
         title: 'nexTap',
         navigatorKey: _navigator,
         scaffoldMessengerKey: _messenger,
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
         home: Consumer2<AppState, PersonalState>(
           builder: (context, app, personal, _) {
             if (app.phase == AppPhase.loading || personal.loading) {
@@ -205,6 +265,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
             return RootShell(nfc: widget.nfc);
           },
         ),
+      ),
       ),
     );
   }

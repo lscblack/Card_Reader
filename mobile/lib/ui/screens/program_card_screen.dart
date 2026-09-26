@@ -8,6 +8,7 @@ import '../../data/models/business.dart';
 import '../../services/card_programmer.dart';
 import '../theme.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/guest_tap.dart';
 import '../widgets/motion.dart';
 
 /// Pick a business card and write its tap URL to a physical card (C3).
@@ -180,7 +181,8 @@ class _ProgramWriteScreenState extends State<ProgramWriteScreen> {
   Widget build(BuildContext context) {
     final o = _outcome;
     final t = Theme.of(context).textTheme;
-    return PopScope(
+    return NfcClaim(
+      child: PopScope(
       canPop: true,
       child: Scaffold(
         appBar: AppBar(title: Text(widget.card.name)),
@@ -226,6 +228,7 @@ class _ProgramWriteScreenState extends State<ProgramWriteScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

@@ -99,7 +99,7 @@ class AndroidNfcService implements NfcService {
     required void Function(CardRead card) onCard,
     required void Function(Object error) onError,
   }) {
-    ReaderModeLease.take();
+    _lease = ReaderModeLease.take();
     return NfcManagerAndroid.instance.enableReaderMode(
       // Reader mode: this app gets the tag, Android doesn't dispatch it to
       // other apps. IsoDep / MIFARE are discovered through NfcA/NfcB polling.
@@ -166,8 +166,14 @@ class AndroidNfcService implements NfcService {
     }
   }
 
+  int? _lease;
+
   @override
   Future<void> stopReading() async {
+    final lease = _lease;
+    _lease = null;
+    // Only switch reader mode off while this session still owns it (see [ReaderModeLease]).
+    if (lease == null || !ReaderModeLease.isCurrent(lease)) return;
     try {
       await NfcManagerAndroid.instance.disableReaderMode();
     } catch (e) {

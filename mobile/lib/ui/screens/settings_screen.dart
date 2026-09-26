@@ -82,6 +82,14 @@ class SettingsScreen extends StatelessWidget {
                 InfoRow('Business', cfg!.business!.name),
                 InfoRow('Assigned to', cfg.assignedEmployee?.name ?? 'Nobody (shared device)',
                     key: const Key('assignedEmployee')),
+                SwitchListTile(
+                  key: const Key('autoRunActions'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Run card actions automatically'),
+                  subtitle: const Text('Open the card\'s link (website, profile, WhatsApp…) as soon as it is recognized'),
+                  value: app.autoRunActions,
+                  onChanged: (v) => app.setAutoRunActions(v),
+                ),
                 InfoRow(
                   'Can',
                   [

@@ -14,6 +14,8 @@ import '../../services/personal_state.dart';
 import '../../services/reader_controller.dart';
 import '../personal/contacts_screen.dart';
 import '../personal/my_card_screen.dart';
+import '../widgets/business_result.dart';
+import '../widgets/guest_tap.dart';
 import '../widgets/motion.dart';
 import 'history_screen.dart';
 import 'reader_screen.dart';
@@ -77,13 +79,16 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         platform: _app.platform,
         deliveryProvider: () => _app.delivery,
         configProvider: () => _app.config,
+        runAction: (b) async {
+          if (_app.autoRunActions && (_app.config?.isBusiness ?? false)) await openActionUrl(b.actionUrl);
+        },
       );
       _reader = reader;
       reader.init();
       _background = BackgroundReading(
         dispatch: _app.tagDispatch,
         handleCard: reader.handleCard,
-        isRegistered: () => _app.phase == AppPhase.ready,
+        isRegistered: () => _app.terminalTakesDispatchedTags,
         flushRetries: () => _app.retryQueue?.kick(),
       )..start();
     } else if (!_terminal && _reader != null) {
@@ -178,6 +183,16 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           destinations: [for (final t in tabs) _dest(t)],
         ),
       ),
+    );
+    // Always-on card detection: guest reading wherever the terminal reader doesn't own NFC, except on
+    // My Card while the phone shares the card by HCE (reader mode would switch sharing off).
+    final terminalOwns = _terminal && (!_personalOn || _tab == ShellTab.reader);
+    final p = _personal.primary;
+    final sharing = _personal.hceSupported && p != null && p.isActive && p.shareSettings.nfcSharingEnabled;
+    body = GuestTapScope(
+      key: const Key('shellGuestTap'),
+      enabled: !terminalOwns && !(_tab == ShellTab.myCard && sharing),
+      child: body,
     );
     final reader = _reader;
     if (reader != null) {

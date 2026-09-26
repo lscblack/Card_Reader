@@ -356,6 +356,7 @@ class _LastCardCard extends StatelessWidget {
           const SizedBox(height: 8),
           BusinessResultCard(
             result: e!.business!,
+            autoRun: context.read<AppState>().autoRunActions && (config?.isBusiness ?? false),
             onRegister: (config?.can(Capability.registerCards) ?? false) && api != null
                 ? () => openRegisterCards(context, context.read<AppState>(), context.read<ReaderController>(),
                     initialUid: card.uid)

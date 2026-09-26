@@ -72,6 +72,8 @@ class BackgroundReading {
   /// Processes tags buffered before Dart was ready, then listens for more.
   Future<void> start() async {
     _sub = dispatch.tags.listen(handle);
+    // Only take the launch tags when this terminal handles them (else: the app's guest handler).
+    if (!isRegistered()) return;
     for (final t in await dispatch.takePending()) {
       await handle(t);
     }

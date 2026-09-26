@@ -14,6 +14,7 @@ import android.nfc.Tag
 import android.nfc.cardemulation.CardEmulation
 import android.nfc.tech.IsoDep
 import android.nfc.tech.MifareUltralight
+import android.nfc.tech.Ndef
 import android.nfc.tech.NfcA
 import android.os.Build
 import android.os.Bundle
@@ -250,10 +251,12 @@ class MainActivity : FlutterActivity() {
         var sak: Int? = null
         var atqa: String? = null
         var productType: Int? = null
+        // Links on the chip (guest taps: run the card's action without the app being set up).
+        val ndefUris = ndefUris(tag)
         val digitalToken = if (techs.contains(IsoDep::class.java.name)) probeDigitalCard(tag) else null
         if (digitalToken != null) {
             return mapOf("uid" to uid, "techList" to techs, "digitalCardToken" to digitalToken,
-                "fromBackground" to fromBackground)
+                "fromBackground" to fromBackground, "ndefUris" to ndefUris)
         }
         NfcA.get(tag)?.let { nfcA ->
             sak = nfcA.sak.toInt()
@@ -270,7 +273,16 @@ class MainActivity : FlutterActivity() {
             "atqa" to atqa,
             "productType" to productType,
             "fromBackground" to fromBackground,
+            "ndefUris" to ndefUris,
         )
+    }
+
+    /** URI / absolute-URI records of the tag's (cached) NDEF message; empty when none. */
+    private fun ndefUris(tag: Tag): List<String> = try {
+        val msg = Ndef.get(tag)?.cachedNdefMessage
+        msg?.records?.mapNotNull { it.toUri()?.toString() } ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
     }
 
     /** NXP GET_VERSION: byte 2 = product type (0x03 Ultralight, 0x04 NTAG). Best effort. */

@@ -209,9 +209,24 @@ the welcome and setup screens keep NFC reading on ("Tap a card"). A tapped tag's
 In My Card → **Scan a card**, a tag that is not a phone sharing a digital card gets the same handling.
 Registered terminals are unchanged: every tap is an event.
 
-**App closed:** the tag-dispatch alias (`.NfcTagLauncher`) is only enabled on registered terminals
-with background reading on. Otherwise it stays disabled, so Android's own NDEF dispatch opens a
-programmed card's link in the browser (or offers a chooser) without the app.
+**Always on.** While the app is open, cards are detected on every screen: the terminal reader
+where it owns NFC (Reader tab, or every tab on terminal-only phones), guest reading everywhere
+else — except on My Card while the phone shares its card by HCE (reader mode would switch sharing
+off) and on screens that own NFC (Register cards, Program card, Scan a card, QR/pairing). A card
+without a link on its chip is looked up by chip ID (`GET /api/v1/public/cards/resolve?uid=`) and its
+tap link opened; the server runs the configured action.
+
+**App closed:** the tag-dispatch alias (`.NfcTagLauncher`, TECH/TAG_DISCOVERED) is always enabled.
+Android dispatches NDEF_DISCOVERED first, so a card with an http(s) link on its chip still opens in
+the browser directly; a UID-only card launches nexTap, which resolves it by chip ID, opens the
+action and moves back to the previous app. Registered terminals with "Read cards when app is
+closed" deliver such taps as events instead (and run the action when "Run card actions
+automatically" is on).
+
+**Business terminals:** a recognized card's action (`action.url`) is opened automatically after the
+read ("Opening lscblack.tech…"); switch it off in Terminal settings → Business.
+
+**Appearance:** Settings → Appearance: System / Light / Dark (saved on the phone).
 
 ## Registering cards (business devices)
 

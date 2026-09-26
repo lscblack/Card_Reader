@@ -16,7 +16,11 @@ class DispatchedTag {
     required this.launchedFromBackground,
     required this.receivedAt,
     this.digitalCardToken,
+    this.ndefUris = const [],
   });
+
+  /// URIs of the chip's NDEF message (guest taps).
+  final List<String> ndefUris;
 
   final String uidHex;
   final List<String> techList;
@@ -42,6 +46,7 @@ class DispatchedTag {
     launchedFromBackground: m['fromBackground'] == true,
     receivedAt: now ?? DateTime.now().toUtc(),
     digitalCardToken: m['digitalCardToken'] as String?,
+    ndefUris: ((m['ndefUris'] as List?) ?? const []).whereType<String>().toList(),
   );
 
   /// Same normalisation and type guessing as reader mode. Null if the UID is unusable.

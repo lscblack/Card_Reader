@@ -55,6 +55,26 @@ class SettingsHub extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SectionCard(
+            title: 'Appearance',
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<String>(
+                  key: const Key('themeMode'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'system', label: Text('System'), icon: Icon(Icons.brightness_auto_outlined)),
+                    ButtonSegment(value: 'light', label: Text('Light'), icon: Icon(Icons.light_mode_outlined)),
+                    ButtonSegment(value: 'dark', label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
+                  ],
+                  selected: {app.themeMode},
+                  onSelectionChanged: (s) => app.setThemeMode(s.first),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SectionCard(
             title: 'About',
             children: [
               ListTile(

@@ -106,10 +106,11 @@ class AndroidNfcWriter implements NfcWriter {
   Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60), String? expectedUid}) async {
     await cancel();
     final completer = _pending = Completer<String>();
+    int? lease;
     final message = uriMessage(uri);
     try {
       // Own reader session WITHOUT skipNdefCheck (needed to see the Ndef tech).
-      ReaderModeLease.take();
+      lease = ReaderModeLease.take();
       await NfcManagerAndroid.instance.enableReaderMode(
         flags: {
           NfcReaderFlagAndroid.nfcA,
@@ -144,7 +145,7 @@ class AndroidNfcWriter implements NfcWriter {
     } finally {
       _pending = null;
       try {
-        await NfcManagerAndroid.instance.disableReaderMode();
+        if (lease != null && ReaderModeLease.isCurrent(lease)) await NfcManagerAndroid.instance.disableReaderMode();
       } catch (_) {}
     }
   }

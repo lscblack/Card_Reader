@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/error_catalog.dart';
 import '../../core/pairing.dart';
 import '../../services/app_state.dart';
+import '../widgets/guest_tap.dart';
 
 /// Scans a QR code and pops with what [parse] returns (default: a pairing QR →
 /// [PairingPayload]). [parse] throws with a user-facing message for other codes.
@@ -53,7 +54,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
+    return NfcClaim(
+      child: Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
@@ -105,6 +107,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }

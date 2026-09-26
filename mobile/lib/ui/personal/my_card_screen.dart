@@ -111,7 +111,9 @@ class _MyCardScreenState extends State<MyCardScreen> {
     final p = context.watch<PersonalState>();
     final card = p.primary;
     final t = Theme.of(context).textTheme;
-    return Scaffold(
+    return NfcClaim(
+      active: _scanning,
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('My Card'),
         actions: [
@@ -170,6 +172,7 @@ class _MyCardScreenState extends State<MyCardScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

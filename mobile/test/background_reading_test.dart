@@ -215,20 +215,20 @@ void main() {
       tagDispatch: d,
     );
 
-    test('default ON: alias off before registration, on after; persisted; off on unregister', () async {
+    test('alias always on (guest taps); background-reading choice persisted and kept on unregister', () async {
       final store = MemorySecureStore();
       final d = FakeTagDispatch();
       final app = build(store, d);
       await app.init();
       expect(app.backgroundReading, isTrue);
-      expect(d.enabledCalls, [false], reason: 'not registered → alias disabled');
+      expect(d.enabledCalls, [true], reason: 'guest taps while not registered');
 
       await app.register(serverUrl: 'https://api.example.com', apiKey: 'nfc_k', deviceName: 'x');
       expect(d.enabledCalls.last, isTrue);
       expect(d.permissionRequests, 1);
 
       await app.setBackgroundReading(false);
-      expect(d.enabledCalls.last, isFalse);
+      expect(d.enabledCalls.last, isTrue, reason: 'the switch only decides events vs actions');
       expect(await AppSettings(store).backgroundReading, isFalse);
 
       // A fresh start restores the choice.
@@ -236,12 +236,12 @@ void main() {
       final again = build(store, d2);
       await again.init();
       expect(again.backgroundReading, isFalse);
-      expect(d2.enabledCalls, [false]);
+      expect(d2.enabledCalls, [true]);
 
       await again.setBackgroundReading(true);
       expect(d2.enabledCalls.last, isTrue);
       await again.unregister();
-      expect(d2.enabledCalls.last, isFalse);
+      expect(d2.enabledCalls.last, isTrue);
       expect(await AppSettings(store).backgroundReading, isTrue, reason: 'preference survives unregister');
       app.dispose();
       again.dispose();

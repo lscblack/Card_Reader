@@ -31,13 +31,23 @@ Future<bool> openActionUrl(String? url) async {
 
 /// Business read result (C2/C4).
 class BusinessResultCard extends StatelessWidget {
-  const BusinessResultCard({super.key, required this.result, this.onRegister, this.compact = false});
+  const BusinessResultCard({super.key, required this.result, this.onRegister, this.compact = false, this.autoRun = false});
+
+  /// The card's action was opened automatically (Settings → Run card actions automatically).
+  final bool autoRun;
 
   final BusinessResult result;
 
   /// Shown for `unknown_card` when the device has `cards.register`.
   final VoidCallback? onRegister;
   final bool compact;
+
+  Widget _openButton(BusinessResult b) => FilledButton.tonalIcon(
+    key: const Key('openActionButton'),
+    onPressed: () => openActionUrl(b.actionUrl),
+    icon: const Icon(Icons.open_in_new, size: 18),
+    label: Text(b.actionLabel ?? 'Open'),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +67,11 @@ class BusinessResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Lead with the card's action; the owner follows.
+          if (!compact && b.isRecognized && canOpen) ...[
+            if (autoRun) _ActionBanner(result: b, color: color) else _openButton(b),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               CircleAvatar(
@@ -105,18 +120,12 @@ class BusinessResultCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text([b.assigneeName, ?b.assigneePosition].join(' · ')),
           ],
-          if (!compact && (canOpen || (b.isUnknown && onRegister != null))) ...[
+          if (!compact && ((canOpen && !b.isRecognized) || (b.isUnknown && onRegister != null))) ...[
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               children: [
-                if (canOpen)
-                  FilledButton.tonalIcon(
-                    key: const Key('openActionButton'),
-                    onPressed: () => openActionUrl(b.actionUrl),
-                    icon: const Icon(Icons.open_in_new, size: 18),
-                    label: Text(b.actionLabel ?? 'Open'),
-                  ),
+                if (canOpen && !b.isRecognized) _openButton(b),
                 if (b.isUnknown && onRegister != null)
                   FilledButton.icon(
                     key: const Key('registerCardButton'),
@@ -128,6 +137,44 @@ class BusinessResultCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Leads a recognized result with the card's action ("Opening lscblack.tech…"); owner info follows.
+class _ActionBanner extends StatelessWidget {
+  const _ActionBanner({required this.result, required this.color});
+  final BusinessResult result;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final uri = Uri.tryParse(result.actionUrl ?? '');
+    final host = (uri?.host.isNotEmpty ?? false) ? uri!.host : (result.actionUrl ?? '');
+    final label = result.actionLabel ?? 'Open link';
+    return Material(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        key: const Key('businessAction'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => openActionUrl(result.actionUrl),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(children: [
+            Icon(Icons.open_in_new, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Opening $host…',
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodySmall),
+              ]),
+            ),
+          ]),
+        ),
       ),
     );
   }
