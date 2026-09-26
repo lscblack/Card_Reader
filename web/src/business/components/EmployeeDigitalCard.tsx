@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { CreditCard, Lock, Send } from 'lucide-react'
+import { BadgeCheck, CreditCard, Lock, Send } from 'lucide-react'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -10,7 +10,7 @@ import { CopyButton } from '@/components/ui/CopyButton'
 import { useToast } from '@/components/ui/toastContext'
 import { dateOnly } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import type { CardTemplate } from '@/personal/api/types'
+import { isV2, type CardTemplate } from '@/personal/api/types'
 import { DigitalCardRender } from '@/personal/components/DigitalCardRender'
 import { TemplateGallery } from '@/personal/components/TemplateGallery'
 import { ColorField } from '@/personal/components/editorBits'
@@ -19,7 +19,7 @@ import type { Employee } from '../api/types'
 import { employeesApi } from '../api/people'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBizMutation } from '../hooks/queries'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { FormError } from './BizError'
 
 const LOCKABLE: { key: string; label: string }[] = [
@@ -30,7 +30,16 @@ const LOCKABLE: { key: string; label: string }[] = [
   { key: 'websites', label: 'Websites' },
   { key: 'emails', label: 'Work email' },
   { key: 'phones', label: 'Work phone' },
+  { key: 'id_number', label: 'ID number' },
+  { key: 'valid_until', label: 'Valid until' },
+  { key: 'barcode_value', label: 'Barcode' },
 ]
+const BADGE_LOCKS = ['company', 'id_number', 'valid_until', 'barcode_value']
+const inAYear = () => {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() + 1)
+  return d.toISOString().slice(0, 10)
+}
 
 const STATUS: Record<string, { label: string; tone: 'success' | 'info' | 'warning' | 'neutral' }> = {
   active: { label: 'Active', tone: 'success' },
@@ -39,16 +48,21 @@ const STATUS: Record<string, { label: string; tone: 'success' | 'info' | 'warnin
   declined: { label: 'Declined', tone: 'neutral' },
 }
 
-function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => void }) {
+function IssueModal({ employee, onClose, mode }: { employee: Employee; onClose: () => void; mode: 'card' | 'badge' }) {
   const { business } = useBusiness()
   const toast = useToast()
+  const badgeMode = mode === 'badge'
   const [email, setEmail] = useState(employee.digital_card?.user_email ?? employee.email ?? '')
   const [tpl, setTpl] = useState<CardTemplate | null>(null)
   const [primary, setPrimary] = useState(DEFAULT_DESIGN.primary)
-  const [locked, setLocked] = useState<string[]>(['company', 'job_title', 'logo'])
+  const [locked, setLocked] = useState<string[]>(badgeMode ? BADGE_LOCKS : ['company', 'job_title', 'logo'])
+  const [idNumber, setIdNumber] = useState(employee.employee_number ?? '')
+  const [validUntil, setValidUntil] = useState(inAYear())
+  const [barcode, setBarcode] = useState(employee.employee_number ?? '')
   const [devUrl, setDevUrl] = useState<string | null>(null)
+  const badge = badgeMode ? { id_number: idNumber.trim() || undefined, valid_from: new Date().toISOString().slice(0, 10), valid_until: validUntil || undefined, barcode_value: (barcode || idNumber).trim() || undefined } : undefined
   const issue = useBizMutation(business.id, () =>
-    employeesApi.issueDigitalCard(business.id, employee.id, { email: email.trim(), template_id: tpl?.id, design: { primary, accent: primary }, locked_fields: locked }),
+    employeesApi.issueDigitalCard(business.id, employee.id, { email: email.trim(), template_id: tpl?.id, design: { primary, accent: primary }, locked_fields: locked, ...(badge ? { badge } : {}) }),
   )
   const errs = fieldErrorsOf(issue.error)
   const bad = email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)
@@ -62,6 +76,7 @@ function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => 
     websites: business.website ? [{ label: 'Website', url: business.website }] : [],
     socials: employee.social_links,
     custom_links: [],
+    ...(badge ?? {}),
   }
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -79,7 +94,7 @@ function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => 
       open
       onClose={onClose}
       size="lg"
-      title={`Issue a digital card to ${employee.full_name}`}
+      title={badgeMode ? `Issue an ID badge to ${employee.full_name}` : `Issue a digital card to ${employee.full_name}`}
       description="They get an email to accept it into their personal account (or create one). You keep company details and branding up to date."
       footer={
         devUrl ? (
@@ -106,7 +121,7 @@ function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => 
         </Alert>
       ) : (
         <form id="issue-card" onSubmit={submit} className="space-y-5" noValidate>
-          <FormError error={issue.error && !Object.keys(errs).length ? issue.error : null} />
+          <FormError error={formLevelError(issue.error, ['email'])} />
           <Field label="Employee’s email" error={errs.email ?? (bad ? 'Enter a valid email address.' : null)} hint="Use the address they’ll sign in with.">
             {(p) => <Input {...p} type="email" value={email} onChange={(e) => setEmail(e.target.value)} data-autofocus />}
           </Field>
@@ -114,8 +129,19 @@ function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => 
             <div className="min-w-0 space-y-4">
               <div>
                 <p className="mb-2 text-[13px] font-medium">Template</p>
-                <TemplateGallery value={tpl?.id} onPick={setTpl} sample={{ fields }} columns="grid-cols-2" />
+                <TemplateGallery value={tpl?.id} onPick={setTpl} sample={{ fields, logo_url: business.logo_url, business: { name: business.name, logo_url: business.logo_url, verified: business.verified } }} columns="grid-cols-2" only={badgeMode ? ['badge'] : ['business', 'minimal', 'classic']} />
               </div>
+              {badgeMode && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="ID number" hint={employee.employee_number ? 'From the employee number.' : undefined}>
+                    {(p) => <Input {...p} value={idNumber} onChange={(e) => setIdNumber(e.target.value)} maxLength={40} className="font-mono" />}
+                  </Field>
+                  <Field label="Valid until">{(p) => <Input {...p} type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />}</Field>
+                  <Field label="Barcode" hint="Code 128; defaults to the ID number.">
+                    {(p) => <Input {...p} value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder={idNumber} maxLength={48} className="font-mono" />}
+                  </Field>
+                </div>
+              )}
               <ColorField label="Company colour" value={primary} onChange={setPrimary} against="#ffffff" againstLabel="white" />
               <div>
                 <p className="mb-1 text-[13px] font-medium">Locked fields</p>
@@ -141,8 +167,10 @@ function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => 
             <div className="min-w-0">
               <p className="mb-2 text-[13px] font-medium">Preview</p>
               <DigitalCardRender
-                layout={tpl?.layout ?? 'centered'}
+                template={tpl}
+                layout={tpl && !isV2(tpl) ? tpl.layout : 'centered'}
                 audience="all"
+                qrValue={business.public_url ?? business.website ?? 'https://nexventures.net'}
                 card={{ design: { ...(tpl?.default_design ?? DEFAULT_DESIGN), primary, accent: primary }, fields, photo_url: employee.photo_url, logo_url: business.logo_url, business: { name: business.name, logo_url: business.logo_url, verified: business.verified } }}
               />
             </div>
@@ -156,7 +184,7 @@ function IssueModal({ employee, onClose }: { employee: Employee; onClose: () => 
 /** Employee page panel: status of the business-issued digital card + issue/resend. */
 export function EmployeeDigitalCardPanel({ employee }: { employee: Employee }) {
   const can = useCan()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<'card' | 'badge' | null>(null)
   const dc = employee.digital_card
   const st = dc ? (STATUS[dc.status] ?? { label: dc.status, tone: 'neutral' as const }) : null
   return (
@@ -178,12 +206,17 @@ export function EmployeeDigitalCardPanel({ employee }: { employee: Employee }) {
           </p>
         )}
         {can('people.manage') && employee.status === 'active' && dc?.status !== 'active' && (
-          <Button size="sm" variant={dc ? 'secondary' : 'primary'} leftIcon={<Send className="h-3.5 w-3.5" />} onClick={() => setOpen(true)}>
-            {dc ? 'Resend invitation' : 'Issue digital card'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant={dc ? 'secondary' : 'primary'} leftIcon={<Send className="h-3.5 w-3.5" />} onClick={() => setOpen('card')}>
+              {dc ? 'Resend invitation' : 'Issue digital card'}
+            </Button>
+            <Button size="sm" leftIcon={<BadgeCheck className="h-3.5 w-3.5" />} onClick={() => setOpen('badge')}>
+              Issue ID badge
+            </Button>
+          </div>
         )}
       </CardBody>
-      {open && <IssueModal employee={employee} onClose={() => setOpen(false)} />}
+      {open && <IssueModal employee={employee} mode={open} onClose={() => setOpen(null)} />}
     </Card>
   )
 }

@@ -5,9 +5,11 @@ import '../../core/app_error.dart';
 import '../../data/models/api_models.dart';
 import '../../data/models/personal.dart';
 import '../../services/personal_state.dart';
+import '../digital_card/any_card_view.dart';
 import '../digital_card/card_view.dart';
 import '../theme.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/motion.dart';
 import 'contact_detail_screen.dart';
 
 /// Maps an exchange failure to a user message.
@@ -45,13 +47,17 @@ Future<void> showExchangeResult(BuildContext context, ExchangeResult r, Personal
   context: context,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (c) => ExchangeResultSheet(result: r, layout: p.templateFor(r.contact.card.templateId).layout),
+  builder: (c) => ExchangeResultSheet(result: r, layout: r.contact.templateLayout ?? p.templateFor(r.contact.card.templateId).layout,
+      template: p.templateFor(r.contact.card.templateId)),
 );
 
 class ExchangeResultSheet extends StatelessWidget {
-  const ExchangeResultSheet({super.key, required this.result, required this.layout});
+  const ExchangeResultSheet({super.key, required this.result, required this.layout, this.template});
   final ExchangeResult result;
   final String layout;
+
+  /// Their template (v2 shape templates render with the v2 engine).
+  final CardTemplate? template;
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +73,7 @@ class ExchangeResultSheet extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
           Row(children: [
-            Icon(Icons.check_circle, color: ok),
+            SuccessCheck(size: 40, color: ok),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -89,7 +95,9 @@ class ExchangeResultSheet extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 16),
-          DigitalCardView(card: result.contact.card, layout: layout, hideHiddenFields: false),
+          template?.isV2 ?? false
+              ? AnyCardView(card: result.contact.card, template: template!, hideHiddenFields: false)
+              : DigitalCardView(card: result.contact.card, layout: layout, hideHiddenFields: false),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: () {

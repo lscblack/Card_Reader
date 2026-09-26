@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BadgeCheck, Check, Mail, MapPin, MessageCircle, Phone, Share2, UserPlus } from 'lucide-react'
 import type { Profile, PublicBusinessInfo, PublicEmployee } from '@/business/api/types'
 import { cn } from '@/lib/cn'
+import { cssImage, safeHref, safeImageUrl } from '@/lib/url'
 import { SectionView } from './Sections'
 import { mapsLink, onColor, safeAccent, sectionData, waLink } from './sectionUtils'
 import { PoweredBy } from '@/components/PoweredBy'
@@ -80,7 +81,10 @@ export function ProfileView({
     c.email && { label: 'Email', icon: Mail, href: `mailto:${c.email}` },
     c.address && { label: 'Directions', icon: MapPin, href: mapsLink(c.address) },
   ].filter(Boolean) as { label: string; icon: typeof Phone; href: string }[]
-  const cover = profile.theme?.cover_image_url
+  const cover = cssImage(profile.theme?.cover_image_url)
+  const photo = safeImageUrl(employee?.photo_url)
+  const logo = safeImageUrl(business.logo_url)
+  const vcard = safeHref(vcardUrl)
 
   return (
     <div className={cn('mx-auto w-full', preview ? '' : 'max-w-lg')}>
@@ -89,17 +93,17 @@ export function ProfileView({
           className="h-36 w-full sm:h-40"
           style={
             cover
-              ? { backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              ? { backgroundImage: cover, backgroundSize: 'cover', backgroundPosition: 'center' }
               : { background: `radial-gradient(120% 140% at 0% 0%, ${accent} 0%, ${accent}cc 45%, #0c0a0a 140%)` }
           }
         />
         {!preview && <ShareButton title={title} className="absolute top-3 right-3" />}
         <div className="-mt-12 px-5">
           <div className="inline-block rounded-[28px] bg-bg p-1.5">
-            {isPerson && employee?.photo_url ? (
-              <img src={employee.photo_url} alt={title} className="h-[84px] w-[84px] rounded-3xl object-cover" />
-            ) : !isPerson && business.logo_url ? (
-              <img src={business.logo_url} alt={`${business.name} logo`} className="h-[84px] w-[84px] rounded-3xl object-cover" />
+            {isPerson && photo ? (
+              <img src={photo} alt={title} className="h-[84px] w-[84px] rounded-3xl object-cover" />
+            ) : !isPerson && logo ? (
+              <img src={logo} alt={`${business.name} logo`} className="h-[84px] w-[84px] rounded-3xl object-cover" />
             ) : (
               <Initials name={title} accent={accent} size={84} />
             )}
@@ -135,9 +139,9 @@ export function ProfileView({
             ))}
           </div>
         )}
-        {vcardUrl && (
+        {vcard && (
           <a
-            href={vcardUrl}
+            href={vcard}
             download={`${title.replace(/[^\w-]+/g, '-')}.vcf`}
             className="flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold shadow-sm transition-opacity hover:opacity-90"
             style={{ background: accent, color: fg }}

@@ -1,8 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import { useAuth } from '@/auth/context'
+import { homePathFor } from '@/api/auth'
 import { useBranding } from '@/branding/context'
 
-export const DASHBOARD_PATH = '/dashboard'
+/** The signed-in user's home area (developer → /dashboard, business → /business, personal → /me, admin → /admin). */
+export function useDashboardPath(): string {
+  return homePathFor(useAuth().user)
+}
 
 export type NavTarget = 'product' | 'developers' | 'businesses' | 'individuals' | 'pricing'
 

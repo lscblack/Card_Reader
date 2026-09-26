@@ -229,9 +229,18 @@ def test_production_refuses_placeholder_secrets() -> None:
     with pytest.raises(ValueError, match="at least 32"):
         Settings(ENVIRONMENT="production", DEBUG=False, JWT_SECRET="short",
                  WEBHOOK_SIGNING_SECRET="x" * 40, _env_file=None)
+    public = {"PUBLIC_WEB_URL": "https://app.example.com", "PASSWORD_RESET_URL": "https://app.example.com/reset",
+              "CORS_ORIGINS": "https://app.example.com"}
     ok = Settings(ENVIRONMENT="production", DEBUG=False, JWT_SECRET="j" * 40, WEBHOOK_SIGNING_SECRET="w" * 40,
-                  _env_file=None)
+                  _env_file=None, **public)
     assert ok.enforce_https is True
+    for field, value in (("PUBLIC_WEB_URL", "http://localhost:5173"), ("PASSWORD_RESET_URL", "http://app.example.com/r"),
+                         ("CORS_ORIGINS", "https://app.example.com,http://localhost:5173")):
+        with pytest.raises(ValueError, match=field):
+            Settings(ENVIRONMENT="production", DEBUG=False, JWT_SECRET="j" * 40, WEBHOOK_SIGNING_SECRET="w" * 40,
+                     _env_file=None, **{**public, field: value})
+    with pytest.raises(ValueError, match="JWT_SECRET"):  # any non-development environment is treated as production
+        Settings(ENVIRONMENT="staging", DEBUG=False, _env_file=None, **public)
     dev = Settings(_env_file=None, CORS_ORIGINS="http://a.test, http://b.test")
     assert dev.CORS_ORIGINS == ["http://a.test", "http://b.test"] and dev.enforce_https is False
 

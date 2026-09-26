@@ -66,20 +66,40 @@ function useReleaseMutations() {
   }
 }
 
+/** Release builds reject a plain-http API URL unless it points at the local machine / the Android emulator host. */
+function insecureForRelease(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' && !['localhost', '127.0.0.1', '10.0.2.2'].includes(u.hostname)
+  } catch {
+    return false
+  }
+}
+
 function BuildForm() {
   const meta = useServerMeta()
   const m = useReleaseMutations()
   const toast = useToast()
   const [version, setVersion] = useState('')
   const [build, setBuild] = useState('')
-  const [type, setType] = useState<'release' | 'debug'>('release')
+  // Unless the admin picks one, default to a debug build when the default API URL is plain http (release builds refuse it).
+  const [pickedType, setType] = useState<'release' | 'debug' | null>(null)
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [apiUrl, setApiUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [publish, setPublish] = useState(true)
   const [error, setError] = useState<unknown>(null)
   const fe = error instanceof ApiError ? error.fieldErrors : {}
-  const urlErr = apiUrl.trim() && !/^https?:\/\/[^\s/]+(:\d+)?(\/\S*)?$/.test(apiUrl.trim()) ? 'Use an http(s) URL.' : null
+  const effectiveUrl = apiUrl.trim() || meta.data?.device_server_url || ''
+  const defaultInsecure = insecureForRelease(meta.data?.device_server_url ?? '')
+  const type = pickedType ?? (defaultInsecure ? 'debug' : 'release')
+  const releaseHttp = type === 'release' && insecureForRelease(effectiveUrl)
+  const urlErr =
+    apiUrl.trim() && !/^https?:\/\/[^\s/]+(:\d+)?(\/\S*)?$/.test(apiUrl.trim())
+      ? 'Use an http(s) URL.'
+      : releaseHttp
+        ? 'Release builds need an https:// API URL (plain http only for localhost, 127.0.0.1 or 10.0.2.2). Use https or pick a Debug build.'
+        : null
   const verErr = version.trim() && !/^\d+\.\d+\.\d+([-+][\w.]+)?$/.test(version.trim()) ? 'Use semantic versioning, e.g. 1.4.0' : null
 
   async function submit() {
@@ -126,7 +146,7 @@ function BuildForm() {
           <Field label="Build number" optional hint="Default: auto-increment" error={fe.build_number}>
             {(p) => <Input {...p} inputMode="numeric" value={build} onChange={(e) => setBuild(e.target.value.replace(/\D/g, ''))} className="font-mono" />}
           </Field>
-          <Field label="Build type">
+          <Field label="Build type" hint={pickedType == null && defaultInsecure ? 'Debug: the default API URL is plain http, which release builds refuse.' : undefined}>
             {(p) => (
               <Select {...p} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
                 <option value="release">Release</option>
@@ -153,7 +173,7 @@ function BuildForm() {
           <label className="flex items-center gap-2 text-[13px]">
             <Switch checked={publish} onChange={setPublish} label="Publish on success" /> Publish automatically when the build succeeds {channel === 'beta' && <span className="text-subtle">(beta builds aren’t shown on the download page)</span>}
           </label>
-          <Button variant="primary" leftIcon={<Hammer className="h-4 w-4" />} onClick={submit} loading={m.create.isPending} disabled={!!urlErr || !!verErr}>
+          <Button variant="primary" leftIcon={<Hammer className="h-4 w-4" />} onClick={submit} loading={m.create.isPending} disabled={!!urlErr || !!verErr || meta.isLoading}>
             Start build
           </Button>
         </div>

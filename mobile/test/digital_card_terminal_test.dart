@@ -98,7 +98,7 @@ void main() {
       reader.dispose();
     });
 
-    test('direct mode payload: card.type digital_card, signed_token level, digital_card block', () async {
+    test('direct mode payload: card.type digital_card, uid_only level (unverified), digital_card block', () async {
       late Map<String, dynamic> sent;
       final endpoint = MockClient((req) async {
         sent = jsonDecode(req.body) as Map<String, dynamic>;
@@ -108,7 +108,7 @@ void main() {
           digitalCardRead(token, const ['IsoDep'], DateTime.now().toUtc())!, endpoint: endpoint);
       expect(sent['card_id'], shareHex);
       expect(sent['card']['type'], 'digital_card');
-      expect(sent['security'], {'authenticated': false, 'level': 'signed_token'});
+      expect(sent['security'], {'authenticated': false, 'level': 'uid_only'});
       expect(sent['digital_card'], {'id': '3b241101-e2bb-4255-8caf-4136c566a962', 'token': token, 'verified': false});
       reader.dispose();
     });

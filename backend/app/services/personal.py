@@ -8,10 +8,10 @@ import secrets
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -85,24 +85,39 @@ TEMPLATES: list[dict[str, Any]] = [
 
 DEFAULT_TEMPLATE = "modern"
 FIELD_KEYS = ("full_name", "pronouns", "headline", "job_title", "company", "department", "bio", "phones", "emails",
-              "websites", "address", "socials", "custom_links")
+              "websites", "address", "socials", "custom_links",
+              "id_number", "valid_from", "valid_until", "barcode_value")  # Part 5 badge fields
+BADGE_FIELDS = ("id_number", "valid_from", "valid_until", "barcode_value")
+LIST_FIELDS = ("phones", "emails", "websites", "socials", "custom_links")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+BARCODE_RE = re.compile(r"^[\x20-\x7E]{1,48}$")  # Code 128 printable ASCII
 VISIBILITY_KEYS = (*FIELD_KEYS, "photo", "cover", "logo")
 DEFAULT_VISIBILITY: dict[str, str] = {
     "full_name": "public", "pronouns": "public", "headline": "public", "job_title": "public", "company": "public",
     "department": "public", "bio": "public", "photo": "public", "cover": "public", "logo": "public",
     "socials": "public", "websites": "public", "custom_links": "public",
     "phones": "contacts", "emails": "contacts", "address": "hidden",
+    "id_number": "contacts", "barcode_value": "contacts", "valid_from": "public", "valid_until": "public",
 }
 DEFAULT_SHARE = {"auto_exchange": True, "web_page_enabled": True, "lead_capture_enabled": True,
                  "nfc_sharing_enabled": True}
 LEVELS = {"public": 0, "contacts": 1, "hidden": 2}
 BACKGROUND_STYLES = ("solid", "gradient", "glass", "pattern")
-FONTS = ("sans", "serif", "mono", "display")
+# Font-pair ids shared with the web/mobile renderers and GET /personal/design-presets.
+FONTS = ("sans", "serif", "mono", "display", "elegant", "geometric", "humanist", "condensed")
+
+
+V2_DESIGN_KEYS = ("secondary", "photo_shape", "photo_ring", "icon_style", "decor_style", "background_image_opacity")
 
 
 def template_out(t: CardTemplate) -> dict[str, Any]:
-    return {"id": t.id, "name": t.name, "description": t.description, "layout": t.layout,
-            "default_design": t.default_design, "supports": t.supports, "premium": t.premium}
+    out = {"id": t.id, "engine": t.engine or "v1", "name": t.name, "description": t.description, "layout": t.layout,
+           "default_design": t.default_design, "supports": t.supports, "premium": t.premium}
+    if t.engine == "v2" and t.spec:
+        out.update(category=t.category, **{k: t.spec.get(k) for k in ("format", "sides", "canvas",
+                                                                      "default_arrangement")},
+                   variants=t.spec.get("variants") or [])
+    return out
 
 
 # ── Validation ─────────────────────────────────────────────────────────────
@@ -130,6 +145,9 @@ def validate_fields(data: dict[str, Any]) -> dict[str, Any]:
     for key, value in data.items():
         if key not in FIELD_KEYS:
             raise validation_error(f"body.fields.{key}", "unknown field")
+        if key in BADGE_FIELDS:
+            out[key] = _badge_value(key, value)
+            continue
         if key in limits:
             out[key] = _str(value, key, limits[key])
             continue
@@ -158,7 +176,36 @@ def validate_fields(data: dict[str, Any]) -> dict[str, Any]:
                 clean.append({"label": _str(item.get("label"), f"{key}.{i}.label", 60) or "",
                               "url": _url(item.get("url"), f"body.fields.{key}.{i}.url")})
         out[key] = clean
+    if out.get("valid_from") and out.get("valid_until") and out["valid_from"] > out["valid_until"]:
+        raise validation_error("body.fields.valid_until", "must not be before valid_from")
     return out
+
+
+def _badge_value(key: str, value: Any) -> str | None:
+    text = _str(value, key, 48 if key == "barcode_value" else 32)
+    if text is None:
+        return None
+    if key in ("valid_from", "valid_until"):
+        try:
+            date.fromisoformat(text)
+        except ValueError:
+            text = ""
+        if not DATE_RE.match(text):
+            raise validation_error(f"body.fields.{key}", "ISO date YYYY-MM-DD")
+    elif key == "barcode_value" and not BARCODE_RE.match(text):
+        raise validation_error("body.fields.barcode_value", "at most 48 printable ASCII characters (Code 128)")
+    return text
+
+
+def is_expired(card: DigitalCard, today: date | None = None) -> bool:
+    """A badge whose `valid_until` has passed (Part 5 §4)."""
+    until = (card.fields or {}).get("valid_until")
+    if not until:
+        return False
+    try:
+        return date.fromisoformat(until) < (today or datetime.now(UTC).date())
+    except ValueError:
+        return False
 
 
 def validate_design(data: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
@@ -188,6 +235,13 @@ def validate_design(data: dict[str, Any], base: dict[str, Any]) -> dict[str, Any
             if not isinstance(value, bool):
                 raise validation_error("body.design.show_qr", "boolean")
             out[key] = value
+        elif key in V2_DESIGN_KEYS:  # Part 5 §2
+            from app.services.card_design_v2 import validate_design_values
+
+            errors = validate_design_values({key: value}, "body.design")
+            if errors:
+                raise validation_error(f"body.design.{key}", errors[0].split(" ", 1)[1])
+            out[key] = value.upper() if key == "secondary" else value
         else:
             raise validation_error(f"body.design.{key}", "unknown design property")
     return out
@@ -262,7 +316,21 @@ def snapshot(card: DigitalCard, level: str) -> dict[str, Any]:
     layout = card.template.layout if card.__dict__.get("template") is not None else None
     return {"card_id": str(card.id), "share_id": str(card.share_id), "template_id": card.template_id,
             "layout": layout, "design": dict(card.design or {}), "fields": filtered_fields(card, level), **image_urls(card, level),
-            "public_url": public_url(card), "business": business_brief(card)}
+            "public_url": public_url(card), "business": business_brief(card), **design_v2_out(card)}
+
+
+def effective_arrangement(card: DigitalCard) -> dict[str, Any] | None:
+    from app.services.card_design_v2 import default_arrangement, spec_of
+
+    spec = spec_of(card.template) if card.__dict__.get("template") is not None else None
+    if spec is None:
+        return None
+    return card.arrangement if card.arrangement is not None else default_arrangement(spec)
+
+
+def design_v2_out(card: DigitalCard) -> dict[str, Any]:
+    return {"design_version": card.design_version or 1, "sides_enabled": list(card.sides_enabled or ["front"]),
+            "arrangement": effective_arrangement(card), "expired": is_expired(card)}
 
 
 def card_out(card: DigitalCard) -> dict[str, Any]:
@@ -279,8 +347,8 @@ def card_out(card: DigitalCard) -> dict[str, Any]:
         "template_id": card.template_id, "design": dict(card.design or {}),
         "photo_url": media_url(card.photo_path), "cover_url": media_url(card.cover_path),
         "logo_url": media_url(card.logo_path),
-        "fields": {k: (card.fields or {}).get(k, [] if k in ("phones", "emails", "websites", "socials", "custom_links")
-                                               else None) for k in FIELD_KEYS},
+        "fields": {k: (card.fields or {}).get(k, [] if k in LIST_FIELDS else None) for k in FIELD_KEYS},
+        **design_v2_out(card),
         "visibility": {**DEFAULT_VISIBILITY, **(card.visibility or {})},
         "share_settings": {**DEFAULT_SHARE, **(card.share_settings or {})},
         "business_link": link,
@@ -312,7 +380,8 @@ async def get_template(session: AsyncSession, template_id: str | None) -> CardTe
 
 async def new_card(session: AsyncSession, user: User, *, label: str = "Personal", template_id: str | None = None,
                    fields: dict[str, Any] | None = None, design: dict[str, Any] | None = None,
-                   visibility: dict[str, Any] | None = None, share: dict[str, Any] | None = None) -> DigitalCard:
+                   visibility: dict[str, Any] | None = None, share: dict[str, Any] | None = None,
+                   arrangement: dict[str, Any] | None = None, sides_enabled: list[str] | None = None) -> DigitalCard:
     template = await get_template(session, template_id)
     fields = fields if fields is not None else {"full_name": user.full_name,
                                                 "emails": [{"label": "Email", "value": user.email}]}
@@ -331,10 +400,39 @@ async def new_card(session: AsyncSession, user: User, *, label: str = "Personal"
         share_settings=validate_share(share or {}, DEFAULT_SHARE), locked_fields=[], template_locked=False,
         views=0, nfc_taps=0, exchanges=0, leads=0,
     )
+    apply_template_v2(card, template, arrangement=arrangement, sides_enabled=sides_enabled, switching=False)
     card.template = template
     session.add(card)
     await session.flush()
     return card
+
+
+def apply_template_v2(card: DigitalCard, template: CardTemplate, *, arrangement: Any = None,
+                      sides_enabled: Any = None, switching: bool = True) -> None:
+    """Sets design_version / sides_enabled / arrangement for `template` (Part 5 §2). When switching template without
+    an explicit arrangement, the previous v2 arrangement is remapped best-effort onto the new zones."""
+    from app.services import card_design_v2 as v2
+
+    spec = v2.spec_of(template)
+    if spec is None:
+        if arrangement is not None:
+            raise AppError(422, "invalid_arrangement", "This template has no zones (design v1)",
+                           [{"field": "body.arrangement", "message": "only v2 templates take an arrangement"}])
+        card.design_version, card.arrangement = 1, None
+        card.sides_enabled = v2.validate_sides(None, sides_enabled) if sides_enabled is not None else ["front"]
+        return
+    was_v2 = switching and card.design_version == 2
+    previous = card.arrangement if was_v2 else None
+    card.design_version = 2
+    if arrangement is not None:
+        card.arrangement = v2.validate_arrangement(spec, arrangement)
+    elif switching:
+        card.arrangement = v2.remap_arrangement(previous, spec)
+    if sides_enabled is not None:
+        card.sides_enabled = v2.validate_sides(spec, sides_enabled)
+    else:
+        current = [s for s in (card.sides_enabled or []) if s in spec["sides"]] if was_v2 else []
+        card.sides_enabled = current if current and current[0] == "front" else list(spec["sides"])
 
 
 # ── Plans ──────────────────────────────────────────────────────────────────
@@ -459,6 +557,13 @@ async def resolve_token(session: AsyncSession, token: str, *, now: int | None = 
             (require and not share_setting(card, require)):
         raise AppError(404, "card_unavailable", "This card isn't available")
     return Resolved(card, row, owner)
+
+
+async def bump_counter(session: AsyncSession, card_id: uuid.UUID, counter: str, by: int = 1) -> None:
+    """Atomic in-SQL increment of a DigitalCard counter (views/nfc_taps/exchanges/leads)."""
+    column = getattr(DigitalCard, counter)
+    await session.execute(update(DigitalCard).where(DigitalCard.id == card_id).values({column: column + by})
+                          .execution_options(synchronize_session=False))
 
 
 def record_activity(session: AsyncSession, user_id: uuid.UUID, card_id: uuid.UUID | None, type_: str, title: str,

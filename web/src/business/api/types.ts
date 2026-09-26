@@ -109,6 +109,7 @@ export interface CardSummary {
   status: CardStatus
   effective_status: EffectiveStatus
   public_code?: string
+  /** Not sent by the backend `CardSummary` today (kept optional for forward compatibility). */
   uid_masked?: string | null
   total_taps?: number
   last_tap_at?: ISODateTime | null
@@ -301,6 +302,8 @@ export interface Employee {
   public_url?: string | null
   /** Part 4 §6 — business-issued personal digital card. */
   digital_card?: EmployeeDigitalCard | null
+  /** Part 5 §4 — optional, unique per business; default ID number / barcode for badges. */
+  employee_number?: string | null
 }
 
 export interface EmployeeDigitalCard {
@@ -313,6 +316,9 @@ export interface IssueDigitalCardRequest {
   email: string
   template_id?: string
   design?: Record<string, unknown>
+  arrangement?: Record<string, Record<string, string[]>> | null
+  /** Part 5 §4 — ID badge fields. */
+  badge?: { id_number?: string; valid_from?: string; valid_until?: string; barcode_value?: string }
   locked_fields?: string[]
 }
 
@@ -324,6 +330,7 @@ export interface EmployeeInput {
   phone?: string | null
   email?: string | null
   social_links?: SocialLink[]
+  employee_number?: string | null
 }
 
 export interface Customer {

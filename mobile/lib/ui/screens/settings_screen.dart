@@ -36,7 +36,11 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true) await app.unregister();
+    if (ok != true || !context.mounted) return;
+    final nav = Navigator.of(context);
+    await app.unregister();
+    // This screen describes a registration that no longer exists: back to the shell/setup.
+    nav.popUntil((r) => r.isFirst);
   }
 
   Future<void> _resync(BuildContext context) async {
@@ -155,9 +159,11 @@ class SettingsScreen extends StatelessWidget {
               const UidOnlyNote(),
               const SizedBox(height: 8),
               Text(
-                'This terminal only reads the card UID. A UID identifies a card but does not prove who holds it '
-                'and can be cloned. Every event is sent with security.authenticated = false and '
-                'security.level = "uid_only". Your backend decides what a card ID means.',
+                'Physical cards are read by UID only. A UID identifies a card but does not prove who holds it '
+                'and can be cloned: such events are sent with security.authenticated = false and '
+                'security.level = "uid_only". Phones sharing a digital card add a signed, short-lived token '
+                '(verified by the platform) — an identifier, not strong authentication. Your backend decides '
+                'what a card ID means.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],

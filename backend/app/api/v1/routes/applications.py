@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Response
 from sqlalchemy import select
 
-from app.api.deps import ClientDep, CurrentUser, SessionDep
+from app.api.deps import ClientDep, CurrentUser, SessionDep, ensure_developer_account, platform_only
 from app.core.config import settings
 from app.core.errors import AppError, validation_error
 from app.core.security import generate_webhook_secret
@@ -43,7 +43,7 @@ from app.services.serializers import (
     device_counts,
 )
 
-router = APIRouter(prefix="/applications", tags=["Applications"])
+router = APIRouter(prefix="/applications", tags=["Applications"], dependencies=platform_only)
 
 
 @router.get("", response_model=list[ApplicationOut], summary="List applications")
@@ -75,6 +75,7 @@ async def list_applications(user: CurrentUser, session: SessionDep) -> list[Appl
 async def create_application(
     body: ApplicationCreateIn, user: CurrentUser, session: SessionDep, client: ClientDep
 ) -> ApplicationCreatedOut:
+    ensure_developer_account(user)
     await plan_service.ensure_can_create_application(session, user.id)
     return await create_application_record(session, user, body, client, business_id=None)
 

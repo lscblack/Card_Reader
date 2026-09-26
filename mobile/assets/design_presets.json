@@ -1,0 +1,224 @@
+{
+ "palettes": [
+  {
+   "id": "crimson_navy",
+   "name": "Crimson & Navy",
+   "primary": "#C8102E",
+   "secondary": "#1F2937",
+   "background": "#FFFFFF",
+   "text": "#111827",
+   "accent": "#C8102E"
+  },
+  {
+   "id": "platform_red",
+   "name": "Platform Red",
+   "primary": "#B91C1C",
+   "secondary": "#450A0A",
+   "background": "#FFFFFF",
+   "text": "#18181B",
+   "accent": "#DC2626"
+  },
+  {
+   "id": "gold_black",
+   "name": "Gold & Black",
+   "primary": "#C9A227",
+   "secondary": "#111111",
+   "background": "#0B0B0B",
+   "text": "#F5F5F4",
+   "accent": "#E0B94A"
+  },
+  {
+   "id": "navy_gold",
+   "name": "Navy & Gold",
+   "primary": "#1E3A5F",
+   "secondary": "#C9A227",
+   "background": "#FFFFFF",
+   "text": "#0F172A",
+   "accent": "#C9A227"
+  },
+  {
+   "id": "teal",
+   "name": "Teal",
+   "primary": "#0F766E",
+   "secondary": "#134E4A",
+   "background": "#FFFFFF",
+   "text": "#0F172A",
+   "accent": "#14B8A6"
+  },
+  {
+   "id": "ocean",
+   "name": "Ocean",
+   "primary": "#1D4ED8",
+   "secondary": "#0EA5E9",
+   "background": "#FFFFFF",
+   "text": "#0F172A",
+   "accent": "#38BDF8"
+  },
+  {
+   "id": "forest",
+   "name": "Forest",
+   "primary": "#166534",
+   "secondary": "#14532D",
+   "background": "#F7FEE7",
+   "text": "#052E16",
+   "accent": "#65A30D"
+  },
+  {
+   "id": "sunset",
+   "name": "Sunset",
+   "primary": "#EA580C",
+   "secondary": "#BE123C",
+   "background": "#FFF7ED",
+   "text": "#431407",
+   "accent": "#F59E0B"
+  },
+  {
+   "id": "mono",
+   "name": "Monochrome",
+   "primary": "#111827",
+   "secondary": "#4B5563",
+   "background": "#FFFFFF",
+   "text": "#111827",
+   "accent": "#6B7280"
+  },
+  {
+   "id": "mono_dark",
+   "name": "Midnight",
+   "primary": "#F4F4F5",
+   "secondary": "#3F3F46",
+   "background": "#09090B",
+   "text": "#FAFAFA",
+   "accent": "#A1A1AA"
+  },
+  {
+   "id": "pastel",
+   "name": "Pastel",
+   "primary": "#F9A8D4",
+   "secondary": "#A5B4FC",
+   "background": "#FFFBFE",
+   "text": "#3B0764",
+   "accent": "#86EFAC"
+  },
+  {
+   "id": "charcoal_red",
+   "name": "Charcoal & Red",
+   "primary": "#DC2626",
+   "secondary": "#27272A",
+   "background": "#18181B",
+   "text": "#FAFAFA",
+   "accent": "#EF4444"
+  },
+  {
+   "id": "royal_purple",
+   "name": "Royal Purple",
+   "primary": "#6D28D9",
+   "secondary": "#312E81",
+   "background": "#FFFFFF",
+   "text": "#1E1B4B",
+   "accent": "#A78BFA"
+  },
+  {
+   "id": "coral",
+   "name": "Coral",
+   "primary": "#F43F5E",
+   "secondary": "#FB923C",
+   "background": "#FFF1F2",
+   "text": "#4C0519",
+   "accent": "#FDA4AF"
+  },
+  {
+   "id": "slate_sky",
+   "name": "Slate & Sky",
+   "primary": "#334155",
+   "secondary": "#0284C7",
+   "background": "#F8FAFC",
+   "text": "#0F172A",
+   "accent": "#38BDF8"
+  },
+  {
+   "id": "earth",
+   "name": "Earth",
+   "primary": "#92400E",
+   "secondary": "#78350F",
+   "background": "#FEFCE8",
+   "text": "#292524",
+   "accent": "#CA8A04"
+  },
+  {
+   "id": "emerald_night",
+   "name": "Emerald Night",
+   "primary": "#10B981",
+   "secondary": "#064E3B",
+   "background": "#022C22",
+   "text": "#ECFDF5",
+   "accent": "#34D399"
+  },
+  {
+   "id": "rose_gold",
+   "name": "Rose Gold",
+   "primary": "#B76E79",
+   "secondary": "#6B4F4F",
+   "background": "#FFF8F6",
+   "text": "#3F2A2B",
+   "accent": "#E8B4B8"
+  }
+ ],
+ "font_pairs": [
+  {
+   "id": "sans",
+   "name": "Inter",
+   "heading": "sans",
+   "body": "sans",
+   "style": "Clean and modern"
+  },
+  {
+   "id": "display",
+   "name": "Grotesk + Inter",
+   "heading": "display",
+   "body": "sans",
+   "style": "Bold, attention-grabbing"
+  },
+  {
+   "id": "geometric",
+   "name": "Geometric",
+   "heading": "geometric",
+   "body": "sans",
+   "style": "Crisp and contemporary"
+  },
+  {
+   "id": "elegant",
+   "name": "Serif + Inter",
+   "heading": "serif",
+   "body": "sans",
+   "style": "Classic, trustworthy"
+  },
+  {
+   "id": "serif",
+   "name": "Classic serif",
+   "heading": "serif",
+   "body": "serif",
+   "style": "Editorial, elegant"
+  },
+  {
+   "id": "humanist",
+   "name": "Humanist",
+   "heading": "humanist",
+   "body": "humanist",
+   "style": "Warm and approachable"
+  },
+  {
+   "id": "condensed",
+   "name": "Condensed + Inter",
+   "heading": "condensed",
+   "body": "sans",
+   "style": "Compact and strong"
+  },
+  {
+   "id": "mono",
+   "name": "Mono + Inter",
+   "heading": "mono",
+   "body": "sans",
+   "style": "Technical, precise"
+  }
+ ]
+}

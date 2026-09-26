@@ -184,6 +184,8 @@ export interface Application {
   device_count: number
   created_at: ISODateTime
   updated_at: ISODateTime
+  /** Admin account detail lists soft-deleted applications too. */
+  deleted?: boolean
 }
 
 export interface CreateApplicationRequest {
@@ -280,7 +282,8 @@ export interface Device {
 
 // ---------- Events & deliveries ----------
 
-export type EventStatus = 'pending' | 'delivered' | 'retrying' | 'failed'
+/** `logged`: recorded without a delivery (e.g. a business terminal with no endpoint configured) — not an error. */
+export type EventStatus = 'pending' | 'delivered' | 'retrying' | 'failed' | 'logged'
 
 export interface NfcEvent {
   id: UUID
@@ -652,11 +655,12 @@ export interface AdminAccount extends User {
 export interface AdminAccountDetail extends AdminAccount {
   applications?: Application[]
   devices?: Device[]
-  request_logs?: RequestLog[]
+  /** The account's latest request logs (backend key `recent_request_logs`). */
+  recent_request_logs?: RequestLog[]
   audit_logs?: AuditLog[]
   /** Part 3 §4 */
   email_logs?: EmailLog[]
-  recent_logins?: AuditLog[]
+  recent_logins?: { at: ISODateTime; ip_address: string | null; user_agent: string | null }[]
 }
 
 export interface AdminAccountPatch {
@@ -682,15 +686,15 @@ export interface AdminBusiness {
   verified: boolean
   plan: Plan | string | null
   created_at: ISODateTime
-  owner?: { id: UUID; email: string; full_name: string } | null
-  members_count?: number
-  devices_count?: number
-  cards_count?: number
+  /** Business owner's account email. */
+  owner_email?: string | null
+  deleted?: boolean
+  stats?: { members: number; cards: number; devices: number; taps_30d: number }
 }
 
 export interface AdminDevice extends Device {
   online: boolean
-  owner?: { id: UUID; email: string; full_name: string } | null
+  owner?: { id: UUID; email: string; full_name?: string | null } | null
   business?: { id: UUID; name: string } | null
 }
 
@@ -705,7 +709,8 @@ export interface AdminSystem {
 }
 
 export interface PlatformSettings {
-  signups_enabled: { developer: boolean; business: boolean }
+  /** `personal` missing = enabled. */
+  signups_enabled: { developer: boolean; business: boolean; personal?: boolean }
   request_log_retention_days: number
   default_rate_limit: { requests: number; window_seconds: number }
   maintenance_message: string | null
@@ -769,7 +774,7 @@ export interface Promotion {
   discount_type: 'percent' | 'amount'
   discount_value: number
   currency: string | null
-  audience: 'developer' | 'business' | 'all'
+  audience: 'developer' | 'business' | 'personal' | 'all'
   plan_codes: string[]
   starts_at: ISODateTime | null
   ends_at: ISODateTime | null

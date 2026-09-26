@@ -130,12 +130,12 @@ export default function OverviewPage() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             <KpiCard label="Taps today" value={d?.taps_today ?? 0} icon={MousePointerClick} loading={!d} />
             <KpiCard
-              label="Taps · 30 days"
+              label={a || (can('analytics.view') && analytics.isLoading) ? 'Taps · 30 days' : 'Taps · 7 days'}
               value={a?.totals.taps ?? d?.taps_7d ?? 0}
               icon={Activity}
               loading={!d || (can('analytics.view') && analytics.isLoading)}
               delta={a ? delta(a.totals.taps, a.previous_period_totals?.taps) : undefined}
-              hint={a ? undefined : `${num(d?.taps_7d)} in 7 days`}
+              hint={a ? `${num(d?.taps_7d)} in 7 days` : undefined}
             />
             <KpiCard label="Active cards" value={d ? `${num(d.cards.active)} / ${num(d.cards.total)}` : 0} icon={Nfc} loading={!d} />
             <KpiCard label="Active tags" value={d ? `${num(d.tags.active)} / ${num(d.tags.total)}` : 0} icon={Tag} loading={!d} />

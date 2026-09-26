@@ -1,4 +1,8 @@
-import { Building2, Check, Lock, X } from 'lucide-react'
+import { useState } from 'react'
+import { Building2, Check, MailWarning, X } from 'lucide-react'
+import { authApi } from '@/api/auth'
+import { ApiError } from '@/api/client'
+import { useAuth } from '@/auth/context'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -13,8 +17,7 @@ import { useErrorToast } from '@/business/hooks/useErrorToast'
 import { useNavigate } from 'react-router'
 import type { BusinessInvite } from '../api/types'
 import { invitesApi } from '../api/personal'
-import { useInvites, usePCards, usePMutation, useTemplates } from '../hooks/queries'
-import { layoutFor } from '../lib/card'
+import { useInvites, usePCards, usePMutation } from '../hooks/queries'
 import { DEFAULT_DESIGN } from '../lib/design'
 import { CardThumb } from '../components/DigitalCardRender'
 
@@ -22,20 +25,18 @@ function InviteCard({ inv }: { inv: BusinessInvite }) {
   const toast = useToast()
   const onError = useErrorToast()
   const navigate = useNavigate()
-  const templates = useTemplates()
   const cards = usePCards()
   const me = cards.data?.find((c) => c.is_primary) ?? cards.data?.[0]
   const accept = usePMutation(() => invitesApi.accept(inv.id))
   const decline = usePMutation(() => invitesApi.decline(inv.id))
-  const tpl = templates.data?.find((t) => t.id === inv.template_id)
   const pending = inv.status === 'pending'
   return (
     <Card className="overflow-hidden">
       <div className="grid gap-0 md:grid-cols-[260px_1fr]">
         <div className="bg-surface-2/60 p-4">
           <CardThumb
-            layout={layoutFor(inv.template_id, templates.data)}
-            card={{ design: { ...(tpl?.default_design ?? DEFAULT_DESIGN), ...(inv.design ?? {}) }, fields: { ...(me?.fields ?? { full_name: inv.employee_name ?? 'You', phones: [], emails: [], websites: [], socials: [], custom_links: [] }), company: inv.business_name }, photo_url: me?.photo_url, business: { name: inv.business_name, logo_url: inv.business_logo_url ?? null, verified: true } }}
+            layout="centered"
+            card={{ design: DEFAULT_DESIGN, fields: { ...(me?.fields ?? { full_name: 'You', phones: [], emails: [], websites: [], socials: [], custom_links: [] }), company: inv.business.name }, photo_url: me?.photo_url, business: { name: inv.business.name, logo_url: inv.business.logo_url, verified: inv.business.verified } }}
             audience="all"
             maxHeight={260}
           />
@@ -43,19 +44,15 @@ function InviteCard({ inv }: { inv: BusinessInvite }) {
         <CardBody className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <Building2 className="h-5 w-5 text-subtle" />
-            <p className="text-[15px] font-semibold">{inv.business_name}</p>
+            <p className="text-[15px] font-semibold">{inv.business.name}</p>
             <Badge tone={pending ? 'info' : inv.status === 'accepted' ? 'success' : 'neutral'} className="capitalize">
               {inv.status}
             </Badge>
           </div>
           <p className="text-[13px] text-muted">
-            {inv.business_name} invited you to carry a company digital card. It lives in your account next to your own cards; your company keeps its branding up to date.
+            {inv.business.name} invited you to carry a company digital card. It lives in your account next to your own cards; your company keeps its branding up to date
+            and may lock some fields (like the company name).
           </p>
-          {inv.locked_fields.length > 0 && (
-            <p className="flex items-start gap-1.5 text-xs text-subtle">
-              <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Managed by the company: {inv.locked_fields.map((f) => f.replace(/_/g, ' ')).join(', ')}.
-            </p>
-          )}
           <p className="text-xs text-subtle">Received {relativeTime(inv.created_at)}</p>
           {pending && (
             <div className="flex flex-wrap gap-2 pt-1">
@@ -66,7 +63,7 @@ function InviteCard({ inv }: { inv: BusinessInvite }) {
                 onClick={async () => {
                   try {
                     const c = await accept.mutateAsync(undefined)
-                    toast.success(`Your ${inv.business_name} card is ready`)
+                    toast.success(`Your ${inv.business.name} card is ready`)
                     if (c && 'id' in c) navigate(`/me/cards/${c.id}`)
                   } catch (e) {
                     onError(e)
@@ -97,13 +94,57 @@ function InviteCard({ inv }: { inv: BusinessInvite }) {
   )
 }
 
+/** Invitations are matched on the account email, so they're only listed (and can only be answered) once it's verified. */
+function VerifyToSeeInvites() {
+  const { user, devVerificationUrl, setDevVerificationUrl } = useAuth()
+  const toast = useToast()
+  const [sending, setSending] = useState(false)
+  async function resend() {
+    setSending(true)
+    try {
+      const res = await authApi.resendVerification()
+      if (res?.dev_verification_url) setDevVerificationUrl(res.dev_verification_url)
+      toast.success(`We sent a new verification link to ${user?.email ?? 'your email'}.`)
+    } catch (e) {
+      toast.fromError(e, 'Could not resend')
+    } finally {
+      setSending(false)
+    }
+  }
+  return (
+    <Card>
+      <EmptyState
+        icon={MailWarning}
+        title="Verify your email to see business card invites"
+        description={`Companies invite you by email address. Verify ${user?.email ?? 'your email'} to see and accept the digital cards they issue you.`}
+        action={
+          <div className="flex flex-col items-center gap-2">
+            <Button variant="primary" loading={sending} onClick={resend}>
+              Resend verification link
+            </Button>
+            {devVerificationUrl && (
+              <a href={devVerificationUrl} className="text-xs break-all text-accent underline">
+                Dev link: {devVerificationUrl}
+              </a>
+            )}
+          </div>
+        }
+      />
+    </Card>
+  )
+}
+
 export default function InvitesPage() {
   useDocumentTitle('Business invites')
+  const { user } = useAuth()
   const { data, error, isLoading, refetch } = useInvites()
+  const unverified = user?.email_verified === false || (error instanceof ApiError && error.code === 'email_not_verified')
   return (
     <>
       <PageHeader title="Business invites" description="Companies can issue you an employee digital card. Accept to add it to your account." />
-      {error ? (
+      {unverified ? (
+        <VerifyToSeeInvites />
+      ) : error ? (
         <Card>
           <BizErrorState error={error} onRetry={() => refetch()} />
         </Card>

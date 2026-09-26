@@ -44,10 +44,33 @@ class MainActivity : FlutterActivity() {
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var notificationId = 1000
 
+    /** Recreated from saved state, or relaunched from Recents with the original intent. */
+    private var replayedLaunch = false
+
+    /** Dart wants our HCE service preferred (My Card visible); applied only while resumed. */
+    private var preferHce = false
+    private var resumed = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Set before super.onCreate: configureFlutterEngine (initial link) runs inside it.
+        replayedLaunch = LaunchIntents.isReplay(savedInstanceState != null, intent?.flags ?: 0)
         super.onCreate(savedInstanceState)
-        // Launch intent: the activity was not in the foreground.
-        if (savedInstanceState == null) handleTagIntent(intent, fromBackground = true)
+        // Launch intent: the activity was not in the foreground. A launch replayed from Recents
+        // still carries the old tag intent (EXTRA_TAG included) — never process that tap twice.
+        if (!replayedLaunch) handleTagIntent(intent, fromBackground = true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        resumed = true
+        // Android drops the preferred service whenever the activity leaves the foreground.
+        if (preferHce) applyPreferredHce(true)
+    }
+
+    override fun onPause() {
+        if (preferHce) applyPreferredHce(false)
+        resumed = false
+        super.onPause()
     }
 
     override fun onStart() {
@@ -75,7 +98,7 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
-        initialLink = pairingLink(intent)
+        initialLink = if (replayedLaunch) null else pairingLink(intent)
         linksChannel = MethodChannel(messenger, LINKS_CHANNEL).apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -105,14 +128,22 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "setServiceEnabled" -> {
-                    setComponent(hceComponent(), call.arguments == true)
+                    val enabled = call.arguments == true
+                    setComponent(hceComponent(), enabled)
+                    // setPreferredService fails while the component is disabled: re-apply now.
+                    if (enabled && preferHce && resumed) applyPreferredHce(true)
                     result.success(null)
                 }
                 "isServiceEnabled" -> result.success(
                     packageManager.getComponentEnabledSetting(hceComponent()) ==
                         PackageManager.COMPONENT_ENABLED_STATE_ENABLED
                 )
-                "setPreferred" -> result.success(setPreferredHce(call.arguments == true))
+                "setPreferred" -> {
+                    val wanted = call.arguments == true
+                    val changed = wanted != preferHce
+                    preferHce = wanted
+                    result.success(if (resumed && (wanted || changed)) applyPreferredHce(wanted) else true)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -290,7 +321,7 @@ class MainActivity : FlutterActivity() {
     }
 
     /** While the Share screen is visible, prefer our service over other apps with the same AIDs. */
-    private fun setPreferredHce(preferred: Boolean): Boolean = try {
+    private fun applyPreferredHce(preferred: Boolean): Boolean = try {
         val adapter = NfcAdapter.getDefaultAdapter(this) ?: return false
         val ce = CardEmulation.getInstance(adapter)
         if (preferred) ce.setPreferredService(this, hceComponent()) else ce.unsetPreferredService(this)
@@ -402,4 +433,16 @@ class MainActivity : FlutterActivity() {
         private const val NOTIFICATION_CHANNEL = "card_reads"
         private const val REQUEST_NOTIFICATIONS = 4711
     }
+}
+
+/** Pure launch-intent rules (JVM unit-tested). */
+object LaunchIntents {
+    /**
+     * True when the launch intent is a replay rather than a new event: the activity is being
+     * restored from saved state, or was relaunched from Recents (Android re-delivers the task's
+     * original intent — a tag dispatch or a single-use pairing/login link — with
+     * FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY).
+     */
+    fun isReplay(restored: Boolean, flags: Int): Boolean =
+        restored || (flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
 }

@@ -10,6 +10,7 @@ import '../core/http_client.dart';
 import '../core/logger.dart';
 import 'api_client.dart';
 import 'models/api_models.dart';
+import 'models/design_presets.dart';
 import 'models/personal.dart';
 
 /// Device fields sent when creating a personal session.
@@ -57,6 +58,9 @@ abstract class PersonalApi {
   Future<DigitalCard?> uploadImage(String id, String kind, String filePath);
   Future<void> deleteImage(String id, String kind);
   Future<List<CardTemplate>> templates();
+
+  /// Part 5 §3 (public): palettes + font pairs.
+  Future<DesignPresets> designPresets();
   Future<String> exchangeQr(String cardId);
 
   /// [via] = `nfc` | `qr` (Part 4 §9).
@@ -214,18 +218,32 @@ class HttpPersonalApi implements PersonalApi {
       ..files.add(await http.MultipartFile.fromPath('file', filePath));
     final http.Response res;
     try {
-      res = await http.Response.fromStream(await _client.send(req)).timeout(const Duration(seconds: 60));
+      // The timeout covers connect + upload + response (not only reading the body).
+      res = await _client.send(req).then(http.Response.fromStream).timeout(const Duration(seconds: 60));
     } on TimeoutException {
       throw const NetworkException('Upload timed out', isTimeout: true);
     } on SocketException catch (e) {
-      throw NetworkException('Server unreachable (${e.message})');
+      throw NetworkException('Server unreachable (${e.osError?.message ?? e.message})');
+    } on HandshakeException {
+      throw const NetworkException('TLS handshake failed', mob: MobError.tlsError);
+    } on http.ClientException catch (e) {
+      throw NetworkException('Connection error (${e.message})');
     }
     final body = utf8.decode(res.bodyBytes, allowMalformed: true);
+    Log.d('personal', 'POST images -> ${res.statusCode}');
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      final j = body.isEmpty ? null : jsonDecode(body);
+      Object? j;
+      try {
+        j = body.isEmpty ? null : jsonDecode(body);
+      } on FormatException {
+        j = null; // uploaded; the caller refreshes the card instead
+      }
       return j is Map && j['id'] != null ? DigitalCard.fromJson(j) : null;
     }
-    throw ApiClient.parseError(res.statusCode, body, res.headers);
+    final e = ApiClient.parseError(res.statusCode, body, res.headers);
+    // Same session handling as every other call: a revoked session signs this space out.
+    if (e.statusCode == 401 && sessionToken != null) onUnauthorized?.call(e);
+    throw e;
   }
 
   @override
@@ -235,6 +253,10 @@ class HttpPersonalApi implements PersonalApi {
   @override
   Future<List<CardTemplate>> templates() async =>
       _items(await _call('GET', '/personal/templates', auth: false)).map(CardTemplate.fromJson).toList();
+
+  @override
+  Future<DesignPresets> designPresets() async =>
+      DesignPresets.fromJson(await _call('GET', '/personal/design-presets', auth: false));
 
   @override
   Future<String> exchangeQr(String cardId) async {

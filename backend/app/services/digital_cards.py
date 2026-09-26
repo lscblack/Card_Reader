@@ -38,7 +38,8 @@ def _public_payload(card: DigitalCard) -> dict[str, Any]:
     fields = personal.filtered_fields(card, "public")
     images = personal.image_urls(card, "public")
     return {"id": str(card.share_id), "verified": True, **{k: fields.get(k) for k in PAYLOAD_FIELDS},
-            "photo_url": images["photo_url"], "public_url": personal.public_url(card)}
+            "photo_url": images["photo_url"], "public_url": personal.public_url(card),
+            "expired": personal.is_expired(card)}  # Part 5 §4: badge past valid_until
 
 
 async def read_by_terminal(session: AsyncSession, token: str, card_id: str, app: Application,
@@ -61,7 +62,7 @@ async def read_by_terminal(session: AsyncSession, token: str, card_id: str, app:
                            {"verified": False, "error_code": exc.code, "error_ref": ref_for(exc.code)})
     card = resolved.card
     return DigitalRead(share_id, True, None, card, _public_payload(card),
-                       {"verified": True, "error_code": None, "error_ref": None})
+                       {"verified": True, "error_code": None, "error_ref": None, "expired": personal.is_expired(card)})
 
 
 async def after_event(session: AsyncSession, read: DigitalRead, event: NfcEvent, device: Device, app: Application,
@@ -69,7 +70,7 @@ async def after_event(session: AsyncSession, read: DigitalRead, event: NfcEvent,
     card = read.card
     if card is not None:
         reader = business.name if business is not None else app.name
-        card.nfc_taps += 1
+        await personal.bump_counter(session, card.id, "nfc_taps")
         personal.record_activity(session, card.user_id, card.id, "terminal_read", f"Read by a terminal of {reader}",
                                  "nfc", counterpart_name=reader)
     if business is None:

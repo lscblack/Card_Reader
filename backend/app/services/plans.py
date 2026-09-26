@@ -199,7 +199,9 @@ async def get_user_plan(session: AsyncSession, user_id: uuid.UUID) -> Plan:
             )
         )
     ).scalar_one_or_none()
-    if plan is None:
+    # Developer limits (applications/devices/events) come from a developer plan. Personal plans leave these limits
+    # unset (= unlimited), so a personal subscription must not lift them: fall back to the free developer plan.
+    if plan is None or plan.audience != "developer":
         plan = await get_plan(session, "free")
         assert plan is not None
     return plan

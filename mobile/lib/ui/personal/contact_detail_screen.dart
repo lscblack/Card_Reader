@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../data/models/personal.dart';
 import '../../services/personal_state.dart';
-import '../digital_card/card_view.dart';
+import '../digital_card/any_card_view.dart';
+import 'exchange_flow.dart';
 
 /// Hands a vCard to the Contacts app / share sheet (Kotlin FileProvider).
 class VcardIntents {
@@ -101,10 +102,13 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             onSelected: (v) async {
               final nav = Navigator.of(context);
               if (v == 'delete') {
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await p.api?.deleteContact(_c.id);
                   nav.pop();
-                } catch (_) {}
+                } catch (e) {
+                  messenger.showSnackBar(SnackBar(content: Text('Not deleted: ${exchangeError(e)}')));
+                }
               }
             },
             itemBuilder: (_) => const [PopupMenuItem(value: 'delete', child: Text('Delete contact'))],
@@ -114,7 +118,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          DigitalCardView(card: _c.card, layout: _c.templateLayout ?? p.templateFor(_c.card.templateId).layout, hideHiddenFields: false),
+          AnyCardView(card: _c.card, template: p.templateFor(_c.card.templateId), layoutOverride: _c.templateLayout, hideHiddenFields: false),
           const SizedBox(height: 16),
           Row(children: [
             Expanded(

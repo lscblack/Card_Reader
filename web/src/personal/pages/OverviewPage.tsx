@@ -16,7 +16,7 @@ import { BizErrorState } from '@/business/components/BizError'
 import { delta } from '@/business/lib/format'
 import { CHART } from '@/business/lib/chart'
 import { useInvites, usePCards, usePStats, useTemplates } from '../hooks/queries'
-import { layoutFor, renderableOf } from '../lib/card'
+import { renderableOf, templateFor } from '../lib/card'
 import { DigitalCardRender } from '../components/DigitalCardRender'
 import { ActivityList } from '../components/ActivityList'
 
@@ -48,7 +48,7 @@ export default function OverviewPage() {
       />
       <div className="space-y-6">
         {pending.length > 0 && (
-          <Alert tone="info" title={`${pending[0].business_name} invited you to a company card`}>
+          <Alert tone="info" title={`${pending[0].business.name} invited you to a company card`}>
             <Link to="/me/invites" className="font-medium text-accent hover:underline">
               Review the invitation →
             </Link>
@@ -77,7 +77,7 @@ export default function OverviewPage() {
               )
             ) : (
               <>
-                <DigitalCardRender card={renderableOf(primary)} layout={layoutFor(primary.template_id, templates.data)} audience="public" qrValue={primary.public_url} />
+                <DigitalCardRender card={renderableOf(primary)} template={templateFor(primary.template_id, templates.data)} audience="public" qrValue={primary.public_url} />
                 <p className="text-center text-xs text-subtle">Public view of your primary card “{primary.label}”.</p>
               </>
             )}

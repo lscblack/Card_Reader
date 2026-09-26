@@ -2,14 +2,28 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode }
 import { AtSign, BadgeCheck, Globe, Link2, Mail, MapPin, Phone } from 'lucide-react'
 import { QrCode } from '@/components/QrCode'
 import { cn } from '@/lib/cn'
-import type { CardLayout, RenderableCard, VisibilityKey } from '../api/types'
+import { cssImage, safeHref, safeImageUrl } from '@/lib/url'
+import { isV2, type CardLayout, type CardTemplate, type RenderableCard, type SideId, type VisibilityKey } from '../api/types'
+import { sideSize } from '../lib/v2'
+import { CardV2 } from './CardV2'
+import type { CardAudience } from './cardTypes'
 import { onColor, surfaceStyle, visibilityOf, withAlpha } from '../lib/design'
 
-export type CardAudience = 'public' | 'contacts' | 'all'
+export type { CardAudience } from './cardTypes'
 
 interface Props {
   card: RenderableCard
-  layout: CardLayout
+  /** v1 layout (used when no v2 template is given). */
+  layout?: CardLayout
+  /** The card's template: v2 templates render with the shape engine, v1 with `template.layout`. */
+  template?: CardTemplate | null
+  /** v2 only: controlled side + flip handler (adds a flip button). */
+  side?: SideId
+  onSideChange?: (s: SideId) => void
+  /** v2 editor hooks. */
+  editing?: boolean
+  highlightZone?: string | null
+  onZoneClick?: (side: SideId, zoneId: string) => void
   /** `public`/`contacts`: filter with the card's visibility map (defaults apply); `all`: show everything not explicitly hidden. */
   audience?: CardAudience
   /** Links/buttons are clickable (public page, contacts). Off for thumbnails/editor. */
@@ -31,11 +45,20 @@ const bare = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/,
  * Renders a digital card from its template layout + design tokens (contract §2). Pure presentation, no data
  * fetching — used by the editor preview, template thumbnails, contacts, the public page and business screens.
  */
-export function DigitalCardRender({ card, layout, audience = 'all', interactive = false, qrValue, className }: Props) {
+export function DigitalCardRender(props: Props) {
+  const { template } = props
+  if (isV2(template)) {
+    const { card, audience, interactive, qrValue, side, onSideChange, editing, highlightZone, onZoneClick, className } = props
+    return <CardV2 card={card} template={template} audience={audience} interactive={interactive} qrValue={qrValue} side={side} onSideChange={onSideChange} editing={editing} highlightZone={highlightZone} onZoneClick={onZoneClick} className={className} />
+  }
+  return <CardV1 {...props} layout={(template && 'layout' in template ? template.layout : undefined) ?? props.layout ?? 'centered'} />
+}
+
+function CardV1({ card, layout, audience = 'all', interactive = false, qrValue, className }: Props & { layout: CardLayout }) {
   const d = card.design
   const f = card.fields
   const shown = (k: VisibilityKey) => (audience === 'all' ? card.visibility?.[k] !== 'hidden' : audience === 'public' ? visibilityOf(card, k) === 'public' : visibilityOf(card, k) !== 'hidden')
-  const photo = shown('photo') ? card.photo_url : null
+  const photo = shown('photo') ? safeImageUrl(card.photo_url) : null
   const name = f.full_name || 'Your name'
   const title = [shown('job_title') ? f.job_title : null, shown('company') ? f.company : null].filter(Boolean).join(' · ')
   const headline = shown('headline') ? f.headline : null
@@ -51,7 +74,11 @@ export function DigitalCardRender({ card, layout, audience = 'all', interactive 
   const muted = withAlpha(d.text, 0.68)
   const divider = withAlpha(d.text, 0.12)
   const Tag = interactive ? 'a' : 'span'
-  const linkProps = (href: string) => (interactive ? { href, target: href.startsWith('http') ? '_blank' : undefined, rel: 'noopener noreferrer' } : {})
+  // Stored URLs are user-controlled: only http(s)/mailto/tel become links (anything else renders as plain text).
+  const linkProps = (raw: string) => {
+    const href = interactive ? safeHref(raw) : null
+    return href ? { href, target: href.startsWith('http') ? '_blank' : undefined, rel: 'noopener noreferrer' } : {}
+  }
 
   const avatar = (size: number, ring = false) =>
     photo ? (
@@ -167,11 +194,11 @@ export function DigitalCardRender({ card, layout, audience = 'all', interactive 
     </div>
   )
 
-  const cover = card.cover_url
+  const cover = cssImage(card.cover_url)
   const coverBg: CSSProperties = cover
-    ? { backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: cover, backgroundSize: 'cover', backgroundPosition: 'center' }
     : { backgroundImage: `linear-gradient(135deg, ${d.primary}, ${withAlpha(d.accent, 0.85)})` }
-  const logo = card.logo_url ?? card.business?.logo_url
+  const logo = safeImageUrl(card.logo_url ?? card.business?.logo_url)
   const logoMark = (size = 28) => (logo ? <img src={logo} alt="" className="rounded-md object-contain" style={{ width: size, height: size }} /> : null)
 
   let body: ReactNode
@@ -216,7 +243,7 @@ export function DigitalCardRender({ card, layout, audience = 'all', interactive 
     case 'hero_photo':
       body = (
         <div>
-          <div className="relative h-56" style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : coverBg}>
+          <div className="relative h-56" style={photo ? { backgroundImage: cssImage(photo), backgroundSize: 'cover', backgroundPosition: 'center' } : coverBg}>
             <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.72) 100%)' }} />
             <div className="absolute inset-x-5 bottom-4">
               {nameBlock('left', true)}
@@ -308,7 +335,21 @@ export function DigitalCardRender({ card, layout, audience = 'all', interactive 
  * Thumbnail: renders the card at a fixed design width and scales it down with a CSS transform, so text and
  * shapes stay crisp at any size.
  */
-export function CardThumb({ width = 360, maxHeight, className, ...props }: Props & { width?: number; maxHeight?: number }) {
+export function CardThumb(props: Props & { width?: number; maxHeight?: number }) {
+  if (isV2(props.template)) {
+    const [W, H] = sideSize(props.template.format)
+    const { maxHeight, className, width: _w, ...rest } = props
+    void _w
+    return (
+      <div className={cn('mx-auto', className)} style={maxHeight ? { maxWidth: `min(100%, ${(maxHeight * W) / H}px)` } : undefined} aria-hidden="true">
+        <DigitalCardRender {...rest} interactive={false} />
+      </div>
+    )
+  }
+  return <CardThumbV1 {...props} />
+}
+
+function CardThumbV1({ width = 360, maxHeight, className, ...props }: Props & { width?: number; maxHeight?: number }) {
   const outer = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
   const [dims, setDims] = useState<{ scale: number; height: number } | null>(null)

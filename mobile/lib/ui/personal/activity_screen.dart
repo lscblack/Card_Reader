@@ -6,6 +6,7 @@ import '../../data/models/personal.dart';
 import '../../services/personal_state.dart';
 import '../widgets/error_ref.dart';
 import 'exchange_flow.dart';
+import '../widgets/motion.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -60,11 +61,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
                 itemBuilder: (_, i) {
                   final a = items[i];
-                  return ListTile(
+                  return StaggeredEntrance(index: i, child: ListTile(
                     leading: CircleAvatar(child: Icon(_icon(a.type))),
                     title: Text(a.title),
                     subtitle: Text([?a.detail, ?a.source, ?a.createdAt?.replaceFirst('T', ' ').split('.').first].join(' · ')),
-                  );
+                  ));
                 },
               ),
             ),

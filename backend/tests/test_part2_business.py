@@ -478,6 +478,7 @@ async def test_invitation_flow_and_last_owner(client: AsyncClient) -> None:
     mgr = await register(client, email="mgr@example.com")
     r = await client.post(f"/api/v1/invitations/{token}/accept", headers=bearer(mgr["access_token"]))
     assert r.status_code == 200 and r.json()["role"] == "manager"
+    assert r.json()["business_id"] == owner["business_id"]  # the web redirects to the joined business
     r = await client.post(f"/api/v1/invitations/{token}/accept", headers=bearer(mgr["access_token"]))
     assert r.status_code == 410 and r.json()["error"]["code"] == "invitation_unavailable"
     assert (await client.get(f"/api/v1/invitations/{token}")).json()["status"] == "accepted"

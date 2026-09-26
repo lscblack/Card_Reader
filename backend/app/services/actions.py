@@ -328,7 +328,10 @@ async def employee_profile_slug(session: AsyncSession, employee: Employee) -> st
 
 
 def _vcard_escape(value: str | None) -> str:
-    return (value or "").replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
+    # A bare CR is a line break for many vCard parsers: fold every newline flavour into an escaped "\n" so a
+    # user-controlled value can't inject extra vCard properties.
+    text = (value or "").replace("\r\n", "\n").replace("\r", "\n")
+    return text.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
 
 
 def vcard_for(business: Business, employee: Employee | None = None) -> str:

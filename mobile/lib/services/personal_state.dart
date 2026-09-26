@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
@@ -13,6 +14,7 @@ import '../core/links.dart';
 import '../core/logger.dart';
 import '../core/secure_store.dart';
 import '../data/models/api_models.dart';
+import '../data/models/design_presets.dart';
 import '../data/models/personal.dart';
 import '../data/personal_api.dart';
 import 'hce_bridge.dart';
@@ -28,7 +30,9 @@ class PersonalState extends ChangeNotifier {
     required this.platform,
     this.hce = const NoHce(),
     PersonalApiFactory? apiFactory,
-  }) : _factory = apiFactory ??
+    Future<String> Function(String asset)? assetLoader,
+  }) : _assets = assetLoader ?? rootBundle.loadString,
+       _factory = apiFactory ??
            ((base, token, onUnauthorized) =>
                HttpPersonalApi(client: httpClient, baseUrl: base, sessionToken: token, onUnauthorized: onUnauthorized));
 
@@ -37,6 +41,7 @@ class PersonalState extends ChangeNotifier {
   final PlatformInfo platform;
   final HceBridge hce;
   final PersonalApiFactory _factory;
+  final Future<String> Function(String asset) _assets;
 
   static const _kToken = 'personal_session_token';
   static const _kServer = 'personal_server_url';
@@ -44,6 +49,11 @@ class PersonalState extends ChangeNotifier {
   static const _kUser = 'personal_user';
   static const _kSessionId = 'personal_session_id';
   static const _kCards = 'personal_cards_cache';
+  // Public data (kept on sign-out): offline template gallery and design presets.
+  static const _kTemplates = 'personal_templates_cache';
+  static const _kPresets = 'personal_design_presets_cache';
+  static const templatesAsset = 'assets/card_templates_v2.json';
+  static const presetsAsset = 'assets/design_presets.json';
 
   bool loading = true;
   String? serverUrl;
@@ -51,7 +61,16 @@ class PersonalState extends ChangeNotifier {
   ShareKey? shareKey;
   String? sessionId;
   List<DigitalCard> cards = const [];
-  List<CardTemplate> templates = CardTemplate.builtIn;
+  List<CardTemplate>? _serverTemplates, _cachedTemplates;
+
+  /// Server templates (or their offline cache / the built-in v1 list), plus bundled v2 ones
+  /// the server doesn't serve yet.
+  List<CardTemplate> get templates => _withBundled(_serverTemplates ?? _cachedTemplates ?? CardTemplate.builtIn);
+  bool _presetsFromServer = false;
+
+  /// v2 templates bundled with the app (fallback until the server serves them).
+  List<CardTemplate> bundledV2 = const [];
+  DesignPresets presets = DesignPresets.fallback;
   bool hceSupported = false;
   String? notice;
   PersonalApi? api;
@@ -66,11 +85,56 @@ class PersonalState extends ChangeNotifier {
     return cards.isEmpty ? null : cards.first;
   }
 
-  CardTemplate templateFor(String id) =>
-      templates.firstWhere((t) => t.id == id, orElse: () => CardTemplate.builtIn.firstWhere(
-        (t) => t.id == id, orElse: () => CardTemplate.builtIn[1]));
+  CardTemplate templateFor(String id) {
+    for (final list in [templates, bundledV2, CardTemplate.builtIn]) {
+      for (final t in list) {
+        if (t.id == id) return t;
+      }
+    }
+    return CardTemplate.builtIn[1];
+  }
+
+  /// Server templates, completed with the bundled v2 ones the server doesn't (yet) have.
+  List<CardTemplate> _withBundled(List<CardTemplate> server) {
+    final ids = {for (final t in server) t.id};
+    return [...server, for (final t in bundledV2) if (!ids.contains(t.id)) t];
+  }
+
+  static List<CardTemplate> _parseTemplates(String raw) =>
+      [for (final j in (jsonDecode(raw) as List)) CardTemplate.fromJson(j)].where((t) => t.id.isNotEmpty).toList();
+
+  /// Bundled assets, then the offline cache of the last server lists.
+  Future<void> _loadDesignData() async {
+    try {
+      bundledV2 = _parseTemplates(await _assets(templatesAsset)).where((t) => t.isV2).toList();
+    } catch (e) {
+      Log.d('personal', 'no bundled v2 templates: ${e.runtimeType}');
+    }
+    try {
+      final p = DesignPresets.fromJson(jsonDecode(await _assets(presetsAsset)));
+      if (!p.isEmpty && !_presetsFromServer) presets = p;
+    } catch (_) {}
+    try {
+      final cached = await store.read(_kTemplates);
+      if (cached != null) {
+        final t = _parseTemplates(cached);
+        if (t.isNotEmpty) _cachedTemplates = t;
+      }
+      final cp = await store.read(_kPresets);
+      if (cp != null && !_presetsFromServer) {
+        final p = DesignPresets.fromJson(jsonDecode(cp));
+        if (!p.isEmpty) presets = p;
+      }
+    } catch (e) {
+      Log.d('personal', 'design cache unreadable: ${e.runtimeType}');
+    }
+  }
+
+  /// Completes when the bundled/cached design data is loaded (does not block [init]).
+  late final Future<void> designDataReady = _loadDesignData().then((_) => notifyListeners());
 
   Future<void> init() async {
+    unawaited(designDataReady);
     hceSupported = await hce.isSupported();
     final token = await store.read(_kToken);
     final server = await store.read(_kServer);
@@ -198,7 +262,17 @@ class PersonalState extends ChangeNotifier {
     try {
       final t = await a.templates();
       if (t.isNotEmpty) {
-        templates = t;
+        _serverTemplates = t;
+        await store.write(_kTemplates, jsonEncode([for (final x in t) if (x.raw.isNotEmpty) x.raw]));
+        notifyListeners();
+      }
+    } catch (_) {}
+    try {
+      final p = await a.designPresets();
+      if (!p.isEmpty) {
+        presets = p;
+        _presetsFromServer = true;
+        await store.write(_kPresets, jsonEncode(p.toJson()));
         notifyListeners();
       }
     } catch (_) {}

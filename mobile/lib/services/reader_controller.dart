@@ -176,7 +176,10 @@ class ReaderController extends ChangeNotifier {
 
   Future<void> onPaused() async {
     _foreground = false;
-    if (active) await nfc.stopReading();
+    // Only stop reader mode when this controller owns it. While a card is being programmed or
+    // the personal scanner runs (suspended), reader mode belongs to that session: disabling it
+    // here would kill the write/scan, and Android restores it by itself on resume.
+    if (active && !programming && !suspended) await nfc.stopReading();
   }
 
   Future<void> openNfcSettings() => nfc.openNfcSettings();

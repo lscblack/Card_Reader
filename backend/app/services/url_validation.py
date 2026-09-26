@@ -113,15 +113,22 @@ async def _resolve(host: str, port: int) -> list[str]:
 async def validate_endpoint_url(url: str, *, resolve: bool | None = None) -> str:
     """Full validation. In non-development environments also resolves DNS and
     rejects hosts that resolve to private/loopback/link-local/metadata IPs."""
+    return (await resolve_endpoint_url(url, resolve=resolve))[0]
+
+
+async def resolve_endpoint_url(url: str, *, resolve: bool | None = None) -> tuple[str, str | None]:
+    """Like `validate_endpoint_url`, also returning the vetted IP (None when not resolved / an IP literal).
+    Senders connect to exactly that IP so a DNS answer can't change between the check and the connection
+    (DNS rebinding)."""
     url = validate_endpoint_url_syntax(url)
     if resolve is None:
         resolve = not settings.is_development
     if not resolve:
-        return url
+        return url, None
     parts = urlsplit(url)
     host = parts.hostname or ""
     if _parse_ip(host) is not None:
-        return url  # literal IPs already checked
+        return url, None  # literal IPs already checked
     try:
         addresses = await _resolve(host, parts.port or 443)
     except (OSError, TimeoutError, asyncio.TimeoutError) as exc:
@@ -132,7 +139,31 @@ async def validate_endpoint_url(url: str, *, resolve: bool | None = None) -> str
         ip = _parse_ip(addr.split("%")[0])
         if ip is None or is_blocked_ip(ip):
             raise InvalidEndpointURL("URL resolves to a private or reserved address")
-    return url
+    return url, addresses[0].split("%")[0]
+
+
+def pin_url(url: str, ip: str) -> tuple[str, dict[str, str], dict[str, str]]:
+    """(url with the host replaced by `ip`, Host header, httpx extensions) — TLS still verifies the certificate
+    against the original hostname through SNI."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    literal = f"[{ip}]" if ":" in ip else ip
+    netloc = literal + (f":{parts.port}" if parts.port else "")
+    pinned = parts._replace(netloc=netloc).geturl()
+    host_header = host + (f":{parts.port}" if parts.port else "")
+    return pinned, {"Host": host_header}, ({"sni_hostname": host} if parts.scheme == "https" else {})
+
+
+_SCHEME_RE = re.compile(r"^([a-z][a-z0-9+.\-]*):")
+SAFE_LINK_SCHEMES = {"http", "https", "mailto", "tel"}
+
+
+def unsafe_url_scheme(value: str) -> bool:
+    """True for user-supplied links with a non-web scheme (javascript:, data:, vbscript:, file: …). Browsers ignore
+    control characters/whitespace inside a scheme, so they are stripped before checking."""
+    cleaned = "".join(ch for ch in value if ch.isprintable() and not ch.isspace()).lower()
+    match = _SCHEME_RE.match(cleaned)
+    return bool(match) and match.group(1) not in SAFE_LINK_SCHEMES
 
 
 # ── Endpoint domain allowlist (contract 7.1) ────────────────────────────

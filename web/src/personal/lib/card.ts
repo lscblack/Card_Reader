@@ -1,7 +1,12 @@
 import type { CardLayout, CardTemplate, DigitalCard, RenderableCard } from '../api/types'
 
+export function templateFor(templateId: string | null | undefined, templates: CardTemplate[] | undefined): CardTemplate | null {
+  return templates?.find((t) => t.id === templateId) ?? null
+}
+
 export function layoutFor(templateId: string | null | undefined, templates: CardTemplate[] | undefined, fallback: CardLayout = 'centered'): CardLayout {
-  return templates?.find((t) => t.id === templateId)?.layout ?? fallback
+  const t = templateFor(templateId, templates)
+  return (t && 'layout' in t ? t.layout : undefined) ?? fallback
 }
 
 export function renderableOf(c: DigitalCard): RenderableCard {
@@ -13,6 +18,8 @@ export function renderableOf(c: DigitalCard): RenderableCard {
     logo_url: c.logo_url,
     public_url: c.public_url,
     visibility: c.visibility,
+    arrangement: c.arrangement ?? null,
+    sides_enabled: c.sides_enabled ?? null,
     business: c.business_link ? { name: c.business_link.business_name, logo_url: c.business_link.business_logo_url ?? null, verified: true } : null,
   }
 }

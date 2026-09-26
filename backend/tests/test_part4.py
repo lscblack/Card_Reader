@@ -410,7 +410,7 @@ async def test_developer_terminal_reads_digital_card(client: AsyncClient, user: 
         route = mock.post("https://hooks.example.com/dc").mock(return_value=httpx.Response(200))
         r = await client.post("/api/v1/device/events", json=ev(mint(sess, card)), headers=bearer(dev["device_token"]))
         assert r.status_code == 200 and r.json()["digital_card"] == {"verified": True, "error_code": None,
-                                                                     "error_ref": None}
+                                                                     "error_ref": None, "expired": False}  # Part 5
         import json as _json
 
         payload = _json.loads(route.calls[0].request.content)
@@ -450,6 +450,9 @@ async def test_business_terminal_and_employee_digital_cards(client: AsyncClient)
     assert r.status_code == 201 and "register?card_invite=" in r.json()["dev_invite_url"]
     assert r.json()["digital_card"]["status"] == "invited" and r.json()["digital_card"]["user_email"] == "john@example.com"
     john = await register_personal(client, "John Doe", email="john@example.com")
+    assert (await client.get("/api/v1/personal/business-invites", headers=john["headers"])).json() == []  # unverified
+    r = await client.post("/api/v1/auth/verify-email", json={"token": token_from_url(john["dev_verification_url"])})
+    assert r.status_code == 204, r.text
     invites = (await client.get("/api/v1/personal/business-invites", headers=john["headers"])).json()
     assert invites[0]["status"] == "pending" and invites[0]["business"]["name"] == "Acme Café"
     linked = (await client.post(f"/api/v1/personal/business-invites/{invites[0]['id']}/accept",

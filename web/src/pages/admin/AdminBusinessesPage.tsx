@@ -91,7 +91,7 @@ export default function AdminBusinessesPage() {
                         <p className="font-medium">{b.name}</p>
                         <p className="font-mono text-xs text-subtle">/{b.slug}</p>
                       </TD>
-                      <TD className="text-muted">{b.owner?.email ?? b.email ?? '—'}</TD>
+                      <TD className="text-muted">{b.owner_email ?? b.email ?? '—'}</TD>
                       <TD>
                         <div className="flex flex-wrap gap-1">
                           <Badge tone={b.status === 'active' ? 'success' : 'danger'} dot>
@@ -124,7 +124,7 @@ export default function AdminBusinessesPage() {
                         </Select>
                       </TD>
                       <TD className="text-right text-muted tabular-nums">
-                        {num(b.members_count)} / {num(b.devices_count)} / {num(b.cards_count)}
+                        {num(b.stats?.members)} / {num(b.stats?.devices)} / {num(b.stats?.cards)}
                       </TD>
                       <TD className="whitespace-nowrap text-muted">{dateOnly(b.created_at)}</TD>
                       <TD className="text-right">

@@ -392,7 +392,10 @@ export default function CardDetailPage() {
   const onError = useErrorToast()
   const { data: card, error, isLoading, refetch } = useCard(business.id, cardId)
   useDocumentTitle(card?.name ?? 'Card')
-  const [tab, setTab] = useState<Tab>('activity')
+  // The Usage tab reads card stats, which need analytics.view (staff only have business.view).
+  const canStats = can('analytics.view')
+  const [pickedTab, setTab] = useState<Tab | null>(null)
+  const tab: Tab = pickedTab ?? (canStats ? 'activity' : 'taps')
   const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState('')
@@ -516,12 +519,12 @@ export default function CardDetailPage() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'activity', label: 'Usage' },
+            ...(canStats ? [{ value: 'activity' as const, label: 'Usage' }] : []),
             { value: 'taps', label: 'Taps', count: card.total_taps },
             { value: 'history', label: 'History' },
           ]}
         />
-        {tab === 'activity' && <ActivityTab card={card} />}
+        {tab === 'activity' && canStats && <ActivityTab card={card} />}
         {tab === 'taps' && <TapsTab card={card} />}
         {tab === 'history' && <HistoryTab card={card} />}
       </div>

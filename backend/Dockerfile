@@ -15,7 +15,9 @@ COPY alembic ./alembic
 COPY app ./app
 COPY examples ./examples
 
-RUN useradd --create-home --uid 10001 appuser
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/media /app/releases \
+    && chown -R appuser:appuser /app/media /app/releases
 USER appuser
 
 EXPOSE 8000

@@ -19,7 +19,7 @@ from app.core.config import VERSION, settings
 from app.core.cors import DynamicCORSMiddleware
 from app.core.errors import error_response, register_exception_handlers
 from app.core.logging import request_id_ctx, setup_logging
-from app.core.rate_limit import bucket_for, hit
+from app.core.rate_limit import bucket_for, hit, ip_bucket_for
 from app.core.redis import close_redis, redis_ok
 from app.db.session import SessionLocal, engine
 from app.services import delivery, platform_settings, request_logs
@@ -120,6 +120,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     await platform_settings.ensure_fresh()
     media_root()
+    from app.services import app_builds
+
+    try:
+        if moved := app_builds.migrate_legacy_artifacts():
+            logger.info("Moved %d APK artifact(s) from MEDIA_ROOT to RELEASES_ROOT", moved)
+    except OSError as exc:
+        logger.warning("Could not move legacy APK artifacts: %s", exc)
 
     stop = asyncio.Event()
     tasks: list[asyncio.Task[None]] = [
@@ -142,6 +149,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await engine.dispose()
 
 
+class MediaFiles(StaticFiles):
+    """Public uploads. APK builds also live under MEDIA_ROOT (`releases/`) but are only served through
+    `/downloads/android/*`, which enforces `is_published` and counts downloads."""
+
+    PRIVATE_PREFIXES = ("releases/",)
+
+    def lookup_path(self, path: str):  # type: ignore[no-untyped-def]
+        if path.lstrip("/").startswith(self.PRIVATE_PREFIXES):
+            return "", None
+        return super().lookup_path(path)
+
+
 def create_app() -> FastAPI:
     setup_logging(settings.LOG_LEVEL, settings.log_json, settings.API_KEY_PREFIX)
     app = FastAPI(
@@ -160,7 +179,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     app.include_router(api_router)
     app.include_router(root_router)
-    app.mount("/media", StaticFiles(directory=str(media_root()), check_dir=False), name="media")
+    app.mount("/media", MediaFiles(directory=str(media_root()), check_dir=False), name="media")
 
     @app.middleware("http")
     async def request_context(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -219,6 +238,14 @@ async def _guarded(request: Request, call_next: Callable[[Request], Awaitable[Re
     rl_headers: dict[str, str] = {}
     await platform_settings.ensure_fresh()
     if settings.RATE_LIMIT_ENABLED:
+        ip_bucket = ip_bucket_for(request)
+        if ip_bucket is not None:  # everyone also shares a per-IP ceiling (unverified tokens can't dodge it)
+            ip_result = await hit(*ip_bucket)
+            if ip_result is not None and not ip_result.allowed:
+                return error_response(
+                    429, "rate_limited", "Too many requests, slow down", {"retry_after": ip_result.retry_after},
+                    headers={"Retry-After": str(ip_result.retry_after)}, request=request,
+                )
         bucket = bucket_for(request)
         if bucket is not None:
             result = await hit(*bucket)

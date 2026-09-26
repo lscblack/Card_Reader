@@ -18,7 +18,7 @@ import { AppSelect } from '@/components/AppSelect'
 import { EventDetailDrawer, EventsTable } from '@/components/Events'
 
 const PAGE_SIZE = 25
-const STATUSES: EventStatus[] = ['pending', 'delivered', 'retrying', 'failed']
+const STATUSES: EventStatus[] = ['pending', 'delivered', 'retrying', 'failed', 'logged']
 
 /** Converts a local YYYY-MM-DD into an ISO-8601 UTC instant at the start / end of that local day. */
 function dayBoundary(day: string, end: boolean): string | undefined {

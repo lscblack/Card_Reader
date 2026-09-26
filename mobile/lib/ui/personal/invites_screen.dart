@@ -83,13 +83,12 @@ class _InvitesScreenState extends State<InvitesScreen> {
                       Text('Invites you to use a company digital card${i.employeeName == null ? '' : ' as ${i.employeeName}'}. '
                           'Some fields and the design are managed by the company.'),
                       const SizedBox(height: 10),
-                      Row(children: [
+                      Wrap(spacing: 8, runSpacing: 4, children: [
                         FilledButton(
                           key: Key('accept_${i.id}'),
                           onPressed: _busy.contains(i.id) ? null : () => _respond(i, true),
                           child: const Text('Accept'),
                         ),
-                        const SizedBox(width: 8),
                         TextButton(onPressed: _busy.contains(i.id) ? null : () => _respond(i, false), child: const Text('Decline')),
                       ]),
                     ],

@@ -1,12 +1,13 @@
 import { Link } from 'react-router'
 import { Logo } from '@/components/Logo'
-import { DASHBOARD_PATH, POWERED_BY_URL, useIsLoggedIn, useProductName } from '../lib'
+import { useDashboardPath, POWERED_BY_URL, useIsLoggedIn, useProductName } from '../lib'
 import { DownloadApp } from './DownloadApp'
 import { PrimaryLink, SecondaryLink } from './MarketingNav'
 import { Reveal } from './Reveal'
 
 export function FinalCta() {
   const loggedIn = useIsLoggedIn()
+  const dashboardPath = useDashboardPath()
   return (
     <section className="py-20 sm:py-24" aria-labelledby="cta-title">
       <div className="mx-auto w-11/12">
@@ -24,7 +25,7 @@ export function FinalCta() {
           </p>
           <div className="relative mt-8 flex flex-wrap justify-center gap-3">
             {loggedIn ? (
-              <PrimaryLink to={DASHBOARD_PATH} size="lg">
+              <PrimaryLink to={dashboardPath} size="lg">
                 Go to dashboard
               </PrimaryLink>
             ) : (

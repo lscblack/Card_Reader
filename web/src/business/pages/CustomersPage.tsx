@@ -43,7 +43,7 @@ export default function CustomersPage() {
     <>
       <PageHeader
         title="Customers"
-        description="People who hold loyalty, membership or VIP cards. Search by name, email, company or tag."
+        description="People who hold loyalty, membership or VIP cards. Search by name, email, phone or company."
         actions={
           manage && (
             <Button variant="primary" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setCreating(true)}>
@@ -54,7 +54,7 @@ export default function CustomersPage() {
       />
       <Card>
         <FilterBar>
-          <SearchInput value={q} onChange={(v) => (setQ(v), setPage(1))} placeholder="Search name, email, company, tag…" className="sm:w-72" />
+          <SearchInput value={q} onChange={(v) => (setQ(v), setPage(1))} placeholder="Search name, email, phone, company…" className="sm:w-72" />
           <FilterSelect
             label="Status"
             value={status}

@@ -1,5 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
+import { Plug, Plus } from 'lucide-react'
+import { useAuth } from '@/auth/context'
+import { getLastBusiness } from '@/business/lib/lastBusiness'
 import { ApiError } from '@/api/client'
 import type { DeliveryMode } from '@/api/types'
 import { useCreateApplication } from '@/hooks/queries'
@@ -139,5 +142,27 @@ export function CreateApplicationModal({ open, onClose }: { open: boolean; onClo
         }}
       />
     </>
+  )
+}
+
+/**
+ * "New application" action for the developer dashboard. Business accounts can't create developer applications
+ * (the API answers 403) — their applications live in the business dashboard's API / Integrations page instead.
+ */
+export function NewApplicationButton({ onCreate, label = 'New application', variant = 'primary', ...rest }: { onCreate: () => void; label?: string; variant?: 'primary' | 'secondary'; 'data-tour'?: string }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  if (user?.account_type === 'business' && user.role !== 'admin') {
+    const bid = user.memberships?.find((m) => m.business_id === getLastBusiness())?.business_id ?? user.memberships?.[0]?.business_id
+    return (
+      <Button variant={variant} leftIcon={<Plug className="h-4 w-4" />} onClick={() => navigate(bid ? `/business/${bid}/integrations` : '/business')} data-tour={rest['data-tour']}>
+        Business integrations
+      </Button>
+    )
+  }
+  return (
+    <Button variant={variant} leftIcon={<Plus className="h-4 w-4" />} onClick={onCreate} data-tour={rest['data-tour']}>
+      {label}
+    </Button>
   )
 }

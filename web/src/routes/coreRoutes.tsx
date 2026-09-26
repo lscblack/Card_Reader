@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- route table module, not hot-reloaded as a component */
 import { lazy, Suspense, type ReactNode } from 'react'
-import { Route } from 'react-router'
+import { Navigate, Route } from 'react-router'
 import { GuestOnly, LegacyRedirect, RequireAdmin, RequireAuth } from '@/auth/guards'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AdminLayout } from '@/layouts/AdminLayout'
@@ -27,6 +27,7 @@ const WebhooksPage = lazy(() => import('@/pages/WebhooksPage'))
 const SandboxPage = lazy(() => import('@/pages/SandboxPage'))
 const RequestLogsPage = lazy(() => import('@/pages/RequestLogsPage'))
 const UsagePage = lazy(() => import('@/pages/UsagePage'))
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage'))
@@ -88,6 +89,7 @@ export function coreRoutes() {
         <Route path="logs" element={page(<RequestLogsPage />)} />
         <Route path="usage" element={page(<UsagePage />)} />
         <Route path="settings" element={page(<SettingsPage />)} />
+        <Route path="notifications" element={page(<NotificationsPage />)} />
         <Route path="*" element={page(<NotFoundPage />)} />
       </Route>
 
@@ -102,6 +104,7 @@ export function coreRoutes() {
         }
       >
         <Route index element={page(<AdminOverviewPage />)} />
+        <Route path="notifications" element={page(<NotificationsPage />)} />
         <Route path="accounts" element={page(<AdminAccountsPage />)} />
         <Route path="accounts/:id" element={page(<AdminAccountDetailPage />)} />
         <Route path="businesses" element={page(<AdminBusinessesPage />)} />
@@ -118,6 +121,8 @@ export function coreRoutes() {
         <Route path="errors/:ref" element={page(<AdminErrorDetailPage />)} />
         <Route path="emails" element={page(<AdminEmailsPage />)} />
         <Route path="releases" element={page(<AdminReleasesPage />)} />
+        {/* Build notifications link to /admin/app-releases/{id}; the releases page lists them all. */}
+        <Route path="app-releases/*" element={<Navigate to="/admin/releases" replace />} />
         <Route path="*" element={page(<NotFoundPage />)} />
       </Route>
 

@@ -47,6 +47,16 @@ async def seed(session: AsyncSession) -> None:
                                                 "premium", "sort_order")}))
     await session.flush()
 
+    # Part 5: v2 shape templates from app/data/card_templates_v2.json (invalid entries are logged and skipped).
+    from app.services import card_design_v2
+
+    for order, template in enumerate(card_design_v2.load_templates()):
+        row = card_design_v2.db_row(template, order)
+        stmt = insert(CardTemplate).values(**row)
+        await session.execute(stmt.on_conflict_do_update(
+            index_elements=[CardTemplate.id], set_={k: stmt.excluded[k] for k in row if k != "id"}))
+    await session.flush()
+
     email = settings.DEFAULT_ADMIN_EMAIL.strip().lower()
     if email:
         existing = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()

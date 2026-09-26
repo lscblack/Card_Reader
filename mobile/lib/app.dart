@@ -96,8 +96,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         if (!_personal.signedIn) return _snack('Sign in to My Card to exchange cards.');
         try {
           final c = CardQrPayload.parse(link);
-          final ctx = nav.context;
-          unawaited(runExchange(ctx, c.token, via: 'qr'));
+          unawaited(_confirmCardLink(nav.context, c.token));
         } on LinkFormatException catch (e) {
           _snack(e.message);
         }
@@ -113,6 +112,32 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
           _snack(e.message);
         }
     }
+  }
+
+  /// Any web page or app can fire `nfcterminal://card?…`. An exchange shares this person's card
+  /// with the token's owner (mutual exchange), so a link never exchanges without a tap here.
+  Future<void> _confirmCardLink(BuildContext ctx, String token) async {
+    final ok = await showDialog<bool>(
+      context: ctx,
+      builder: (c) => AlertDialog(
+        key: const Key('cardLinkConfirm'),
+        title: const Text('Exchange cards?'),
+        content: const Text(
+          'A link wants to exchange digital cards with you. If you continue, you receive their card '
+          'and they receive yours (as allowed by your sharing settings).\n\n'
+          'Only continue if you scanned this person\'s code yourself.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(
+            key: const Key('cardLinkExchange'),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Exchange'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && ctx.mounted) await runExchange(ctx, token, via: 'qr');
   }
 
   @override

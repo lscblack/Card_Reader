@@ -1,6 +1,7 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import { ArrowUpRight, Clock, Globe, Mail, MapPin, Phone } from 'lucide-react'
 import type { Section } from '@/business/api/types'
+import { safeHref, safeImageUrl } from '@/lib/url'
 import { actionHref, isOpenNow, mapsLink, onColor, sectionData, todayRow } from './sectionUtils'
 
 /** Tiny safe Markdown subset: paragraphs, "- " lists, **bold**, *italic*, [text](https://…). No HTML. */
@@ -98,19 +99,26 @@ export function SectionView({ section, accent, businessSlug }: { section: Sectio
       const rows = [
         d.phone && { icon: Phone, label: d.phone, href: `tel:${d.phone}` },
         d.email && { icon: Mail, label: d.email, href: `mailto:${d.email}` },
-        d.website && { icon: Globe, label: d.website.replace(/^https?:\/\//, ''), href: d.website },
+        d.website && { icon: Globe, label: d.website.replace(/^https?:\/\//, ''), href: safeHref(d.website) },
         d.address && { icon: MapPin, label: d.address, href: mapsLink(d.address) },
-      ].filter(Boolean) as { icon: typeof Phone; label: string; href: string }[]
+      ].filter(Boolean) as { icon: typeof Phone; label: string; href: string | null }[]
       if (!rows.length) return null
       return (
         <Block title="Contact">
           <ul className="-my-1 divide-y divide-border">
             {rows.map((r) => (
-              <li key={r.href}>
-                <a href={r.href} target={r.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className="flex items-center gap-3 py-2.5 text-[15px] hover:opacity-80">
-                  <r.icon className="h-4.5 w-4.5 shrink-0" style={{ color: accent }} />
-                  <span className="min-w-0 break-words">{r.label}</span>
-                </a>
+              <li key={r.label}>
+                {r.href ? (
+                  <a href={r.href} target={r.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className="flex items-center gap-3 py-2.5 text-[15px] hover:opacity-80">
+                    <r.icon className="h-4.5 w-4.5 shrink-0" style={{ color: accent }} />
+                    <span className="min-w-0 break-words">{r.label}</span>
+                  </a>
+                ) : (
+                  <span className="flex items-center gap-3 py-2.5 text-[15px]">
+                    <r.icon className="h-4.5 w-4.5 shrink-0" style={{ color: accent }} />
+                    <span className="min-w-0 break-words">{r.label}</span>
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -148,12 +156,13 @@ export function SectionView({ section, accent, businessSlug }: { section: Sectio
     }
     case 'social': {
       const d = sectionData(section)
-      if (!d.links?.length) return null
+      const links = (d.links ?? []).map((l) => ({ ...l, href: safeHref(l.url) })).filter((l): l is typeof l & { href: string } => !!l.href)
+      if (!links.length) return null
       return (
         <Block title="Follow">
           <div className="flex flex-wrap gap-2">
-            {d.links.map((l) => (
-              <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-sm font-medium hover:bg-surface-2">
+            {links.map((l) => (
+              <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-sm font-medium hover:bg-surface-2">
                 {platformName(l.platform)} <ArrowUpRight className="h-3.5 w-3.5 text-subtle" />
               </a>
             ))}
@@ -187,23 +196,25 @@ export function SectionView({ section, accent, businessSlug }: { section: Sectio
         <Block title="Products">
           <div className="grid gap-3 sm:grid-cols-2">
             {d.items.map((it, i) => {
+              const img = safeImageUrl(it.image_url)
+              const href = safeHref(it.url)
               const body = (
                 <>
-                  {it.image_url && <img src={it.image_url} alt="" loading="lazy" className="mb-3 aspect-[4/3] w-full rounded-xl object-cover" />}
+                  {img && <img src={img} alt="" loading="lazy" className="mb-3 aspect-[4/3] w-full rounded-xl object-cover" />}
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-[15px] font-semibold">{it.title}</p>
                     {it.price && <span className="shrink-0 text-sm font-semibold tabular-nums">{it.price}</span>}
                   </div>
                   {it.description && <p className="mt-1 text-sm text-muted">{it.description}</p>}
-                  {it.url && (
+                  {href && (
                     <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: accent }}>
                       View <ArrowUpRight className="h-3.5 w-3.5" />
                     </span>
                   )}
                 </>
               )
-              return it.url ? (
-                <a key={i} href={it.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-border p-3.5 hover:bg-surface-2">
+              return href ? (
+                <a key={i} href={href} target="_blank" rel="noreferrer" className="block rounded-xl border border-border p-3.5 hover:bg-surface-2">
                   {body}
                 </a>
               ) : (
@@ -269,7 +280,7 @@ export function SectionView({ section, accent, businessSlug }: { section: Sectio
     }
     case 'buttons': {
       const d = sectionData(section)
-      const items = (d.items ?? []).map((b) => ({ ...b, href: actionHref(b.action, businessSlug) })).filter((b) => b.href)
+      const items = (d.items ?? []).map((b) => ({ ...b, href: safeHref(actionHref(b.action, businessSlug)) })).filter((b) => b.href)
       if (!items.length) return null
       return (
         <div className="space-y-2.5">
@@ -294,7 +305,7 @@ export function SectionView({ section, accent, businessSlug }: { section: Sectio
       return (
         <Block title="Gallery">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {d.images.map((src, i) => (
+            {d.images.map((raw) => safeImageUrl(raw)).filter((src): src is string => !!src).map((src, i) => (
               <img key={i} src={src} alt="" loading="lazy" className="aspect-square w-full rounded-xl object-cover" />
             ))}
           </div>

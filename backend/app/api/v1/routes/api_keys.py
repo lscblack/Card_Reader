@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Query
 from sqlalchemy import select
 
-from app.api.deps import ClientDep, CurrentUser, SessionDep
+from app.api.deps import ClientDep, CurrentUser, SessionDep, platform_only
 from app.core.errors import not_found
 from app.models import ApiKey, Application
 from app.schemas.resources import ApiKeyCreatedOut, ApiKeyCreateIn, ApiKeyOut
@@ -14,7 +14,7 @@ from app.services import audit
 from app.services.applications import authorize_application, get_owned_application, new_api_key
 from app.services.serializers import api_key_out
 
-router = APIRouter(prefix="/api-keys", tags=["API keys"])
+router = APIRouter(prefix="/api-keys", tags=["API keys"], dependencies=platform_only)
 
 
 @router.get("", response_model=list[ApiKeyOut], summary="List API keys")

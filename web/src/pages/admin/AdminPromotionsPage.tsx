@@ -46,7 +46,7 @@ interface Draft {
   discount_type: 'percent' | 'amount'
   value: string
   currency: string
-  audience: 'developer' | 'business' | 'all'
+  audience: 'developer' | 'business' | 'personal' | 'all'
   plan_codes: string[]
   starts_at: string
   ends_at: string
@@ -223,6 +223,7 @@ function PromotionEditor({ promo, onClose }: { promo: Promotion | null; onClose:
                 <option value="all">Everyone</option>
                 <option value="developer">Developers</option>
                 <option value="business">Businesses</option>
+                <option value="personal">Personal accounts</option>
               </Select>
             )}
           </Field>
@@ -353,7 +354,7 @@ export default function AdminPromotionsPage() {
                     </TD>
                     <TD className="whitespace-nowrap">{discountLabel(p)}</TD>
                     <TD className="text-xs text-muted">
-                      <span className="capitalize">{p.audience === 'all' ? 'Everyone' : `${p.audience}s`}</span>
+                      <span className="capitalize">{p.audience === 'all' ? 'Everyone' : p.audience === 'personal' ? 'Personal accounts' : `${p.audience}s`}</span>
                       {p.plan_codes.length ? ` · ${p.plan_codes.join(', ')}` : ' · all plans'}
                     </TD>
                     <TD className="text-xs whitespace-nowrap text-muted">

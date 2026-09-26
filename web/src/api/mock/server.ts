@@ -590,10 +590,8 @@ const adminBusinesses: AdminBusiness[] = [
   verified: verified as boolean,
   plan: plan as string,
   created_at: ago((i + 3) * 5 * DAY),
-  owner: { id: uuid(), email: `owner@${slug}.example`, full_name: `${name} Owner` },
-  members_count: 1 + rand(9),
-  devices_count: rand(8),
-  cards_count: rand(200),
+  owner_email: `owner@${slug}.example`,
+  stats: { members: 1 + rand(9), devices: rand(8), cards: rand(200), taps_30d: rand(900) },
 }))
 
 const fleet: Device[] = Array.from({ length: 14 }, (_, i) => ({
@@ -618,7 +616,7 @@ function adminDevices(): AdminDevice[] {
     ...devices.map((d) => ({ ...d, online: online(d), owner: { id: user.id, email: user.email, full_name: user.full_name }, business: null })),
     ...fleet.map((d, i) => {
       const b = adminBusinesses[i % adminBusinesses.length]
-      return { ...d, online: online(d), owner: b.owner ?? null, business: { id: b.id, name: b.name } }
+      return { ...d, online: online(d), owner: b.owner_email ? { id: b.id, email: b.owner_email } : null, business: { id: b.id, name: b.name } }
     }),
   ]
 }
@@ -1857,12 +1855,12 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
       ...a,
       applications: mine ? apps : [],
       devices: mine ? devices : [],
-      request_logs: requestLogs.filter((l) => l.user_id === a.id).slice(0, 25),
+      recent_request_logs: requestLogs.filter((l) => l.user_id === a.id).slice(0, 25),
       audit_logs: mine ? audit.slice(0, 25) : [],
       email_logs: emailLogs.filter((e) => e.user_id === a.id).slice(0, 20).map(({ html: _h, ...rest }) => rest),
       recent_logins: Array.from({ length: Math.min(10, a.login_count ?? 3) }, (_, i) => ({
-        id: uuid(), action: 'user.login', resource_type: 'user', resource_id: a.id, ip_address: `198.51.100.${10 + i}`,
-        user_agent: i % 2 ? 'Mozilla/5.0 (Macintosh) Safari/17' : 'Mozilla/5.0 (X11; Linux x86_64) Chrome/140', metadata: null, created_at: ago(i * 1.7 * DAY + HOUR),
+        ip_address: `198.51.100.${10 + i}`,
+        user_agent: i % 2 ? 'Mozilla/5.0 (Macintosh) Safari/17' : 'Mozilla/5.0 (X11; Linux x86_64) Chrome/140', at: ago(i * 1.7 * DAY + HOUR),
       })),
     })
   }

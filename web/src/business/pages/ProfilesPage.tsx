@@ -22,7 +22,7 @@ import { profilesApi } from '../api/profiles'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBizMutation, useProfiles } from '../hooks/queries'
 import { useErrorToast } from '../hooks/useErrorToast'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { SLUG_RE, slugify } from '../lib/format'
 import { BizErrorState, FormError } from '../components/BizError'
 import { SearchInput } from '../components/bits'
@@ -75,7 +75,7 @@ function CreateProfileModal({ onClose }: { onClose: () => void }) {
       }
     >
       <form id="new-profile" onSubmit={submit} className="space-y-4" noValidate>
-        <FormError error={create.error && !Object.keys(errs).length ? create.error : null} />
+        <FormError error={formLevelError(create.error, ['slug', 'title'])} />
         <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Page type">
           {(['menu', 'product', 'custom'] as const).map((t) => (
             <button

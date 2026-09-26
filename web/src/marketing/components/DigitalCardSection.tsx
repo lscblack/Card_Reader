@@ -1,6 +1,6 @@
 import { ArrowRight, Info, QrCode, Radio, Repeat2, ShieldCheck, Smartphone, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
-import { DASHBOARD_PATH, useIsLoggedIn } from '../lib'
+import { useDashboardPath, useIsLoggedIn } from '../lib'
 import { GlowCard } from './GlowCard'
 import { PrimaryLink } from './MarketingNav'
 import { Reveal, SectionHeading } from './Reveal'
@@ -16,6 +16,7 @@ const points: { icon: LucideIcon; title: string; body: string }[] = [
 
 export function DigitalCardSection() {
   const loggedIn = useIsLoggedIn()
+  const dashboardPath = useDashboardPath()
   return (
     <section id="digital-card" className="relative scroll-mt-20 overflow-hidden py-20 sm:py-28" aria-labelledby="digital-title">
       <div
@@ -47,7 +48,7 @@ export function DigitalCardSection() {
               ))}
             </ul>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <PrimaryLink to={loggedIn ? DASHBOARD_PATH : '/register?type=personal'} size="lg">
+              <PrimaryLink to={loggedIn ? dashboardPath : '/register?type=personal'} size="lg">
                 {loggedIn ? 'Go to dashboard' : 'Create your free card'}
               </PrimaryLink>
               <Link to="/docs/digital-cards" className="group inline-flex items-center gap-1.5 text-[14px] font-semibold text-accent">

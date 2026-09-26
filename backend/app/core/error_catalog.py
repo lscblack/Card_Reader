@@ -67,6 +67,13 @@ CATALOG_LIST: list[ErrorDef] = [
        "The personal session token is unknown or was revoked (signed out from another device).", "Sign in again."),
     _E("personal_account_required", "NFC-1020", 403, "api", "Personal account required",
        "This feature is available to personal (digital card) accounts.", "Sign in with a personal account."),
+    _E("account_type_not_allowed", "NFC-1021", 403, "api", "Not available for this account type",
+       "Developer-platform features (applications, API keys, devices, events, sandbox, request logs, usage) are not "
+       "available to personal accounts, and business accounts create applications from their business workspace.",
+       "Use a developer account, or the business workspace's Integrations page."),
+    _E("email_not_verified", "NFC-1022", 403, "api", "Email not verified",
+       "This action needs a verified email address (e.g. accepting a digital-card invitation from the list).",
+       "Verify your email from the link we sent, or open the invitation link from the email."),
     # ── NFC-2xxx request / validation / rate limit ─────────────────────
     _E("validation_error", "NFC-2000", 422, "api", "Validation error",
        "The request body, path or query failed validation.", "See `details` for the failing fields."),
@@ -192,6 +199,13 @@ CATALOG_LIST: list[ErrorDef] = [
     _E("card_invite_unavailable", "NFC-6017", 410, "api", "Card invitation unavailable",
        "The digital-card invitation is unknown, expired, declined, revoked or already accepted.",
        "Ask the business for a new invitation."),
+    _E("invalid_arrangement", "NFC-6018", 422, "api", "Invalid card arrangement",
+       "The block arrangement doesn't fit the card template: unknown side or zone, a block the zone doesn't accept, "
+       "more blocks than the zone allows, or a block placed twice. `details` lists each problem.",
+       "Move the blocks into zones that accept them, or reset to the template default."),
+    _E("employee_number_taken", "NFC-6019", 409, "api", "Employee number already used",
+       "Employee numbers are unique within a business (they are used as badge ID and barcode).",
+       "Pick another employee number."),
     # ── NFC-7xxx plans / billing / limits ──────────────────────────────
     _E("plan_limit_reached", "NFC-7001", 402, "api", "Plan limit reached",
        "The plan's limit for this resource was reached (see details.limit).", "Upgrade the plan or free capacity."),
@@ -276,6 +290,19 @@ CATALOG_LIST: list[ErrorDef] = [
        'Direct mode: the developer endpoint could not be reached.', 'Check the endpoint URL/host is reachable from the phone.'),
     _E('endpoint_not_configured', 'MOB-1021', None, "mobile", 'Endpoint not configured',
        'Direct mode: the application has no enabled endpoint.', 'Set and enable the endpoint in the dashboard.'),
+    _E('not_a_digital_card', 'MOB-1022', None, "mobile", 'Not a digital card',
+       'The tapped phone or card does not share an NFC Terminal digital card.',
+       'Ask the other person to open My Card → Share, or scan their exchange QR code.'),
+    _E('hce_unsupported', 'MOB-1023', None, "mobile", "Phone can't share by NFC",
+       'This phone does not support NFC card emulation (HCE), so it cannot act as a card.',
+       'Share with the QR code or your public link instead.'),
+    _E('session_expired', 'MOB-1024', None, "mobile", 'Signed out',
+       'Your personal session was revoked or expired.', 'Sign in again.'),
+    _E('invalid_login_qr', 'MOB-1025', None, "mobile", 'Invalid sign-in QR code',
+       'The QR code is not a valid "Sign in on your phone" code.',
+       'Create a new code on the web (Share → Sign in on your phone).'),
+    _E('image_pick_failed', 'MOB-1026', None, "mobile", 'Photo not available',
+       'The photo could not be picked, cropped or read.', 'Allow photo/camera access and try again.'),
 ]
 
 # Lookup by code for API/delivery errors. Mobile entries may reuse a server code name (e.g.

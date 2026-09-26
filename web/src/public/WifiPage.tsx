@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { BadgeCheck, Check, Copy, Eye, EyeOff, Wifi } from 'lucide-react'
+import { safeImageUrl } from '@/lib/url'
 import { ApiError } from '@/api/client'
 import { QrCode } from '@/components/QrCode'
 import { publicApi } from './api'
@@ -50,7 +51,7 @@ export default function WifiPage() {
       <div className="w-full max-w-sm">
         {data.business && (
           <p className="mb-6 flex items-center justify-center gap-1.5 text-sm font-medium text-muted">
-            {data.business.logo_url && <img src={data.business.logo_url} alt="" className="h-6 w-6 rounded-md object-cover" />}
+            {safeImageUrl(data.business.logo_url) && <img src={safeImageUrl(data.business.logo_url)!} alt="" className="h-6 w-6 rounded-md object-cover" />}
             {data.business.name}
             {data.business.verified && <BadgeCheck className="h-4 w-4 text-accent" aria-label="Verified business" />}
           </p>

@@ -19,7 +19,7 @@ import { profilesApi } from '../api/profiles'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBizMutation, useCategories, useProfile } from '../hooks/queries'
 import { useErrorToast } from '../hooks/useErrorToast'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { SLUG_RE } from '../lib/format'
 import { SECTION_DEFAULTS, SECTION_META, SECTION_TYPES } from '../lib/sections'
 import { PageSkeleton } from '../components/bits'
@@ -316,7 +316,7 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className={cn('min-w-0 space-y-4', pane === 'preview' && 'hidden lg:block')}>
-          <FormError error={save.error && !Object.keys(errs).length ? save.error : null} />
+          <FormError error={formLevelError(save.error, ['slug', 'title'])} />
           <Card>
             <CardHeader title="Page settings" />
             <CardBody className="space-y-4">

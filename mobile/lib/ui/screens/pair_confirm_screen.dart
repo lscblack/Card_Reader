@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_error.dart';
+import '../../core/config.dart';
 import '../../core/pairing.dart';
 import '../../services/app_state.dart';
+import '../../services/personal_state.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/server_trust.dart';
 
 /// Confirms a pairing (from a scanned QR code or a deep link) before the
 /// single-use code is redeemed.
@@ -20,11 +23,18 @@ class PairConfirmScreen extends StatefulWidget {
 class _PairConfirmScreenState extends State<PairConfirmScreen> {
   late final TextEditingController _name;
   bool _busy = false;
+  bool _trusted = false;
   AppError? _error;
+  late final List<String> _warnings = ServerTrust.warnings(widget.pairing.serverUrl, [
+    context.read<AppState>().serverUrl,
+    context.read<PersonalState>().serverUrl,
+    AppConfig.defaultServerUrl,
+  ]);
 
   @override
   void initState() {
     super.initState();
+    _warnings;
     _name = TextEditingController(
       text: widget.pairing.deviceName ?? context.read<AppState>().device?.suggestedName ?? '',
     );
@@ -68,12 +78,12 @@ class _PairConfirmScreenState extends State<PairConfirmScreen> {
           const SizedBox(height: 12),
           Text('Connect to this server?', style: t.headlineSmall, textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: Icon(p.isInsecure ? Icons.lock_open : Icons.lock_outline),
-              title: Text(p.serverHost, key: const Key('pairServerHost')),
-              subtitle: Text(p.isInsecure ? 'Not encrypted (http) — development only' : 'Encrypted (https)'),
-            ),
+          ServerTrustPanel(
+            key: const Key('pairServerHost'),
+            serverUrl: p.serverUrl,
+            warnings: _warnings,
+            trusted: _trusted,
+            onTrustedChanged: (v) => setState(() => _trusted = v),
           ),
           const SizedBox(height: 8),
           Text(
@@ -98,7 +108,8 @@ class _PairConfirmScreenState extends State<PairConfirmScreen> {
           const SizedBox(height: 24),
           FilledButton.icon(
             key: const Key('pairButton'),
-            onPressed: _busy ? null : _pair,
+            // Explicit confirmation when the server is unexpected or unencrypted.
+            onPressed: _busy || (_warnings.isNotEmpty && !_trusted) ? null : _pair,
             icon: _busy
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.link),

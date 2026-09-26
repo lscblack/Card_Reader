@@ -256,5 +256,9 @@ async def seed_demo(session: AsyncSession) -> None:
             emp = next(e for e in employees if e.id == c.employee_id)
             emp.total_taps += 1
             emp.last_tap_at = max(emp.last_tap_at or created, created)
+        if c.customer_id:
+            cust = next(x for x in customers if x.id == c.customer_id)
+            cust.total_taps += 1
+            cust.last_tap_at = max(cust.last_tap_at or created, created)
     await session.commit()
     logger.info("Demo data created: %s / %s (password from DEMO_PASSWORD)", DEV_EMAIL, BIZ_EMAIL)

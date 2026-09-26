@@ -39,7 +39,7 @@ function ManageCard({ a }: { a: AdminAccountDetail }) {
   const toast = useToast()
   const [pending, setPending] = useState<Pending | null>(null)
   const self = me?.id === a.id
-  const audience = a.account_type === 'business' ? 'business' : 'developer'
+  const audience = a.account_type ?? 'developer'
   const planOptions = (plans.data ?? []).filter((p) => !p.audience || p.audience === audience)
 
   const rows = [
@@ -234,7 +234,7 @@ export default function AdminAccountDetailPage() {
                   tabs={[
                     { value: 'apps', label: 'Applications', count: a.applications?.length },
                     { value: 'devices', label: 'Devices', count: a.devices?.length },
-                    { value: 'logs', label: 'Recent requests', count: a.request_logs?.length },
+                    { value: 'logs', label: 'Recent requests', count: a.recent_request_logs?.length },
                     { value: 'audit', label: 'Audit log', count: a.audit_logs?.length },
                   ]}
                 />
@@ -258,7 +258,7 @@ export default function AdminAccountDetailPage() {
                               <tr key={app.id}>
                                 <TD>
                                   <p className="font-medium">{app.name}</p>
-                                  <ActiveBadge active={app.is_active} />
+                                  {app.deleted ? <Badge tone="danger">Deleted</Badge> : <ActiveBadge active={app.is_active} />}
                                 </TD>
                                 <TD>
                                   <Badge tone={app.delivery_mode === 'relay' ? 'accent' : 'info'}>{app.delivery_mode}</Badge>
@@ -273,11 +273,11 @@ export default function AdminAccountDetailPage() {
                     ))}
                   {tab === 'devices' && (!a.devices?.length ? <EmptyState icon={Smartphone} title="No devices" /> : <AdminDeviceTable devices={a.devices} />)}
                   {tab === 'logs' &&
-                    (!a.request_logs?.length ? (
+                    (!a.recent_request_logs?.length ? (
                       <EmptyState icon={Activity} title="No recent requests" />
                     ) : (
                       <>
-                        <RequestLogTable logs={a.request_logs} onSelect={setLog} showActor />
+                        <RequestLogTable logs={a.recent_request_logs} onSelect={setLog} showActor />
                         <div className="border-t border-border px-4 py-2.5 text-right sm:px-5">
                           <Link to={`/admin/logs?user_id=${a.id}`} className="text-[13px] font-medium text-accent hover:underline">
                             All requests for this account

@@ -143,4 +143,27 @@ class ApduHandlerTest {
         assertEquals("https://a/p/x?via=nfc", ApduHandler.withVia("https://a/p/x"))
         assertEquals("https://a/p/x?s=1&via=nfc", ApduHandler.withVia("https://a/p/x?s=1"))
     }
+
+    @Test fun malformedCacheAnswersNotFoundInsteadOfCrashing() {
+        // Empty HMAC key → SecretKeySpec throws; the HCE service must survive and answer 6A82.
+        val bad = CardCache(cache.shareId, 7, ByteArray(0), cache.publicUrl, webPageEnabled = true, nfcSharingEnabled = true)
+        val h = handler(bad)
+        assertEquals("6A82", sw(h.process(hex("00A4040007F04E464344430100"))))
+        // The T4T application (no key needed) still works on the same cache.
+        assertEquals("9000", sw(h.process(hex("00A4040007D276000085010100"))))
+    }
+}
+
+class LaunchIntentsTest {
+    @Test fun freshLaunchIsProcessed() {
+        assertEquals(false, LaunchIntents.isReplay(restored = false, flags = 0))
+        assertEquals(false, LaunchIntents.isReplay(restored = false, flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    @Test fun recentsRelaunchAndRestoreAreReplays() {
+        // Relaunch from Recents re-delivers the old tag / single-use link intent: must not be handled again.
+        assertEquals(true, LaunchIntents.isReplay(false,
+            android.content.Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY or android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        assertEquals(true, LaunchIntents.isReplay(restored = true, flags = 0))
+    }
 }

@@ -47,7 +47,11 @@ def validate_version(value: str) -> str:
     return value
 
 
-def validate_api_base_url(value: str) -> str:
+# Release APKs ship a strict network-security config: cleartext HTTP only to these hosts (emulator/loopback).
+RELEASE_CLEARTEXT_HOSTS = {"10.0.2.2", "localhost", "127.0.0.1"}
+
+
+def validate_api_base_url(value: str, build_type: str | None = None) -> str:
     value = (value or "").strip().rstrip("/")
     try:
         parts = urlsplit(value)
@@ -56,6 +60,9 @@ def validate_api_base_url(value: str) -> str:
     if parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password \
             or parts.query or parts.fragment or len(value) > 300 or re.search(r"[\s'\"`$;&|<>\\]", value):
         raise BuildArgError("api_base_url must be a plain http(s) URL")
+    if build_type == "release" and parts.scheme == "http" and parts.hostname not in RELEASE_CLEARTEXT_HOSTS:
+        raise BuildArgError("release builds can only reach an https:// API (Android blocks plain http); "
+                            "use https or make a debug build for a LAN http server")
     return value
 
 
@@ -69,7 +76,7 @@ def build_argv(release: AppRelease) -> list[str]:
         settings.FLUTTER_BIN, "build", "apk", f"--{release.build_type}",
         f"--build-name={validate_version(release.version_name)}",
         f"--build-number={release.build_number}",
-        f"--dart-define=API_BASE_URL={validate_api_base_url(release.api_base_url)}",
+        f"--dart-define=API_BASE_URL={validate_api_base_url(release.api_base_url, release.build_type)}",
     ]
 
 
@@ -106,6 +113,50 @@ def default_version_name() -> str:
 async def next_build_number(session: AsyncSession) -> int:
     current = (await session.execute(select(func.max(AppRelease.build_number)))).scalar()
     return int(current or 0) + 1
+
+
+def releases_root() -> Path:
+    root = Path(settings.RELEASES_ROOT).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def artifact_file(artifact_path: str) -> Path:
+    """Where a release's APK lives. `artifact_path` keeps its historical form `releases/<file>.apk`; the file is
+    stored in the private RELEASES_ROOT (older builds were written under the public MEDIA_ROOT and are moved)."""
+    from app.services.media import media_root
+
+    name = Path(artifact_path).name
+    target = releases_root() / name
+    legacy = media_root() / "releases" / name
+    if legacy.is_file():  # a copy under the public tree is never kept
+        if target.exists():
+            legacy.unlink()
+        else:
+            shutil.move(str(legacy), target)  # works across volumes/filesystems
+    return target
+
+
+def migrate_legacy_artifacts() -> int:
+    """Startup: moves APKs built before RELEASES_ROOT existed out of the public media tree."""
+    from app.services.media import media_root
+
+    legacy_dir = media_root() / "releases"
+    moved = 0
+    if legacy_dir.is_dir():
+        for apk in legacy_dir.glob("*.apk"):
+            artifact_file(f"releases/{apk.name}")
+            moved += 1
+    return moved
+
+
+def delete_artifact(artifact_path: str | None) -> None:
+    if not artifact_path:
+        return
+    try:
+        artifact_file(artifact_path).unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def artifact_source(release: AppRelease) -> Path:
@@ -167,7 +218,7 @@ async def _notify_finished(session: AsyncSession, release: AppRelease) -> None:
               f"{'built successfully' if ok else release.status}",
         body=(f"{release.build_type} APK, {round((release.file_size or 0) / 1_048_576, 1)} MB"
               + (" — published" if release.is_published else "")) if ok else (release.error or "Build failed"),
-        link=f"/admin/app-releases/{release.id}", severity="success" if ok else "error",
+        link="/admin/releases", severity="success" if ok else "error",
     )
 
 
@@ -209,18 +260,12 @@ async def execute(session_factory: async_sessionmaker[AsyncSession], release_id)
                 src = artifact_source(release)
                 if not src.exists():
                     raise FileNotFoundError(f"artifact not found: {src.name}")
-                from app.services.media import media_root
-
                 rel = f"releases/nfc-terminal-{release.version_name}-{release.build_number}-{release.build_type}.apk"
-                dest = media_root() / rel
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(src, dest)
-                digest = hashlib.sha256()
-                with dest.open("rb") as fh:
-                    for chunk in iter(lambda: fh.read(1 << 20), b""):
-                        digest.update(chunk)
-                release.artifact_path, release.sha256 = rel, digest.hexdigest()
-                release.file_size = dest.stat().st_size
+                dest = artifact_file(rel)
+                # Copy + hash a multi-MB APK in a thread: the worker shares the API's event loop.
+                sha256, size = await asyncio.to_thread(_copy_and_hash, src, dest)
+                release.artifact_path, release.sha256 = rel, sha256
+                release.file_size = size
                 release.status = "succeeded"
                 if release.publish_on_success:
                     release.is_published, release.published_at = True, datetime.now(UTC)
@@ -236,6 +281,16 @@ async def execute(session_factory: async_sessionmaker[AsyncSession], release_id)
         await _notify_finished(session, release)
         await session.commit()
         logger.info("App build %s finished: %s", release.id, release.status)
+
+
+def _copy_and_hash(src: Path, dest: Path) -> tuple[str, int]:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dest)
+    digest = hashlib.sha256()
+    with dest.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest(), dest.stat().st_size
 
 
 async def recover_orphans(session_factory: async_sessionmaker[AsyncSession]) -> int:

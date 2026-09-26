@@ -27,7 +27,8 @@ export function useLogFilterParams(pageSize = 25) {
   const values = Object.fromEntries(FILTER_KEYS.map((k) => [k, get(k)])) as Record<(typeof FILTER_KEYS)[number], string>
   const filters: RequestLogFilters = {
       outcome: (values.outcome as RequestOutcome) || undefined,
-      status: values.status || undefined,
+      // Only a complete 3-digit code (100–599) is a valid filter; a partial "4" would be rejected with 422.
+      status: /^[1-5]\d\d$/.test(values.status) ? values.status : undefined,
       route: values.route || undefined,
       error_code: values.error_code || undefined,
       date_from: dayBoundary(values.from, false),

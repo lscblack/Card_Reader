@@ -1,12 +1,13 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'motion/react'
 import { BookOpen, ShieldCheck, Smartphone, Zap } from 'lucide-react'
-import { DASHBOARD_PATH, useIsLoggedIn, useReducedMotionPref } from '../lib'
+import { useDashboardPath, useIsLoggedIn, useReducedMotionPref } from '../lib'
 import { PrimaryLink, SecondaryLink } from './MarketingNav'
 import { HeroVisual } from './HeroVisual'
 
 export function Hero() {
   const loggedIn = useIsLoggedIn()
+  const dashboardPath = useDashboardPath()
   const reduce = useReducedMotionPref()
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
@@ -68,7 +69,7 @@ export function Hero() {
           </motion.p>
           <motion.div {...fade(0.2)} className="mt-8 flex flex-wrap gap-3">
             {loggedIn ? (
-              <PrimaryLink to={DASHBOARD_PATH} size="lg">
+              <PrimaryLink to={dashboardPath} size="lg">
                 Go to dashboard
               </PrimaryLink>
             ) : (

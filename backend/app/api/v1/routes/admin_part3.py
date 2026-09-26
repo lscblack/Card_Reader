@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, File, Query, Request, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import Field, field_validator
 from sqlalchemy import func, insert, or_, select, text, union_all
 from sqlalchemy.exc import IntegrityError
@@ -75,19 +76,19 @@ async def upload_branding_asset(admin: AdminUser, session: SessionDep, client: C
                        [{"field": "file", "message": "file too large (max 1 MB)"}])
     if looks_like_svg(data):
         try:
-            clean = sanitize_svg(data)
+            clean = await run_in_threadpool(sanitize_svg, data)
         except InvalidSVG as exc:
             raise AppError(422, "invalid_upload", f"Invalid SVG: {exc}", [{"field": "file", "message": str(exc)}]) from exc
         rel = f"branding/{variant}-{uuid.uuid4().hex[:12]}.svg"
         target = media.media_root() / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(clean)
+        await run_in_threadpool(target.write_bytes, clean)
         path = rel
     else:
         if media.sniff(data) not in ("png", "webp"):
             raise AppError(422, "invalid_upload", "Branding assets must be PNG, SVG or WebP",
                            [{"field": "file", "message": "unsupported type"}])
-        path = media.save_image(data, "branding", variant)
+        path = await run_in_threadpool(media.save_image, data, "branding", variant)
     field = branding.VARIANTS[variant]
     old = (await branding.current())[field]
     data_out = await branding.save(session, {field: path}, admin.id)

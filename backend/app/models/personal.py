@@ -74,6 +74,10 @@ class CardTemplate(Base):
     supports: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     premium: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Part 5: "v1" (layout + design) or "v2" (shape template: spec = {format, sides, canvas, default_arrangement}).
+    engine: Mapped[str] = mapped_column(String(4), nullable=False, default="v1", server_default="v1")
+    category: Mapped[str | None] = mapped_column(String(16))
+    spec: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class DigitalCard(UUIDPk, Timestamps, Base):
@@ -92,6 +96,11 @@ class DigitalCard(UUIDPk, Timestamps, Base):
     slug: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     template_id: Mapped[str] = mapped_column(String(32), ForeignKey("card_templates.id"), nullable=False)
     design: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Part 5 §2: 2 when the template is v2; front/back; {side: {zone: [block]}} (None → template default).
+    design_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    sides_enabled: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=lambda: ["front"],
+                                                     server_default=text("'[\"front\"]'::jsonb"))
+    arrangement: Mapped[dict | None] = mapped_column(JSONB)
     photo_path: Mapped[str | None] = mapped_column(String(300))
     cover_path: Mapped[str | None] = mapped_column(String(300))
     logo_path: Mapped[str | None] = mapped_column(String(300))
@@ -167,6 +176,8 @@ class DigitalCardInvite(UUIDPk, CreatedAt, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     template_id: Mapped[str | None] = mapped_column(String(32))
     design: Mapped[dict | None] = mapped_column(JSONB)
+    arrangement: Mapped[dict | None] = mapped_column(JSONB)  # Part 5 §4
+    badge: Mapped[dict | None] = mapped_column(JSONB)  # {id_number?, valid_from?, valid_until?, barcode_value?}
     locked_fields: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     invited_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

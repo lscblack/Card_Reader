@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { BookOpen, ChevronDown, Compass, LogOut, Menu as MenuIcon, Settings, X, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, ChevronDown, Compass, LogOut, Menu as MenuIcon, Settings, X, type LucideIcon } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { USE_MOCKS } from '@/api/client'
 import { Logo } from '@/components/Logo'
@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { VerifyEmailBanner } from '@/components/VerifyEmailBanner'
 import { PoweredBy } from '@/components/PoweredBy'
 import { NotificationBell } from '@/components/NotificationBell'
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications'
 import { startTour, usePageTours, TourWelcome } from '@/tours'
 import { MaintenanceBanner } from '@/components/MaintenanceBanner'
 import { cn } from '@/lib/cn'
@@ -64,11 +65,36 @@ export interface DashboardShellProps {
   children?: ReactNode
 }
 
-function SidebarNav({ nav, onNavigate }: { nav: ShellNavSection[]; onNavigate?: () => void }) {
+function UnreadBadge({ count }: { count: number }) {
+  if (!count) return null
+  return (
+    <span
+      className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-solid px-1.5 text-[11px] font-semibold text-accent-fg tabular-nums"
+      aria-label={`${count} unread`}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+function SidebarNav({
+  nav,
+  notificationsPath,
+  onNavigate,
+}: {
+  nav: ShellNavSection[]
+  notificationsPath: string
+  onNavigate?: () => void
+}) {
   const { user } = useAuth()
+  const { count, supported } = useUnreadNotifications()
+  // Every dashboard gets a pinned "Notifications" entry with the live unread counter.
+  const withInbox: ShellNavSection[] = supported
+    ? [...nav, { title: 'Inbox', items: [{ to: notificationsPath, label: 'Notifications', icon: Bell, badge: <UnreadBadge count={count} />, tour: 'nav-notifications' }] }]
+    : nav
   return (
     <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Main">
-      {nav.map((section, i) => {
+      {withInbox.map((section, i) => {
         const items = section.items.filter((it) => !it.adminOnly || user?.role === 'admin')
         if (!items.length) return null
         return (
@@ -179,7 +205,7 @@ export function DashboardShell({
           <Brand label={label} homeTo={homeTo} />
         </div>
         {sidebarTop && <div className="border-b border-border px-3 py-3">{sidebarTop}</div>}
-        <SidebarNav nav={nav} />
+        <SidebarNav nav={nav} notificationsPath={`${homeTo}/notifications`} />
         {footer}
       </aside>
 
@@ -198,7 +224,7 @@ export function DashboardShell({
               </button>
             </div>
             {sidebarTop && <div className="border-b border-border px-3 py-3">{sidebarTop}</div>}
-            <SidebarNav nav={nav} onNavigate={() => setDrawerOpen(false)} />
+            <SidebarNav nav={nav} notificationsPath={`${homeTo}/notifications`} onNavigate={() => setDrawerOpen(false)} />
             {footer}
           </aside>
         </div>

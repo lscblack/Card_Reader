@@ -3,13 +3,15 @@ import { ArrowDownRight, ArrowUpRight, Minus, Nfc, Radio, Search, Smartphone, Sp
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
+import { safeImageUrl } from '@/lib/url'
 import { num, percent } from '@/lib/format'
 import type { BusinessRole, CardKind, EffectiveStatus, TapResult, TapSource } from '../api/types'
 import { EFFECTIVE_STATUS, TAP_RESULT, initials } from '../lib/format'
 import { ROLE_LABELS } from '../lib/permissions'
 import { ACTION_ICONS } from '../lib/actionMeta'
 
-export function Avatar({ name, src, size = 32, className }: { name: string; src?: string | null; size?: number; className?: string }) {
+export function Avatar({ name, src: rawSrc, size = 32, className }: { name: string; src?: string | null; size?: number; className?: string }) {
+  const src = safeImageUrl(rawSrc)
   const style = { width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.38)) }
   if (src) {
     return <img src={src} alt="" style={style} className={cn('shrink-0 rounded-full object-cover ring-1 ring-border', className)} />

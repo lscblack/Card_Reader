@@ -108,6 +108,33 @@ async def require_admin(user: CurrentUser) -> User:
 AdminUser = Annotated[User, Depends(require_admin)]
 
 
+def account_type_not_allowed(message: str) -> AppError:
+    return AppError(403, "account_type_not_allowed", message)
+
+
+async def require_platform_user(user: CurrentUser) -> User:
+    """Developer-platform routes (applications, keys, devices, events, deliveries, sandbox, request logs, usage, live):
+    developers and business members (business-owned resources are still authorised per resource via membership).
+    Personal (digital card) accounts are refused; admins are allowed everywhere."""
+    if user.account_type == "personal" and user.role != "admin":
+        raise account_type_not_allowed("Developer features are not available to personal accounts")
+    return user
+
+
+PlatformUser = Annotated[User, Depends(require_platform_user)]
+platform_only = [Depends(require_platform_user)]
+
+
+def ensure_developer_account(user: User) -> None:
+    """Creating developer-owned resources (POST /applications, sandbox endpoints without ?business_id):
+    business accounts use their workspace (`POST /businesses/{id}/applications`) instead."""
+    if user.role == "admin" or user.account_type not in ("personal", "business"):
+        return
+    raise account_type_not_allowed(
+        "Business accounts create applications from their business workspace"
+        if user.account_type == "business" else "Developer features are not available to personal accounts")
+
+
 # ── API keys ─────────────────────────────────────────────────────────────
 @dataclass
 class ApiKeyContext:

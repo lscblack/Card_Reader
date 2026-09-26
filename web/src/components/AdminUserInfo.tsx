@@ -175,12 +175,12 @@ export function AdminUserInfo({ a }: { a: AdminAccountDetail }) {
           <div>
             <p className="mb-1.5 text-xs font-medium text-subtle uppercase">Recent logins</p>
             <ul className="space-y-1 text-xs text-muted">
-              {a.recent_logins.slice(0, 5).map((l) => (
-                <li key={l.id} className="flex justify-between gap-2">
+              {a.recent_logins.slice(0, 5).map((l, i) => (
+                <li key={`${l.at}-${i}`} className="flex justify-between gap-2">
                   <span className="truncate" title={l.user_agent ?? undefined}>
                     {l.ip_address ?? '—'}
                   </span>
-                  <span className="shrink-0">{relativeTime(l.created_at)}</span>
+                  <span className="shrink-0">{relativeTime(l.at)}</span>
                 </li>
               ))}
             </ul>

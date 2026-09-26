@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, ExternalLink, Mail, Nfc, Pencil, Phone, Power, Trash2 } from 'lucide-react'
+import { safeHref } from '@/lib/url'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -136,7 +137,7 @@ export default function EmployeeDetailPage() {
                   {e.social_links.length ? (
                     <span className="flex flex-wrap gap-1.5">
                       {e.social_links.map((l) => (
-                        <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium capitalize ring-1 ring-border hover:text-accent">
+                        <a key={l.url} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium capitalize ring-1 ring-border hover:text-accent">
                           {l.platform} <ExternalLink className="h-3 w-3" />
                         </a>
                       ))}

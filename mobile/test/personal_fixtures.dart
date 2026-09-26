@@ -58,3 +58,22 @@ Map<String, dynamic> cardJson({
 
 DigitalCard sampleCard({String template = 'modern', String style = 'solid', String font = 'sans', String? name}) =>
     DigitalCard.fromJson(cardJson(template: template, style: style, font: font, name: name ?? 'Jane Mukamana-Uwimana with a Very Long Name'));
+
+/// A v2 card on [template] (Part 5) with badge fields set.
+DigitalCard v2Card(String template, {bool back = true, String? validUntil = '2099-12-31', Map<String, Object?>? design}) {
+  final j = cardJson(template: template, name: 'Jane Mukamana');
+  j['design_version'] = 2;
+  j['sides_enabled'] = back ? ['front', 'back'] : ['front'];
+  j['design'] = {
+    'primary': '#B91C1C', 'secondary': '#1F2937', 'background': '#FFFFFF', 'text': '#111827', 'accent': '#B91C1C',
+    'font': 'sans', 'corner_radius': 16, 'photo_shape': 'circle', 'photo_ring': true, 'icon_style': 'filled',
+    'background_image_opacity': 0.0, ...?design,
+  };
+  (j['fields'] as Map)
+    ..['job_title'] = 'Head of Partnerships'
+    ..['company'] = 'Nexventures'
+    ..['id_number'] = 'NX-0042'
+    ..['valid_until'] = validUntil
+    ..['barcode_value'] = 'NX0042';
+  return DigitalCard.fromJson(j);
+}

@@ -66,15 +66,19 @@ function PhoneLogin() {
     queryFn: () => sessionsApi.loginCode(code!.id),
     enabled: !!code,
     gcTime: 0,
-    refetchInterval: (q) => (!q.state.data || q.state.data.status === 'pending' ? 2000 : false),
+    // Poll while pending; stop on an error or once the 5-minute code has expired.
+    refetchInterval: (q) =>
+      q.state.error || (code && Date.parse(code.expires_at) < Date.now()) ? false : !q.state.data || q.state.data.status === 'pending' ? 2000 : false,
   })
   const mounted = useRef(true)
-  useEffect(
-    () => () => {
+  // Set on every mount: StrictMode mounts → unmounts → re-mounts in development, and a
+  // cleanup-only effect would leave this false forever (the new code was silently dropped).
+  useEffect(() => {
+    mounted.current = true
+    return () => {
       mounted.current = false
-    },
-    [],
-  )
+    }
+  }, [])
   async function start() {
     setError(null)
     setCreating(true)

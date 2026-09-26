@@ -56,3 +56,4 @@ Every request carries `X-NFC-Timestamp`, `X-NFC-Nonce`, `X-NFC-Event-Id` and
 A card UID is an **identifier, not proof of identity** — many UIDs can be cloned or are randomised.
 Every event is marked `security.authenticated = false` / `level = "uid_only"`. Do not use the UID alone for
 payments, high-security access control or anything where impersonation matters.
+![alt text](image.png)

@@ -85,13 +85,11 @@ export default function AdminAccountsPage() {
             <option value="developer">Developers</option>
             <option value="business">Businesses</option>
             <option value="personal">Personal</option>
-            <option value="admin">Admins</option>
           </Select>
           <Select aria-label="Status" value={status} onChange={(e) => set('status', e.target.value)} className="sm:w-40">
             <option value="">Any status</option>
             <option value="active">Active</option>
             <option value="inactive">Disabled</option>
-            <option value="unverified">Unverified</option>
           </Select>
         </div>
         {selected.size > 0 && (

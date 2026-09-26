@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import ClientDep, CurrentUser, SessionDep
 from app.core.config import settings
 from app.core.errors import AppError, validation_error
+from app.core.rate_limit import clear_login_failures, login_blocked, record_login_failure
 from app.core.security import (
     create_access_token,
     generate_reset_token,
@@ -20,7 +21,14 @@ from app.core.security import (
     sha256_hex,
     verify_password,
 )
-from app.models import Business, BusinessInvitation, EmailVerificationToken, PasswordResetToken, User
+from app.models import (
+    Business,
+    BusinessInvitation,
+    EmailVerificationToken,
+    PasswordResetToken,
+    PersonalSession,
+    User,
+)
 from app.schemas.business import VerifyEmailIn
 from app.schemas.auth import (
     ChangePasswordIn,
@@ -218,12 +226,23 @@ async def resend_verification(user: CurrentUser, session: SessionDep, background
     return JSONResponse(status_code=202, content=body, background=background)
 
 
+async def ensure_login_allowed(email: str) -> None:
+    """Per-email brute-force guard (in addition to the per-IP auth bucket): too many recent failures → 429."""
+    wait = await login_blocked(email)
+    if wait is not None:
+        raise AppError(429, "rate_limited", "Too many failed sign-in attempts for this account, try again later",
+                       {"retry_after": wait}, headers={"Retry-After": str(wait)})
+
+
 @router.post("/login", response_model=TokenOut, summary="Sign in and obtain a dashboard JWT")
 async def login(body: LoginIn, session: SessionDep, client: ClientDep) -> TokenOut:
+    await ensure_login_allowed(body.email)
     user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
     ok = await run_in_threadpool(verify_password, body.password, user.password_hash if user else None)
     if user is None or not ok:
+        await record_login_failure(body.email)
         raise AppError(401, "invalid_credentials", "Invalid email or password")
+    await clear_login_failures(body.email)
     if not user.is_active:
         raise AppError(403, "account_disabled", "This account has been disabled")
     user.last_login_at = datetime.now(UTC)
@@ -299,7 +318,7 @@ async def update_preferences(request: Request, user: CurrentUser, session: Sessi
 @router.post("/me/avatar", response_model=UserOut, summary="Upload an avatar (resized to 256×256)")
 async def upload_avatar(user: CurrentUser, session: SessionDep, file: UploadFile = File(...)) -> UserOut:
     data = await file.read(settings.MEDIA_MAX_UPLOAD_BYTES + 1)
-    path = media.save_avatar(data, str(user.id))
+    path = await run_in_threadpool(media.save_avatar, data, str(user.id))
     old, user.avatar_path = user.avatar_path, path
     await session.commit()
     media.delete_file(old)
@@ -314,6 +333,15 @@ async def delete_avatar(user: CurrentUser, session: SessionDep) -> UserOut:
     return user_out(user)
 
 
+async def revoke_personal_sessions(session: SessionDep, user: User, now: datetime) -> None:
+    """A new password signs every phone out too (mobile `nfcs_` sessions and their share keys), like JWTs."""
+    await session.execute(
+        update(PersonalSession)
+        .where(PersonalSession.user_id == user.id, PersonalSession.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+
+
 @router.post("/change-password", status_code=204, summary="Change password (invalidates existing JWTs)")
 async def change_password(
     body: ChangePasswordIn, user: CurrentUser, session: SessionDep, client: ClientDep, background: BackgroundTasks
@@ -322,6 +350,7 @@ async def change_password(
         raise AppError(400, "invalid_password", "Current password is incorrect")
     user.password_hash = await run_in_threadpool(hash_password, body.new_password)
     user.password_changed_at = datetime.now(UTC)
+    await revoke_personal_sessions(session, user, user.password_changed_at)
     audit.record(session, action="user.password_change", user_id=user.id, client=client,
                  resource_type="user", resource_id=user.id)
     await session.commit()
@@ -383,6 +412,7 @@ async def reset_password(
     row.used_at = now
     user.password_hash = await run_in_threadpool(hash_password, body.new_password)
     user.password_changed_at = now
+    await revoke_personal_sessions(session, user, now)
     audit.record(session, action="user.password_reset", user_id=user.id, client=client,
                  resource_type="user", resource_id=user.id)
     await session.commit()

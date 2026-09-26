@@ -282,5 +282,41 @@ void main() {
       expect(repo.rows.values.single.status, EventStatus.delivered);
       expect(repo.rows.values.single.attempts, 5);
     });
+  
+    test('a pending event left by a killed process is re-queued and sent once; live ones are untouched', () async {
+      final repo = InMemoryEventRepository();
+      final api = FakeDeviceApi();
+      final now = DateTime.now().toUtc();
+      final delivery = DeliveryService(
+        api: api, httpClient: MockClient((_) async => http.Response('', 500)), repository: repo, clock: () => now);
+      // Written before this process started (app killed during the first attempt).
+      await repo.upsert(testEvent(id: 'stale-1').copyWith(updatedAt: now.subtract(const Duration(seconds: 30))));
+      final queue = RetryQueue(repository: repo, delivery: delivery, configProvider: () => testConfig(), clock: () => now);
+      // Created by this process: its first attempt is (about to be) running in handleCard.
+      await repo.upsert(testEvent(id: 'live-1').copyWith(updatedAt: now.add(const Duration(seconds: 1))));
+      queue.start();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      queue.stop();
+      expect(api.submissions.map((s) => s.eventId), ['stale-1']);
+      expect(repo.rows['stale-1']!.status, EventStatus.delivered);
+      expect(repo.rows['live-1']!.status, EventStatus.pending);
+    });
+
+    test('a pending event stuck longer than stalePending is recovered by a later pass', () async {
+      final repo = InMemoryEventRepository();
+      final api = FakeDeviceApi();
+      var now = DateTime.now().toUtc();
+      final delivery = DeliveryService(
+        api: api, httpClient: MockClient((_) async => http.Response('', 500)), repository: repo, clock: () => now);
+      final queue = RetryQueue(repository: repo, delivery: delivery, configProvider: () => testConfig(), clock: () => now)
+        ..start();
+      await repo.upsert(testEvent(id: 'stuck').copyWith(updatedAt: now.add(const Duration(seconds: 1))));
+      await queue.kick();
+      expect(api.submissions, isEmpty);
+      now = now.add(RetryQueue.stalePending + const Duration(minutes: 1));
+      await queue.kick();
+      queue.stop();
+      expect(api.submissions.map((s) => s.eventId), ['stuck']);
+    });
   });
 }

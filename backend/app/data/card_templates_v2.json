@@ -1,0 +1,2954 @@
+[
+  {
+    "id": "diagonal_crimson",
+    "engine": "v2",
+    "name": "Diagonal Crimson",
+    "category": "business",
+    "description": "A bold diagonal band with a round photo and a dark corner accent.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M1050 0 H1750 V1000 H690 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M1500 0 H1750 V300 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M1000 0 H1034 L674 1000 H640 Z",
+            "fill": "secondary",
+            "opacity": 0.9
+          },
+          {
+            "path": "M1340 1000 H1750 V760 Z",
+            "fill": "#000000",
+            "opacity": 0.14
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              110,
+              120,
+              700,
+              760
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          },
+          {
+            "id": "hero",
+            "rect": [
+              1060,
+              200,
+              560,
+              600
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "photo",
+              "logo",
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "primary",
+        "layers": [
+          {
+            "path": "M0 0 H880 L560 1000 H0 Z",
+            "fill": "background",
+            "opacity": 1
+          },
+          {
+            "path": "M880 0 H914 L594 1000 H560 Z",
+            "fill": "secondary",
+            "opacity": 0.9
+          },
+          {
+            "path": "M1750 1000 H1380 L1750 700 Z",
+            "fill": "secondary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              100,
+              230,
+              560,
+              540
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "website",
+              "socials"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              1060,
+              220,
+              520,
+              560
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "qr",
+              "photo",
+              "logo",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "info": [
+          "name",
+          "contacts",
+          "website"
+        ],
+        "hero": [
+          "photo"
+        ]
+      },
+      "back": {
+        "brand": [
+          "logo",
+          "company",
+          "tagline"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "gold_wave",
+    "engine": "v2",
+    "name": "Gold Wave",
+    "category": "business",
+    "description": "Deep charcoal with a flowing gold wave \u2014 brand on the front, details on the back.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#C9A227",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "secondary",
+        "layers": [
+          {
+            "path": "M0 690 C 420 560 760 900 1180 760 C 1440 670 1600 640 1750 660 V1000 H0 Z",
+            "fill": "accent",
+            "opacity": 0.35
+          },
+          {
+            "path": "M0 760 C 420 630 760 960 1180 820 C 1440 730 1600 700 1750 720 V1000 H0 Z",
+            "fill": "accent",
+            "opacity": 1
+          },
+          {
+            "path": "M0 850 C 420 740 760 1030 1180 900 C 1440 820 1600 800 1750 810 V1000 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              325,
+              120,
+              1100,
+              520
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "name"
+            ],
+            "max_blocks": 3
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1750 V150 C 1500 230 1200 90 900 170 C 600 250 300 120 0 200 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 200 C 300 120 600 250 900 170 C 1200 90 1500 230 1750 150 V175 C 1500 255 1200 115 900 195 C 600 275 300 145 0 225 Z",
+            "fill": "accent",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              110,
+              290,
+              1050,
+              610
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          },
+          {
+            "id": "code",
+            "rect": [
+              1280,
+              330,
+              360,
+              480
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr",
+              "photo",
+              "logo",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "brand": [
+          "logo",
+          "company",
+          "tagline"
+        ]
+      },
+      "back": {
+        "info": [
+          "name",
+          "contacts",
+          "website"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    },
+    "variants": [
+      {
+        "id": "calm",
+        "name": "Calm wave",
+        "canvas": {
+          "front": {
+            "layers": [
+              {
+                "path": "M0 820 C 500 740 1100 900 1750 790 V1000 H0 Z",
+                "fill": "accent",
+                "opacity": 1
+              },
+              {
+                "path": "M0 880 C 500 800 1100 960 1750 850 V1000 H0 Z",
+                "fill": "primary",
+                "opacity": 1
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "skyline_split",
+    "engine": "v2",
+    "name": "Skyline Split",
+    "category": "business",
+    "description": "Angled ribbons and a right panel that shows your cover image (or a subtle pattern).",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M1110 0 H1750 V1000 H850 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M1110 0 H1750 V1000 H850 Z",
+            "fill": "image",
+            "opacity": 0.55
+          },
+          {
+            "path": "M1010 0 H1110 L850 1000 H750 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M1150 0 H1180 L920 1000 H890 Z",
+            "fill": "primary",
+            "opacity": 0.75
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              100,
+              110,
+              640,
+              780
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          },
+          {
+            "id": "hero",
+            "rect": [
+              1150,
+              230,
+              480,
+              540
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "photo",
+              "logo",
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "secondary",
+        "layers": [
+          {
+            "path": "M0 0 H1750 V1000 H0 Z",
+            "fill": "image",
+            "opacity": 0.4
+          },
+          {
+            "path": "M0 640 L1750 330 V470 L0 780 Z",
+            "fill": "primary",
+            "opacity": 0.95
+          },
+          {
+            "path": "M0 800 L1750 490 V520 L0 830 Z",
+            "fill": "primary",
+            "opacity": 0.6
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              150,
+              90,
+              900,
+              420
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "website"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              1330,
+              560,
+              300,
+              360
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "qr",
+              "logo",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "info": [
+          "name",
+          "contacts",
+          "address"
+        ],
+        "hero": [
+          "photo"
+        ]
+      },
+      "back": {
+        "brand": [
+          "logo",
+          "company",
+          "website"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "origami_gold",
+    "engine": "v2",
+    "name": "Origami Gold",
+    "category": "business",
+    "description": "Folded gold and crimson blocks on a near-black card.",
+    "premium": true,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#161213",
+      "text": "#1C1717",
+      "accent": "#C9A227",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H600 L330 500 L600 1000 H0 Z",
+            "fill": "accent",
+            "opacity": 1
+          },
+          {
+            "path": "M330 500 L600 0 H450 Z",
+            "fill": "#000000",
+            "opacity": 0.22
+          },
+          {
+            "path": "M330 500 L600 1000 H450 Z",
+            "fill": "#000000",
+            "opacity": 0.32
+          },
+          {
+            "path": "M0 0 H400 L150 500 L400 1000 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M150 500 L400 0 H280 Z",
+            "fill": "#000000",
+            "opacity": 0.2
+          },
+          {
+            "path": "M150 500 L400 1000 H280 Z",
+            "fill": "#000000",
+            "opacity": 0.3
+          }
+        ],
+        "zones": [
+          {
+            "id": "mark",
+            "rect": [
+              20,
+              390,
+              230,
+              220
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "info",
+            "rect": [
+              700,
+              140,
+              960,
+              720
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M1750 0 H1150 L1420 500 L1150 1000 H1750 Z",
+            "fill": "accent",
+            "opacity": 1
+          },
+          {
+            "path": "M1420 500 L1150 0 H1300 Z",
+            "fill": "#000000",
+            "opacity": 0.22
+          },
+          {
+            "path": "M1420 500 L1150 1000 H1300 Z",
+            "fill": "#000000",
+            "opacity": 0.32
+          },
+          {
+            "path": "M1750 0 H1350 L1600 500 L1350 1000 H1750 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              140,
+              220,
+              880,
+              560
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "website",
+              "socials"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              1450,
+              380,
+              260,
+              240
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "qr",
+              "logo"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "mark": [
+          "logo"
+        ],
+        "info": [
+          "name",
+          "contacts",
+          "website"
+        ]
+      },
+      "back": {
+        "brand": [
+          "company",
+          "tagline",
+          "socials"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "corner_flare",
+    "engine": "v2",
+    "name": "Corner Flare",
+    "category": "business",
+    "description": "A dark card with crimson corner bands and a centred brand.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#181415",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H700 L0 400 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 0 H460 L0 262 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.08
+          },
+          {
+            "path": "M0 400 L700 0 H740 L0 423 Z",
+            "fill": "primary",
+            "opacity": 0.55
+          },
+          {
+            "path": "M1750 1000 H1050 L1750 600 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M1750 1000 H1290 L1750 738 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.08
+          },
+          {
+            "path": "M1750 600 L1050 1000 H1010 L1750 577 Z",
+            "fill": "primary",
+            "opacity": 0.55
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              375,
+              250,
+              1000,
+              500
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "name"
+            ],
+            "max_blocks": 3
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 860 L1750 640 V1000 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 940 L1750 760 V1000 H0 Z",
+            "fill": "#000000",
+            "opacity": 0.25
+          },
+          {
+            "path": "M1750 0 V90 L1450 0 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              110,
+              300,
+              880,
+              470
+            ],
+            "align": "start",
+            "valign": "end",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          },
+          {
+            "id": "side",
+            "rect": [
+              1000,
+              130,
+              640,
+              320
+            ],
+            "align": "end",
+            "valign": "start",
+            "on": "background",
+            "accepts": [
+              "name",
+              "photo",
+              "qr",
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "brand": [
+          "logo",
+          "company",
+          "tagline"
+        ]
+      },
+      "back": {
+        "info": [
+          "contacts",
+          "website",
+          "address"
+        ],
+        "side": [
+          "name"
+        ]
+      }
+    }
+  },
+  {
+    "id": "night_wave",
+    "engine": "v2",
+    "name": "Night Wave",
+    "category": "business",
+    "description": "Charcoal with a sweeping crimson wave. Your QR code lives on the back.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#1B1718",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 600 C 350 500 650 800 1050 690 C 1350 610 1550 560 1750 600 V1000 H0 Z",
+            "fill": "primary",
+            "opacity": 0.35
+          },
+          {
+            "path": "M0 660 C 350 560 650 860 1050 750 C 1350 670 1550 620 1750 660 V1000 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "title",
+            "rect": [
+              110,
+              110,
+              1050,
+              460
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "tagline",
+              "company",
+              "logo"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "hero",
+            "rect": [
+              1330,
+              110,
+              310,
+              330
+            ],
+            "align": "end",
+            "valign": "start",
+            "on": "background",
+            "accepts": [
+              "photo",
+              "logo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "foot",
+            "rect": [
+              110,
+              790,
+              1530,
+              150
+            ],
+            "align": "end",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "website",
+              "socials",
+              "tagline"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "primary",
+        "layers": [
+          {
+            "path": "M0 0 H1750 V330 C 1350 420 1000 230 600 340 C 350 410 150 380 0 340 Z",
+            "fill": "background",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              110,
+              70,
+              1100,
+              230
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "info",
+            "rect": [
+              110,
+              470,
+              1060,
+              460
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              1320,
+              450,
+              320,
+              480
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "qr",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "title": [
+          "name"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "foot": [
+          "website"
+        ]
+      },
+      "back": {
+        "brand": [
+          "logo",
+          "company"
+        ],
+        "info": [
+          "contacts",
+          "address"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "ocean_curve",
+    "engine": "v2",
+    "name": "Ocean Curve",
+    "category": "business",
+    "description": "A smooth curve splits the card; a QR code on the colour side.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M1130 0 C 930 300 930 700 1180 1000 H1750 V0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M1130 0 C 930 300 930 700 1180 1000 H1220 C 970 700 970 300 1170 0 Z",
+            "fill": "secondary",
+            "opacity": 0.9
+          },
+          {
+            "path": "M1350 0 C 1150 300 1150 700 1400 1000 H1750 V0 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.07
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              110,
+              120,
+              820,
+              760
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          },
+          {
+            "id": "code",
+            "rect": [
+              1260,
+              250,
+              390,
+              500
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "qr",
+              "photo",
+              "logo"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "primary",
+        "layers": [
+          {
+            "path": "M0 0 C 240 300 240 700 0 1000 V0 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.08
+          },
+          {
+            "path": "M0 0 C 150 300 150 700 0 1000 V0 Z",
+            "fill": "#000000",
+            "opacity": 0.12
+          },
+          {
+            "path": "M1750 0 C 1500 300 1500 700 1750 1000 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.07
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              325,
+              230,
+              1100,
+              540
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "website",
+              "photo"
+            ],
+            "max_blocks": 3
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "info": [
+          "name",
+          "contacts",
+          "website"
+        ],
+        "code": [
+          "qr"
+        ]
+      },
+      "back": {
+        "brand": [
+          "logo",
+          "company",
+          "tagline"
+        ]
+      }
+    }
+  },
+  {
+    "id": "teal_geometric",
+    "engine": "v2",
+    "name": "Geometric Split",
+    "category": "business",
+    "description": "Crisp angled geometry on white with a colour block for your logo.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M1750 0 V1000 H1230 L1490 0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M1490 0 H1560 L1300 1000 H1230 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M1750 0 V380 L1600 0 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.12
+          },
+          {
+            "path": "M0 0 H150 L0 150 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              120,
+              140,
+              1020,
+              720
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          },
+          {
+            "id": "mark",
+            "rect": [
+              1410,
+              330,
+              300,
+              340
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "photo",
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "primary",
+        "layers": [
+          {
+            "path": "M0 1000 L560 0 H0 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.08
+          },
+          {
+            "path": "M1750 0 L1190 1000 H1750 Z",
+            "fill": "#000000",
+            "opacity": 0.12
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              375,
+              240,
+              1000,
+              520
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "website",
+              "qr"
+            ],
+            "max_blocks": 3
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "info": [
+          "name",
+          "company",
+          "contacts"
+        ],
+        "mark": [
+          "logo"
+        ]
+      },
+      "back": {
+        "brand": [
+          "qr",
+          "website"
+        ]
+      }
+    }
+  },
+  {
+    "id": "minimal_line",
+    "engine": "v2",
+    "name": "Minimal Line",
+    "category": "minimal",
+    "description": "Lots of white space and a single accent line.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "display",
+      "photo_shape": "circle",
+      "photo_ring": false,
+      "icon_style": "none",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M140 220 H152 V780 H140 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "main",
+            "rect": [
+              220,
+              200,
+              1000,
+              600
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "corner",
+            "rect": [
+              1330,
+              640,
+              320,
+              260
+            ],
+            "align": "end",
+            "valign": "end",
+            "on": "background",
+            "accepts": [
+              "logo",
+              "qr",
+              "photo",
+              "website"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "primary",
+        "layers": [],
+        "zones": [
+          {
+            "id": "center",
+            "rect": [
+              375,
+              250,
+              1000,
+              500
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline",
+              "website",
+              "qr"
+            ],
+            "max_blocks": 2
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "main": [
+          "name",
+          "contacts",
+          "website"
+        ],
+        "corner": [
+          "logo"
+        ]
+      },
+      "back": {
+        "center": [
+          "company",
+          "tagline"
+        ]
+      }
+    }
+  },
+  {
+    "id": "mono_bold",
+    "engine": "v2",
+    "name": "Mono Bold",
+    "category": "minimal",
+    "description": "High-contrast black and white with a solid block.",
+    "premium": false,
+    "format": "landscape",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#1C1717",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "display",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H620 V1000 H0 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M620 0 H640 V1000 H620 Z",
+            "fill": "accent",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "side",
+            "rect": [
+              70,
+              180,
+              480,
+              640
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "logo",
+              "company",
+              "photo",
+              "tagline"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "info",
+            "rect": [
+              740,
+              150,
+              920,
+              700
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline",
+              "contacts",
+              "website",
+              "address",
+              "socials",
+              "bio",
+              "badge_meta"
+            ],
+            "max_blocks": 4
+          }
+        ]
+      },
+      "back": {
+        "background": "secondary",
+        "layers": [
+          {
+            "path": "M0 960 H1750 V1000 H0 Z",
+            "fill": "accent",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "center",
+            "rect": [
+              375,
+              250,
+              1000,
+              500
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "qr",
+              "tagline",
+              "website",
+              "logo",
+              "socials"
+            ],
+            "max_blocks": 2
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "side": [
+          "logo",
+          "company"
+        ],
+        "info": [
+          "name",
+          "contacts",
+          "address"
+        ]
+      },
+      "back": {
+        "center": [
+          "qr",
+          "socials"
+        ]
+      }
+    }
+  },
+  {
+    "id": "badge_wave",
+    "engine": "v2",
+    "name": "Badge Wave",
+    "category": "badge",
+    "description": "Vertical badge with a flowing header wave and a round photo.",
+    "premium": false,
+    "format": "portrait",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V470 C 780 560 560 400 320 460 C 180 495 80 510 0 500 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 500 C 80 510 180 495 320 460 C 560 400 780 560 1000 470 V505 C 780 595 560 435 320 495 C 180 530 80 545 0 535 Z",
+            "fill": "secondary",
+            "opacity": 0.85
+          },
+          {
+            "path": "M0 1500 C 300 1450 700 1540 1000 1470 V1586 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M430 40 H570 A 18 18 0 0 1 570 76 H430 A 18 18 0 0 1 430 40 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.85
+          }
+        ],
+        "zones": [
+          {
+            "id": "head",
+            "rect": [
+              80,
+              110,
+              840,
+              170
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "hero",
+            "rect": [
+              300,
+              300,
+              400,
+              400
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "name",
+            "rect": [
+              70,
+              740,
+              860,
+              190
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company",
+              "tagline"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "meta",
+            "rect": [
+              120,
+              950,
+              760,
+              290
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "badge_meta",
+              "contacts"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "code",
+            "rect": [
+              170,
+              1255,
+              660,
+              170
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "barcode",
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V180 C 700 250 300 120 0 200 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1440 C 300 1380 700 1480 1000 1410 V1586 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              100,
+              290,
+              800,
+              520
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "contacts",
+              "website",
+              "address",
+              "tagline",
+              "bio"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              290,
+              870,
+              420,
+              440
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "head": [
+          "logo",
+          "company"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "name": [
+          "name"
+        ],
+        "meta": [
+          "badge_meta"
+        ],
+        "code": [
+          "barcode"
+        ]
+      },
+      "back": {
+        "info": [
+          "contacts",
+          "website",
+          "address"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "badge_header",
+    "engine": "v2",
+    "name": "Badge Header",
+    "category": "badge",
+    "description": "Colour header, square photo and a barcode \u2014 a classic staff ID.",
+    "premium": false,
+    "format": "portrait",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "rounded",
+      "photo_ring": false,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V330 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 330 H1000 V356 H0 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1510 H1000 V1586 H0 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M430 40 H570 A 18 18 0 0 1 570 76 H430 A 18 18 0 0 1 430 40 Z",
+            "fill": "#FFFFFF",
+            "opacity": 0.85
+          }
+        ],
+        "zones": [
+          {
+            "id": "head",
+            "rect": [
+              70,
+              110,
+              860,
+              190
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "hero",
+            "rect": [
+              320,
+              410,
+              360,
+              400
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "name",
+            "rect": [
+              70,
+              840,
+              860,
+              175
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "meta",
+            "rect": [
+              130,
+              1030,
+              740,
+              275
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "badge_meta",
+              "contacts"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "code",
+            "rect": [
+              170,
+              1310,
+              660,
+              170
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "barcode",
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V120 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1466 H1000 V1586 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              100,
+              230,
+              800,
+              560
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "contacts",
+              "website",
+              "address",
+              "bio",
+              "tagline"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              290,
+              860,
+              420,
+              440
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "head": [
+          "logo",
+          "company"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "name": [
+          "name"
+        ],
+        "meta": [
+          "badge_meta"
+        ],
+        "code": [
+          "barcode"
+        ]
+      },
+      "back": {
+        "info": [
+          "contacts",
+          "website",
+          "address"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "badge_arc",
+    "engine": "v2",
+    "name": "Badge Arc",
+    "category": "badge",
+    "description": "A sweeping arc header that frames a ringed photo.",
+    "premium": false,
+    "format": "portrait",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "circle",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V470 Q 500 740 0 470 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 470 Q 500 740 1000 470 V500 Q 500 770 0 500 Z",
+            "fill": "accent",
+            "opacity": 0.45
+          },
+          {
+            "path": "M0 1586 V1500 Q 500 1420 1000 1500 V1586 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "head",
+            "rect": [
+              80,
+              70,
+              840,
+              170
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "hero",
+            "rect": [
+              305,
+              250,
+              390,
+              390
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "name",
+            "rect": [
+              70,
+              700,
+              860,
+              200
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "meta",
+            "rect": [
+              130,
+              920,
+              740,
+              280
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "badge_meta",
+              "contacts"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "code",
+            "rect": [
+              365,
+              1210,
+              270,
+              270
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "primary",
+        "layers": [
+          {
+            "path": "M0 1586 V700 Q 500 500 1000 700 V1586 Z",
+            "fill": "background",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              100,
+              150,
+              800,
+              400
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company",
+              "tagline"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "info",
+            "rect": [
+              110,
+              820,
+              780,
+              600
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "contacts",
+              "website",
+              "address",
+              "bio",
+              "barcode"
+            ],
+            "max_blocks": 3
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "head": [
+          "logo"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "name": [
+          "name"
+        ],
+        "meta": [
+          "badge_meta"
+        ],
+        "code": [
+          "qr"
+        ]
+      },
+      "back": {
+        "brand": [
+          "company",
+          "tagline"
+        ],
+        "info": [
+          "contacts",
+          "website"
+        ]
+      }
+    }
+  },
+  {
+    "id": "badge_stripes",
+    "engine": "v2",
+    "name": "Badge Stripes",
+    "category": "badge",
+    "description": "Clean white badge with diagonal stripe accents.",
+    "premium": false,
+    "format": "portrait",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "square",
+      "photo_ring": true,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V290 H0 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M620 0 H700 L560 290 H480 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M740 0 H780 L640 290 H600 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M820 0 H900 L760 290 H680 Z",
+            "fill": "primary",
+            "opacity": 0.7
+          },
+          {
+            "path": "M0 1586 V1470 H1000 V1586 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M60 1586 L120 1470 H180 L120 1586 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M200 1586 L260 1470 H290 L230 1586 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "head",
+            "rect": [
+              70,
+              70,
+              460,
+              170
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "secondary",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "hero",
+            "rect": [
+              330,
+              360,
+              340,
+              380
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "name",
+            "rect": [
+              70,
+              780,
+              860,
+              190
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "meta",
+            "rect": [
+              130,
+              990,
+              740,
+              260
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "badge_meta",
+              "contacts"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "code",
+            "rect": [
+              330,
+              1270,
+              620,
+              170
+            ],
+            "align": "end",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "barcode",
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V110 H0 Z",
+            "fill": "secondary",
+            "opacity": 1
+          },
+          {
+            "path": "M700 0 H760 L700 110 H640 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M800 0 H830 L770 110 H740 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1586 V1476 H1000 V1586 Z",
+            "fill": "secondary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "info",
+            "rect": [
+              100,
+              220,
+              800,
+              560
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "contacts",
+              "website",
+              "address",
+              "bio",
+              "tagline"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              290,
+              850,
+              420,
+              460
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "head": [
+          "logo",
+          "company"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "name": [
+          "name"
+        ],
+        "meta": [
+          "badge_meta"
+        ],
+        "code": [
+          "barcode"
+        ]
+      },
+      "back": {
+        "info": [
+          "contacts",
+          "website",
+          "address"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  },
+  {
+    "id": "badge_hex",
+    "engine": "v2",
+    "name": "Badge Hex",
+    "category": "badge",
+    "description": "A hexagon photo frame on a pointed colour header.",
+    "premium": true,
+    "format": "portrait",
+    "sides": [
+      "front",
+      "back"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "hexagon",
+      "photo_ring": false,
+      "icon_style": "filled",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V560 L500 700 L0 560 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 560 L500 700 L1000 560 V590 L500 730 L0 590 Z",
+            "fill": "secondary",
+            "opacity": 0.8
+          },
+          {
+            "path": "M500 225 L686 332 L686 548 L500 655 L314 548 L314 332 Z",
+            "fill": "background",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1586 V1510 L500 1440 L1000 1510 V1586 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "head",
+            "rect": [
+              80,
+              70,
+              840,
+              150
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "hero",
+            "rect": [
+              310,
+              250,
+              380,
+              380
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "name",
+            "rect": [
+              70,
+              760,
+              860,
+              190
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "meta",
+            "rect": [
+              130,
+              970,
+              740,
+              260
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "badge_meta",
+              "contacts"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "code",
+            "rect": [
+              380,
+              1230,
+              240,
+              240
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      },
+      "back": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V200 L500 290 L0 200 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1586 V1510 L500 1440 L1000 1510 V1586 Z",
+            "fill": "primary",
+            "opacity": 1
+          }
+        ],
+        "zones": [
+          {
+            "id": "brand",
+            "rect": [
+              100,
+              50,
+              800,
+              150
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "primary",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "info",
+            "rect": [
+              100,
+              380,
+              800,
+              560
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "contacts",
+              "website",
+              "address",
+              "bio",
+              "tagline",
+              "barcode"
+            ],
+            "max_blocks": 3
+          },
+          {
+            "id": "code",
+            "rect": [
+              360,
+              1020,
+              280,
+              280
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "head": [
+          "company"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "name": [
+          "name"
+        ],
+        "meta": [
+          "badge_meta"
+        ],
+        "code": [
+          "qr"
+        ]
+      },
+      "back": {
+        "brand": [
+          "logo"
+        ],
+        "info": [
+          "contacts",
+          "website",
+          "barcode"
+        ]
+      }
+    }
+  },
+  {
+    "id": "badge_classic",
+    "engine": "v2",
+    "name": "Badge Classic",
+    "category": "badge",
+    "description": "A clean white badge with thin colour bars and a QR code.",
+    "premium": false,
+    "format": "portrait",
+    "sides": [
+      "front"
+    ],
+    "default_design": {
+      "primary": "#B91C1C",
+      "secondary": "#1C1717",
+      "background": "#FFFFFF",
+      "text": "#1C1717",
+      "accent": "#B91C1C",
+      "font": "sans",
+      "photo_shape": "rounded",
+      "photo_ring": false,
+      "icon_style": "outline",
+      "decor_style": null,
+      "background_image_opacity": 0.0
+    },
+    "canvas": {
+      "front": {
+        "background": "background",
+        "layers": [
+          {
+            "path": "M0 0 H1000 V36 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M0 1550 H1000 V1586 H0 Z",
+            "fill": "primary",
+            "opacity": 1
+          },
+          {
+            "path": "M430 70 H570 A 18 18 0 0 1 570 106 H430 A 18 18 0 0 1 430 70 Z",
+            "fill": "secondary",
+            "opacity": 0.12
+          }
+        ],
+        "zones": [
+          {
+            "id": "head",
+            "rect": [
+              80,
+              150,
+              840,
+              170
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "logo",
+              "company"
+            ],
+            "max_blocks": 2
+          },
+          {
+            "id": "hero",
+            "rect": [
+              330,
+              360,
+              340,
+              360
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "photo"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "name",
+            "rect": [
+              70,
+              760,
+              860,
+              180
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "name",
+              "company"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "meta",
+            "rect": [
+              130,
+              960,
+              740,
+              250
+            ],
+            "align": "start",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "badge_meta",
+              "contacts"
+            ],
+            "max_blocks": 1
+          },
+          {
+            "id": "code",
+            "rect": [
+              370,
+              1240,
+              260,
+              260
+            ],
+            "align": "center",
+            "valign": "center",
+            "on": "background",
+            "accepts": [
+              "qr",
+              "barcode"
+            ],
+            "max_blocks": 1
+          }
+        ]
+      }
+    },
+    "default_arrangement": {
+      "front": {
+        "head": [
+          "logo",
+          "company"
+        ],
+        "hero": [
+          "photo"
+        ],
+        "name": [
+          "name"
+        ],
+        "meta": [
+          "badge_meta"
+        ],
+        "code": [
+          "qr"
+        ]
+      }
+    }
+  }
+]

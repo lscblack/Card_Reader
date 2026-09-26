@@ -86,10 +86,17 @@ async def create_session(body: SessionCreateIn, session: SessionDep, client: Cli
             raise AppError(401, "invalid_login_code", "This login code is invalid, used or expired")
         user = await session.get(User, code_row[1])
     elif body.email and body.password:
-        user = (await session.execute(select(User).where(User.email == body.email.strip().lower()))).scalar_one_or_none()
+        from app.api.v1.routes.auth import ensure_login_allowed
+        from app.core.rate_limit import clear_login_failures, record_login_failure
+
+        email = body.email.strip().lower()
+        await ensure_login_allowed(email)
+        user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
         ok = await run_in_threadpool(verify_password, body.password, user.password_hash if user else None)
         if user is None or not ok:
+            await record_login_failure(email)
             raise AppError(401, "invalid_credentials", "Invalid email or password")
+        await clear_login_failures(email)
     else:
         raise validation_error("body", "provide email + password, or login_code")
     if user is None or not user.is_active:
@@ -171,7 +178,16 @@ async def login_code_status(code_id: uuid.UUID, ctx: PersonalAuth, session: Sess
 
 
 # ══ Templates ══════════════════════════════════════════════════════════════
-@router.get("/templates", summary="Card templates (public)")
+@router.get("/design-presets", summary="Palettes and font pairs for the card editor (public)")
+async def design_presets(request: Request) -> JSONResponse:
+    from app.services.card_design_v2 import FONT_PAIRS, PALETTES
+
+    set_actor(request, "public")
+    return JSONResponse(content={"palettes": PALETTES, "font_pairs": FONT_PAIRS},
+                        headers={"Cache-Control": "public, max-age=3600"})
+
+
+@router.get("/templates", summary="Card templates (public): design v1 layouts and v2 shape templates")
 async def templates(session: SessionDep, request: Request) -> list[dict[str, Any]]:
     set_actor(request, "public")
     rows = (await session.execute(select(CardTemplate).order_by(CardTemplate.sort_order))).scalars()
@@ -186,6 +202,8 @@ class CardIn(Schema):
     fields: dict[str, Any] | None = None
     visibility: dict[str, str] | None = None
     share_settings: dict[str, bool] | None = None
+    arrangement: dict[str, Any] | None = None  # Part 5 §2 (v2 templates)
+    sides_enabled: list[str] | None = Field(default=None, max_length=2)
 
 
 class CardPatch(Schema):
@@ -197,6 +215,8 @@ class CardPatch(Schema):
     share_settings: dict[str, bool] | None = None
     status: Literal["active", "inactive"] | None = None
     slug: str | None = Field(default=None, min_length=3, max_length=80)
+    arrangement: dict[str, Any] | None = None
+    sides_enabled: list[str] | None = Field(default=None, max_length=2)
 
 
 async def _card(session: SessionDep, user_id: uuid.UUID, card_id: uuid.UUID) -> DigitalCard:
@@ -225,7 +245,8 @@ async def create_card(body: CardIn, ctx: PersonalAuth, session: SessionDep, clie
     await personal.ensure_card_limit(session, ctx.user.id)
     card = await personal.new_card(session, ctx.user, label=body.label.strip(), template_id=body.template_id,
                                    fields=body.fields, design=body.design, visibility=body.visibility,
-                                   share=body.share_settings)
+                                   share=body.share_settings, arrangement=body.arrangement,
+                                   sides_enabled=body.sides_enabled)
     audit.record(session, action="digital_card.create", user_id=ctx.user.id, client=client,
                  resource_type="digital_card", resource_id=card.id)
     await session.commit()
@@ -257,10 +278,17 @@ async def update_card(card_id: uuid.UUID, body: CardPatch, ctx: PersonalAuth, se
         raise _locked(card, "template" if body.template_id else "design")
     if body.template_id is not None and body.template_id != card.template_id:
         template = await personal.get_template(session, body.template_id)
+        # Field values are kept; the arrangement is remapped onto the new zones unless one is given (Part 5 §2).
+        personal.apply_template_v2(card, template, arrangement=body.arrangement, sides_enabled=body.sides_enabled)
         card.template_id = template.id
+        card.template = template
         card.design = personal.validate_design(body.design or {}, template.default_design)
-    elif body.design is not None:
-        card.design = personal.validate_design(body.design, card.design or {})
+    else:
+        if body.design is not None:
+            card.design = personal.validate_design(body.design, card.design or {})
+        if body.arrangement is not None or body.sides_enabled is not None:
+            personal.apply_template_v2(card, card.template, arrangement=body.arrangement,
+                                       sides_enabled=body.sides_enabled, switching=False)
     if body.visibility is not None:
         card.visibility = personal.validate_visibility(body.visibility, card.visibility or personal.DEFAULT_VISIBILITY)
     if body.share_settings is not None:
@@ -329,7 +357,8 @@ async def duplicate_card(card_id: uuid.UUID, ctx: PersonalAuth, session: Session
     await personal.ensure_card_limit(session, ctx.user.id)
     card = await personal.new_card(session, ctx.user, label=f"{src.label} copy"[:60], template_id=src.template_id,
                                    fields=dict(src.fields or {}), design=dict(src.design or {}),
-                                   visibility=dict(src.visibility or {}), share=dict(src.share_settings or {}))
+                                   visibility=dict(src.visibility or {}), share=dict(src.share_settings or {}),
+                                   arrangement=src.arrangement, sides_enabled=list(src.sides_enabled or ["front"]))
     card.photo_path, card.cover_path, card.logo_path = src.photo_path, src.cover_path, src.logo_path
     await session.commit()
     return personal.card_out(await _card(session, ctx.user.id, card.id))
@@ -346,7 +375,8 @@ async def upload_image(card_id: uuid.UUID, ctx: PersonalAuth, session: SessionDe
         raise _locked(card, kind)
     data = await file.read(3 * 1024 * 1024 + 1)
     size, crop = IMAGE_SIZES[kind]
-    path = media.save_resized(data, f"cards/{card.id}", kind, size, crop, max_bytes=3 * 1024 * 1024)
+    path = await run_in_threadpool(media.save_resized, data, f"cards/{card.id}", kind, size, crop,
+                                   max_bytes=3 * 1024 * 1024)
     old = getattr(card, f"{kind}_path")
     setattr(card, f"{kind}_path", path)
     await refresh_live_contacts(session, card)
@@ -409,6 +439,11 @@ async def _upsert_contact(session: SessionDep, owner_id: uuid.UUID, owner_card: 
     return contact, False
 
 
+async def _bump(session: SessionDep, card_id: uuid.UUID, counter: str) -> None:
+    """Atomic `counter = counter + 1` in SQL (a Python read-modify-write loses concurrent increments)."""
+    await personal.bump_counter(session, card_id, counter)
+
+
 def contact_out(c: Contact) -> dict[str, Any]:
     return {"id": str(c.id), "source": c.source,
             "counterpart_user_id": str(c.counterpart_user_id) if c.counterpart_user_id else None,
@@ -435,7 +470,7 @@ async def exchange(body: ExchangeIn, ctx: PersonalAuth, session: SessionDep, cli
         await personal.ensure_contact_limit(session, ctx.user.id)
     contact, already = await _upsert_contact(session, ctx.user.id, me_card, other,
                                              "contacts" if mutual else "public", source)
-    other.exchanges += 1
+    await _bump(session, other.id, "exchanges")
     my_name = (me_card.fields or {}).get("full_name") if me_card else ctx.user.full_name
     their_name = (other.fields or {}).get("full_name") or "someone"
     personal.record_activity(session, other.user_id, other.id, "exchange", f"{my_name or 'Someone'} received your card",
@@ -450,7 +485,7 @@ async def exchange(body: ExchangeIn, ctx: PersonalAuth, session: SessionDep, cli
                                                                    Contact.counterpart_card_id == me_card.id))).first()
         if room or has_back:
             await _upsert_contact(session, other.user_id, other, me_card, "contacts", source)
-        me_card.exchanges += 1
+        await _bump(session, me_card.id, "exchanges")
         notifications.notify(session, [other.user_id], type_="personal.exchange",
                              title=f"You exchanged cards with {my_name or 'someone'}",
                              body="Their card was added to your contacts.", link="/me/contacts", severity="info")
@@ -574,7 +609,7 @@ async def export_csv(ctx: PersonalAuth, session: SessionDep) -> Response:
 
         def cell(v: Any) -> str:
             s = str(v or "")
-            return "'" + s if s[:1] in ("=", "+", "-", "@") else s  # CSV-injection guard
+            return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s  # CSV-injection guard
 
         w.writerow([cell(f.get("full_name")), cell(f.get("company")), cell(f.get("job_title")),
                     cell("; ".join(e["value"] for e in f.get("emails") or [])),
@@ -693,8 +728,11 @@ def invite_out(inv: DigitalCardInvite) -> dict[str, Any]:
             "created_at": _iso(inv.created_at), "card_id": str(inv.card_id) if inv.card_id else None}
 
 
-@router.get("/business-invites", summary="Digital-card invitations from businesses")
+@router.get("/business-invites", summary="Digital-card invitations from businesses",
+            description="Matched on the account email, so only listed once that email is verified (empty otherwise).")
 async def business_invites(ctx: PersonalAuth, session: SessionDep) -> list[dict[str, Any]]:
+    if not ctx.user.email_verified:
+        return []
     rows = (await session.execute(select(DigitalCardInvite).where(
         func.lower(DigitalCardInvite.email) == ctx.user.email.lower()).order_by(DigitalCardInvite.created_at.desc())
     )).scalars()
@@ -706,6 +744,10 @@ async def _my_invite(session: SessionDep, ctx: PersonalAuth, invite_id: uuid.UUI
                                  .with_for_update(of=DigitalCardInvite))).scalar_one_or_none()
     if inv is None or inv.email.lower() != ctx.user.email.lower():
         raise not_found("Invitation")
+    if not ctx.user.email_verified:
+        # Email verification is non-blocking at sign-up: without it anyone could register someone else's address
+        # and take over a business-issued card. (Registering with the emailed invite token proves possession.)
+        raise AppError(403, "email_not_verified", "Verify your email address to answer this invitation")
     return inv
 
 
@@ -755,7 +797,10 @@ async def public_card(slug: str, session: SessionDep, request: Request,
         "card": {"id": str(card.id), "slug": card.slug, "design": snap["design"],
                  "template": personal.template_out(template) if template else None, "fields": snap["fields"],
                  "photo_url": snap["photo_url"], "cover_url": snap["cover_url"], "logo_url": snap["logo_url"],
-                 "business": snap["business"], "public_url": snap["public_url"]},
+                 "business": snap["business"], "public_url": snap["public_url"],
+                 # Part 5: everything the v2 renderer needs (fields above are already visibility-filtered)
+                 "design_version": snap["design_version"], "sides_enabled": snap["sides_enabled"],
+                 "arrangement": snap["arrangement"], "expired": snap["expired"]},
         "lead_capture_enabled": personal.share_setting(card, "lead_capture_enabled"),
         "vcard_url": f"{settings.public_api_url}/api/v1/public/p/{card.slug}/vcard",
     }, headers={"Cache-Control": "no-store"})
@@ -804,7 +849,7 @@ async def create_lead(slug: str, body: LeadIn, session: SessionDep, request: Req
     session.add(Contact(owner_id=card.user_id, owner_card_id=card.id, source="web_lead", card={"fields": fields},
                         access_level="contacts", live=False, notes=body.message, tags=["lead"], favorite=False,
                         met_at=datetime.now(UTC)))
-    card.leads += 1
+    await _bump(session, card.id, "leads")
     personal.record_activity(session, card.user_id, card.id, "lead", f"{fields['full_name']} shared their details",
                              "link", counterpart_name=fields["full_name"])
     notifications.notify(session, [card.user_id], type_="personal.lead", title=f"New lead: {fields['full_name']}",

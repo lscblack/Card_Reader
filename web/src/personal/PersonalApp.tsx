@@ -10,6 +10,7 @@ const ContactsPage = lazy(() => import('./pages/ContactsPage'))
 const ActivityPage = lazy(() => import('./pages/ActivityPage'))
 const SharePage = lazy(() => import('./pages/SharePage'))
 const InvitesPage = lazy(() => import('./pages/InvitesPage'))
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
@@ -39,6 +40,7 @@ export default function PersonalApp() {
         <Route path="share" element={page(<SharePage />)} />
         <Route path="invites" element={page(<InvitesPage />)} />
         <Route path="settings" element={page(<SettingsPage />)} />
+        <Route path="notifications" element={page(<NotificationsPage />)} />
         <Route path="*" element={page(<NotFoundPage />)} />
       </Route>
     </Routes>

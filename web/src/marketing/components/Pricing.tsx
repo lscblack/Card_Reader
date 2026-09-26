@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import { motion } from 'motion/react'
 import { Check, Clock, Sparkles, Tag } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { DASHBOARD_PATH, useIsLoggedIn, useReducedMotionPref } from '../lib'
+import { useDashboardPath, useIsLoggedIn, useReducedMotionPref } from '../lib'
 import {
   FALLBACK_PLANS,
   fetchPublicPlans,
@@ -160,6 +160,7 @@ function Segmented<T extends string>({ value, options, onChange, label, id }: { 
 
 export function Pricing({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
   const loggedIn = useIsLoggedIn()
+  const dashboardPath = useDashboardPath()
   const [billing, setBilling] = useState<Billing>('monthly')
   const q = useQuery({ queryKey: ['public', 'billing-plans'], queryFn: fetchPublicPlans, staleTime: 5 * 60_000, retry: false })
   const apiForAudience = (q.data ?? []).filter((p) => planAudience(p) === audience)
@@ -176,7 +177,7 @@ export function Pricing({ audience, onAudience }: { audience: Audience; onAudien
   const effectiveBilling: Billing = hasYearly ? billing : 'monthly'
 
   const cta = (p: PublicPlan) => {
-    if (loggedIn) return { to: DASHBOARD_PATH, label: 'Go to dashboard' }
+    if (loggedIn) return { to: dashboardPath, label: 'Go to dashboard' }
     const to = audience === 'developer' ? '/register' : `/register?type=${audience}`
     if (isCustomPriced(p)) return { to, label: 'Get started' }
     return { to, label: p.price_monthly_cents === 0 ? 'Start free' : `Choose ${p.name}` }

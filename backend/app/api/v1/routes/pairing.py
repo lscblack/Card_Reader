@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Response
 from sqlalchemy import select
 
-from app.api.deps import ClientDep, CurrentUser, SessionDep
+from app.api.deps import ClientDep, CurrentUser, SessionDep, platform_only
 from app.core.errors import AppError, not_found
 from app.models import Device, PairingCode, User
 from app.services.applications import authorize_application
@@ -16,7 +16,7 @@ from app.schemas.resources import PairingCodeStatusOut
 from app.services import audit
 from app.services.serializers import device_out
 
-router = APIRouter(prefix="/pairing-codes", tags=["Applications"])
+router = APIRouter(prefix="/pairing-codes", tags=["Applications"], dependencies=platform_only)
 
 
 async def _owned(session: SessionDep, user: User, code_id: uuid.UUID) -> PairingCode:

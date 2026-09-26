@@ -132,6 +132,8 @@ class Employee(UUIDPk, Timestamps, Base):
         CheckConstraint("status IN ('active','inactive')", name="status"),
         Index("ix_employees_business", "business_id", "status"),
         Index("uq_employees_business_slug", "business_id", "slug", unique=True),
+        Index("uq_employees_business_number", "business_id", "employee_number", unique=True,
+              postgresql_where=text("employee_number IS NOT NULL")),
     )
 
     business_id: Mapped[uuid.UUID] = mapped_column(
@@ -145,6 +147,7 @@ class Employee(UUIDPk, Timestamps, Base):
     phone: Mapped[str | None] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(320))
     social_links: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
+    employee_number: Mapped[str | None] = mapped_column(String(32))  # Part 5 §4 (badge id / barcode default)
     slug: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     total_taps: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

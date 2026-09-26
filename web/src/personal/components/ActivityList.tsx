@@ -12,9 +12,9 @@ import { SOURCE_LABELS } from '../lib/card'
 const META: Record<string, { icon: typeof Eye; text: (a: ActivityItem) => string }> = {
   view: { icon: Eye, text: (a) => `Someone viewed your card${a.source ? ` via ${SOURCE_LABELS[a.source]?.toLowerCase() ?? a.source}` : ''}` },
   nfc_tap: { icon: Nfc, text: () => 'A phone read your card over NFC' },
-  exchange: { icon: Handshake, text: (a) => `You exchanged cards with ${a.counterpart_name ?? 'someone'}` },
+  exchange: { icon: Handshake, text: (a) => a.detail ?? `You exchanged cards with ${a.counterpart_name ?? 'someone'}` },
   lead: { icon: Inbox, text: (a) => `${a.counterpart_name ?? 'Someone'} shared their details with you` },
-  terminal_read: { icon: Radio, text: (a) => a.description ?? 'Read by a terminal' },
+  terminal_read: { icon: Radio, text: (a) => a.detail ?? (a.counterpart_name ? `Read by a terminal of ${a.counterpart_name}` : 'Read by a terminal') },
 }
 
 export function ActivityList({ limit, page = 1, onPage }: { limit?: number; page?: number; onPage?: (p: number) => void }) {
@@ -28,7 +28,7 @@ export function ActivityList({ limit, page = 1, onPage }: { limit?: number; page
     <>
       <ul className="divide-y divide-border">
         {items.map((a) => {
-          const m = META[a.type] ?? { icon: Eye, text: () => a.title ?? a.type }
+          const m = META[a.type] ?? { icon: Eye, text: () => a.detail ?? a.type }
           return (
             <li key={a.id} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted">

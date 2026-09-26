@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router'
-import { Building2, Code2 } from 'lucide-react'
+import { Building2, Code2, Contact } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -34,9 +34,15 @@ export function BusinessIndex() {
             description={`${user?.email ?? 'Your account'} isn’t a member of any business. Ask a business owner to invite you, or create a business account.`}
             action={
               <div className="flex flex-col items-center gap-2">
-                <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:underline">
-                  <Code2 className="h-4 w-4" /> Go to the developer dashboard
-                </Link>
+                {user?.account_type === 'personal' && user.role !== 'admin' ? (
+                  <Link to="/me" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:underline">
+                    <Contact className="h-4 w-4" /> Go to my digital cards
+                  </Link>
+                ) : (
+                  <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:underline">
+                    <Code2 className="h-4 w-4" /> Go to the developer dashboard
+                  </Link>
+                )}
                 <Button variant="ghost" size="sm" onClick={logout}>
                   Log out
                 </Button>

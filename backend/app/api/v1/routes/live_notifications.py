@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, update
 
-from app.api.deps import CurrentUser, PaginationDep, SessionDep
+from app.api.deps import CurrentUser, PaginationDep, PlatformUser, SessionDep
 from app.core.errors import AppError, not_found
 from app.core.redis import redis_ok
 from app.models import Notification
@@ -28,7 +28,7 @@ router = APIRouter(tags=["Live & notifications"])
                 "events from the last 10 minutes. Max 5 concurrent streams per user (`429 too_many_streams`); "
                 "`503 live_unavailable` without Redis.",
 )
-async def live_stream(application_id: uuid.UUID, request: Request, user: CurrentUser, session: SessionDep,
+async def live_stream(application_id: uuid.UUID, request: Request, user: PlatformUser, session: SessionDep,
                       since: datetime | None = None) -> StreamingResponse:
     app = await get_owned_application(session, user, application_id, permission="api.view")
     app_id = str(app.id)

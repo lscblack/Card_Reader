@@ -5,6 +5,8 @@ import { cn } from '@/lib/cn'
 import { useReducedMotionPref } from '../../lib'
 import { CardRender } from './CardRender'
 import { templates, type CardTemplate } from './data'
+import { TemplateSlide } from '@/personal/components/TemplateShowcase'
+import { useV2Templates } from '@/personal/hooks/queries'
 
 /** Horizontally scrolling template gallery; auto-advances while visible (pauses on hover/focus). */
 export function TemplatesCarousel() {
@@ -12,6 +14,7 @@ export function TemplatesCarousel() {
   const inView = useInView(scroller, { margin: '-10% 0px' })
   const reduce = useReducedMotionPref()
   const [paused, setPaused] = useState(false)
+  const v2 = useV2Templates()
 
   const step = useCallback((dir: 1 | -1) => {
     const el = scroller.current
@@ -38,7 +41,17 @@ export function TemplatesCarousel() {
         aria-label="Digital card templates"
         tabIndex={0}
       >
-        {templates.map((t: CardTemplate) => (
+        {v2.map((t) => (
+          <div key={t.id} data-slide role="listitem" className={cn('shrink-0 snap-start', t.format === 'portrait' ? 'w-[150px] sm:w-[165px]' : 'w-[260px] sm:w-[290px]')}>
+            <div className="transition-transform duration-300 hover:-translate-y-1">
+              <TemplateSlide t={t} />
+            </div>
+            <p className="mt-2 text-center text-[12.5px] font-medium text-muted">
+              {t.name} <span className="text-subtle">· {t.category === 'badge' ? 'ID badge' : t.category}</span>
+            </p>
+          </div>
+        ))}
+        {!v2.length && templates.map((t: CardTemplate) => (
           <div key={t.id} data-slide role="listitem" className={cn('shrink-0 snap-start', t.layout === 'compact' ? 'w-[260px]' : 'w-[170px] sm:w-[190px]')}>
             <div className="transition-transform duration-300 hover:-translate-y-1">
               <CardRender t={t} />

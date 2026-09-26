@@ -168,10 +168,14 @@ async def test_app_release_build_publish_and_download(client: AsyncClient, user:
 
     r = await client.post("/api/v1/admin/app-releases", json={"build_type": "release", "channel": "stable",
                                                                "notes": "First", "publish_on_success": True}, headers=admin)
+    assert r.status_code == 422 and r.json()["error"]["details"][0]["field"] == "body.api_base_url"  # http + release
+    r = await client.post("/api/v1/admin/app-releases", json={"build_type": "release", "channel": "stable",
+                                                               "notes": "First", "publish_on_success": True,
+                                                               "api_base_url": "https://api.example.com"}, headers=admin)
     assert r.status_code == 202, r.text
     rel = r.json()
     assert rel["status"] == "queued" and rel["version_name"] == "2.3.4" and rel["build_number"] == 1
-    assert rel["api_base_url"] == "http://testserver" and rel["download_url"] is None
+    assert rel["api_base_url"] == "https://api.example.com" and rel["download_url"] is None
     r = await client.post("/api/v1/admin/app-releases", json={}, headers=admin)
     assert r.status_code == 409 and r.json()["error"]["code"] == "build_in_progress"
 
@@ -179,7 +183,7 @@ async def test_app_release_build_publish_and_download(client: AsyncClient, user:
     await asyncio.wait_for(app_builds._running, timeout=10)  # type: ignore[arg-type]
     argv, cwd, env = seen[0]
     assert argv == ["/opt/flutter/bin/flutter", "build", "apk", "--release", "--build-name=2.3.4", "--build-number=1",
-                    "--dart-define=API_BASE_URL=http://testserver"]
+                    "--dart-define=API_BASE_URL=https://api.example.com"]
     assert cwd == str(build_env) and env["JAVA_HOME"] == "/usr/lib/jvm/java-17-openjdk-amd64"
     assert env["PATH"].split(":")[0] == "/opt/flutter/bin" and "/usr/lib/jvm/java-17-openjdk-amd64/bin" in env["PATH"]
     assert "HOME" in env and "DATABASE_URL" not in env and "JWT_SECRET" not in env
@@ -233,7 +237,7 @@ async def test_app_release_failures_cancel_and_validation(client: AsyncClient, b
     notes = (await client.get("/api/v1/notifications", headers=admin)).json()["items"]
     assert notes[0]["type"] == "app_build.failed" and notes[0]["severity"] == "error"
 
-    rel2 = (await client.post("/api/v1/admin/app-releases", json={}, headers=admin)).json()
+    rel2 = (await client.post("/api/v1/admin/app-releases", json={"build_type": "debug"}, headers=admin)).json()
     assert rel2["build_number"] == 42  # auto-increment
     r = await client.post(f"/api/v1/admin/app-releases/{rel2['id']}/cancel", headers=admin)
     assert r.json()["status"] == "cancelled"

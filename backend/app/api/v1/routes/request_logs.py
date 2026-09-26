@@ -17,7 +17,7 @@ from app.schemas.common import Page
 from app.services.applications import developer_app_ids
 from app.services.business_serializers import request_log_out
 
-router = APIRouter(prefix="/request-logs", tags=["Request logs"])
+router = APIRouter(prefix="/request-logs", tags=["Request logs"])  # personal users: their own logs (Part 4 §9)
 
 
 def filter_conditions(

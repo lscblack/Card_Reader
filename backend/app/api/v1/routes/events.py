@@ -9,7 +9,7 @@ from typing import Literal
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, PaginationDep, SessionDep
+from app.api.deps import CurrentUser, PaginationDep, SessionDep, platform_only
 from app.core.errors import AppError, not_found, validation_error
 from app.models import Delivery, NfcEvent, User
 from app.services.applications import authorize_application, developer_app_ids, get_owned_application
@@ -19,7 +19,7 @@ from app.schemas.resources import DeliveryOut, EventDetailOut, EventOut
 from app.services import delivery as delivery_service
 from app.services.serializers import delivery_out, event_out
 
-router = APIRouter(tags=["Events & deliveries"])
+router = APIRouter(tags=["Events & deliveries"], dependencies=platform_only)
 
 
 def _parse_bound(value: str | None, field: str, *, end: bool) -> datetime | None:
@@ -44,7 +44,7 @@ async def list_events(
     application_id: uuid.UUID | None = Query(default=None),
     device_id: uuid.UUID | None = Query(default=None),
     card_id: str | None = Query(default=None, max_length=200),
-    status: Literal["pending", "delivered", "retrying", "failed"] | None = Query(default=None),
+    status: Literal["pending", "delivered", "retrying", "failed", "logged"] | None = Query(default=None),
     date_from: str | None = Query(default=None, description="ISO date/datetime (inclusive)"),
     date_to: str | None = Query(default=None, description="ISO date (inclusive) or datetime (exclusive)"),
 ) -> Page[EventOut]:

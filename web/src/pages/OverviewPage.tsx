@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState, ErrorState } from '@/components/ui/EmptyState'
 import { SkeletonRows } from '@/components/ui/Spinner'
 import { EventDetailDrawer, EventsTable } from '@/components/Events'
-import { CreateApplicationModal } from '@/components/CreateApplicationModal'
+import { CreateApplicationModal, NewApplicationButton } from '@/components/CreateApplicationModal'
 import { PairPhoneButton } from '@/components/PairPhoneModal'
 import { ServerUrlCard } from '@/components/ServerUrlCard'
 import { DownloadAppCard } from '@/components/DownloadApp'
@@ -148,9 +148,7 @@ export default function OverviewPage() {
             <span data-tour="pair-phone">
               <PairPhoneButton variant="secondary" disabled={!apps.data?.length} />
             </span>
-            <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)} data-tour="new-app">
-              New application
-            </Button>
+            <NewApplicationButton onCreate={() => setCreating(true)} data-tour="new-app" />
           </>
         }
       />

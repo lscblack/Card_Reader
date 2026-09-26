@@ -89,7 +89,8 @@ class ServerUrl {
         !(allowLan && isPrivateIPv4(uri.host))) {
       return allowLan
           ? 'Plain http:// is only allowed for local or LAN addresses (e.g. http://192.168.1.20:8000)'
-          : 'Plain http:// is only allowed for 10.0.2.2, localhost and 127.0.0.1';
+          : 'This app requires https:// servers. Plain http:// only works for 10.0.2.2, localhost and '
+                '127.0.0.1 (a LAN http:// server needs a debug build).';
     }
     return null;
   }

@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import Field
 
 from app.schemas.common import Schema
@@ -13,7 +14,7 @@ from sqlalchemy import func, or_, select
 
 from app.api.deps import BusinessContext, ClientDep, PaginationDep, SessionDep, business_permission
 from app.core.config import settings
-from app.core.errors import not_found
+from app.core.errors import AppError, not_found
 from app.models import Customer, Employee, Profile
 from app.schemas.business import (
     CustomerIn,
@@ -93,9 +94,24 @@ async def list_employees(ctx: View, session: SessionDep, pagination: PaginationD
                              page=pagination.page, page_size=pagination.page_size)
 
 
+async def _check_employee_number(session: SessionDep, business_id: uuid.UUID, number: str | None,
+                                 exclude: uuid.UUID | None = None) -> str | None:
+    number = (number or "").strip() or None
+    if number is None:
+        return None
+    taken = (await session.execute(select(Employee.id).where(
+        Employee.business_id == business_id, Employee.employee_number == number,
+        *([Employee.id != exclude] if exclude else [])))).first()
+    if taken:
+        raise AppError(409, "employee_number_taken", "Another employee of this business already has this number",
+                       [{"field": "body.employee_number", "message": "already used in this business"}])
+    return number
+
+
 @router.post("/employees", status_code=201, response_model=EmployeeOut, summary="Add an employee")
 async def create_employee(body: EmployeeIn, ctx: Manage, session: SessionDep, client: ClientDep) -> EmployeeOut:
-    e = Employee(
+    number = await _check_employee_number(session, ctx.business.id, body.employee_number)
+    e = Employee(employee_number=number, 
         business_id=ctx.business.id, first_name=body.first_name.strip(), last_name=body.last_name.strip(),
         position=body.position, department=body.department, phone=body.phone, email=body.email,
         social_links=[s.model_dump() for s in body.social_links], status="active", total_taps=0,
@@ -128,6 +144,8 @@ async def update_employee(employee_id: uuid.UUID, body: EmployeeUpdateIn, ctx: M
             setattr(e, field, value.strip() if isinstance(value, str) and field.endswith("name") else value)
     if body.social_links is not None:
         e.social_links = [s.model_dump() for s in body.social_links]
+    if "employee_number" in data:
+        e.employee_number = await _check_employee_number(session, ctx.business.id, body.employee_number, e.id)
     if body.profile_published is not None:
         profile = (await session.execute(select(Profile).where(
             Profile.employee_id == e.id, Profile.deleted_at.is_(None)))).scalar_one_or_none()
@@ -177,7 +195,7 @@ async def upload_photo(employee_id: uuid.UUID, ctx: Manage, session: SessionDep,
                        file: UploadFile = File(...)) -> EmployeeOut:
     e = await _get_employee(session, ctx.business.id, employee_id)
     data = await file.read(settings.MEDIA_MAX_UPLOAD_BYTES + 1)
-    path = media.save_image(data, f"businesses/{ctx.business.id}/employees", str(e.id))
+    path = await run_in_threadpool(media.save_image, data, f"businesses/{ctx.business.id}/employees", str(e.id))
     old, e.photo_path = e.photo_path, path
     audit.record(session, action="employee.photo_update", user_id=ctx.user.id, client=client,
                  resource_type="employee", resource_id=e.id)
@@ -258,11 +276,23 @@ async def delete_customer(customer_id: uuid.UUID, ctx: Manage, session: SessionD
 
 
 # ── Part 4 §6: business-issued employee digital cards ──────────────────────
+class BadgeIn(Schema):
+    id_number: str | None = Field(default=None, max_length=32)
+    valid_from: str | None = Field(default=None, max_length=10)
+    valid_until: str | None = Field(default=None, max_length=10)
+    barcode_value: str | None = Field(default=None, max_length=48)
+
+
 class DigitalCardInviteIn(Schema):
     email: str = Field(min_length=3, max_length=320)
     template_id: str | None = Field(default=None, max_length=32)
     design: dict | None = None  # type: ignore[type-arg]
+    arrangement: dict | None = None  # type: ignore[type-arg]  # Part 5 §4 (v2 templates)
+    badge: BadgeIn | None = None
     locked_fields: list[str] | None = Field(default=None, max_length=20)
+
+
+BADGE_LOCKED_DEFAULT = ["company", "id_number", "valid_until", "barcode_value"]
 
 
 @router.post("/employees/{employee_id}/digital-card", status_code=201,
@@ -283,11 +313,25 @@ async def issue_digital_card(employee_id: uuid.UUID, body: DigitalCardInviteIn, 
     addr = body.email.strip().lower()
     if "@" not in addr:
         raise validation_error("body.email", "a valid email is required")
-    if body.template_id:
-        await personal_service.get_template(session, body.template_id)
+    from app.services import card_design_v2
+
+    template = await personal_service.get_template(session, body.template_id) if body.template_id else None
+    spec = card_design_v2.spec_of(template) if template is not None else None
     design = personal_service.validate_design(body.design, {}) if body.design else None
+    arrangement = None
+    if body.arrangement is not None:
+        if spec is None:
+            raise AppError(422, "invalid_arrangement", "Only v2 templates take an arrangement",
+                           [{"field": "body.arrangement", "message": "choose a v2 template_id"}])
+        arrangement = card_design_v2.validate_arrangement(spec, body.arrangement)
+    badge = None
+    if body.badge is not None:
+        badge = {k: v for k, v in personal_service.validate_fields(
+            body.badge.model_dump(exclude_none=True)).items() if v is not None}
+    is_badge = badge is not None or (template is not None and template.category == "badge")
     allowed = set(personal_service.FIELD_KEYS) | {"photo", "logo", "cover"}
-    locked = body.locked_fields if body.locked_fields is not None else ["company"]
+    locked = body.locked_fields if body.locked_fields is not None else (
+        BADGE_LOCKED_DEFAULT if is_badge else ["company"])
     bad = [f for f in locked if f not in allowed]
     if bad:
         raise validation_error("body.locked_fields", f"unknown fields: {', '.join(bad)}")
@@ -297,7 +341,8 @@ async def issue_digital_card(employee_id: uuid.UUID, body: DigitalCardInviteIn, 
         DigitalCardInvite.declined_at.is_(None), DigitalCardInvite.revoked_at.is_(None)).values(revoked_at=now))
     token = generate_reset_token()
     inv = DigitalCardInvite(business_id=ctx.business.id, employee_id=e.id, email=addr, token_hash=sha256_hex(token),
-                            template_id=body.template_id, design=design, locked_fields=locked, invited_by=ctx.user.id,
+                            template_id=body.template_id, design=design, arrangement=arrangement, badge=badge,
+                            locked_fields=locked, invited_by=ctx.user.id,
                             expires_at=now + timedelta(days=7))
     session.add(inv)
     await session.flush()

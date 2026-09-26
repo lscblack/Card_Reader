@@ -5,6 +5,7 @@ import '../../core/error_catalog.dart';
 import '../../data/models/personal.dart';
 import '../../services/personal_state.dart';
 import '../widgets/common.dart';
+import 'exchange_flow.dart';
 
 /// Personal space settings: sharing toggles, sessions, sign out.
 class PersonalSettingsScreen extends StatefulWidget {
@@ -102,7 +103,12 @@ class _PersonalSettingsScreenState extends State<PersonalSettingsScreen> {
                       ? null
                       : TextButton(
                           onPressed: () async {
-                            await p.api?.revokeSession(ses.id);
+                            final messenger = ScaffoldMessenger.of(context);
+                            try {
+                              await p.api?.revokeSession(ses.id);
+                            } catch (e) {
+                              messenger.showSnackBar(SnackBar(content: Text('Not revoked: ${exchangeError(e)}')));
+                            }
                             await _loadSessions();
                           },
                           child: const Text('Revoke'),

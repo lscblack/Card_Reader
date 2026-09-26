@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+import zoneinfo
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any, Literal
 
@@ -383,7 +384,10 @@ async def _timeline(session: SessionDep, conds: list, tz: str, days: int) -> lis
     rows = (await session.execute(select(day, func.count(), func.count(distinct(CardTap.visitor_hash)))
                                   .where(*conds).group_by(day))).all()
     by_day: dict[date, tuple[int, int]] = {r[0]: (int(r[1]), int(r[2])) for r in rows}
-    today = datetime.now(UTC).date()
+    try:  # buckets are local days of the business timezone, so "today" must be too
+        today = datetime.now(zoneinfo.ZoneInfo(tz)).date()
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+        today = datetime.now(UTC).date()
     out = []
     for i in range(days - 1, -1, -1):
         d = today - timedelta(days=i)

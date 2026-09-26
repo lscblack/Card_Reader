@@ -516,6 +516,7 @@ async def test_admin_platform_settings(client: AsyncClient, user: dict, redis) -
     r = await client.patch("/api/v1/admin/settings", json={"default_rate_limit": {"requests": 2, "window_seconds": 60}},
                            headers=admin)
     assert r.json()["default_rate_limit"] == {"requests": 2, "window_seconds": 60}
+    await redis.flushall()  # every request so far also counted against the shared per-IP ceiling (2 × 5)
     codes = [(await client.get("/api/v1/overview", headers=user["headers"])).status_code for _ in range(3)]
     assert codes == [200, 200, 429]
     await redis.flushall()  # the admin's own bucket is also at the lowered limit

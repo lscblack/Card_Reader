@@ -7,7 +7,7 @@ import type { Customer, CustomerInput } from '../api/types'
 import { customersApi } from '../api/people'
 import { useBusiness } from '../hooks/context'
 import { useBizMutation } from '../hooks/queries'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { normalizePhone } from '../lib/format'
 import { FormError } from './BizError'
 import { TagsInput } from './inputs'
@@ -61,7 +61,7 @@ export function CustomerFormModal({ customer, onClose, onCreated }: { customer: 
       }
     >
       <form id="customer-form" onSubmit={submit} className="space-y-4" noValidate>
-        <FormError error={save.error && !Object.keys(errs).length ? save.error : null} />
+        <FormError error={formLevelError(save.error, ['company', 'email', 'full_name', 'phone'])} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Full name" error={errs.full_name} className="sm:col-span-2">
             {(p) => <Input {...p} value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} maxLength={120} data-autofocus />}

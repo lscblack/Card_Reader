@@ -31,16 +31,26 @@ Future<String?> probeDigitalCard(NfcTag tag, {Duration timeout = const Duration(
 abstract class DigitalCardScanner {
   /// Returns the base64url token. Throws [ScanException].
   Future<String> scanToken({Duration timeout = const Duration(seconds: 60)});
+
+  /// Aborts a running scan. Completes once the scan has released reader mode, so a caller
+  /// can safely start its own reader session afterwards.
   Future<void> cancel();
 }
 
 class AndroidDigitalCardScanner implements DigitalCardScanner {
   Completer<String>? _pending;
 
+  /// Completes when the current/last scan has disabled its reader session.
+  Future<void>? _released;
+
   @override
   Future<String> scanToken({Duration timeout = const Duration(seconds: 60)}) async {
     await cancel();
     final c = _pending = Completer<String>();
+    // cancel() may fail the completer before anyone awaits it: never an unhandled error.
+    unawaited(c.future.then((_) {}, onError: (_) {}));
+    final released = Completer<void>();
+    _released = released.future;
     try {
       final availability = await NfcManager.instance.checkAvailability();
       if (availability == NfcAvailability.unsupported) throw const ScanException(MobError.nfcUnsupported);
@@ -65,10 +75,11 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
       );
       return await c.future.timeout(timeout, onTimeout: () => throw const ScanException(MobError.programmingTimeout));
     } finally {
-      _pending = null;
+      if (identical(_pending, c)) _pending = null;
       try {
         await NfcManagerAndroid.instance.disableReaderMode();
       } catch (_) {}
+      released.complete();
     }
   }
 
@@ -76,5 +87,6 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
   Future<void> cancel() async {
     final p = _pending;
     if (p != null && !p.isCompleted) p.completeError(const ScanException(MobError.programmingTimeout));
+    await _released;
   }
 }

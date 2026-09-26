@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 import { AlertTriangle, BadgeCheck, Check, ChevronsUpDown, Code2, ShieldAlert } from 'lucide-react'
+import { safeImageUrl } from '@/lib/url'
 import { useAuth } from '@/auth/context'
 import { DashboardShell } from '@/layouts/DashboardShell'
 import { FullPageSpinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import { FloatingPanel } from '@/components/ui/Popover'
+import { useDismiss } from '@/components/ui/useDismiss'
 import type { Business, BusinessMe, Permission } from '../api/types'
 import { BusinessContext, type BusinessContextValue } from '../hooks/context'
 import { useBusinessDetail, useBusinessMe, useBusinesses } from '../hooks/queries'
@@ -17,7 +20,8 @@ import { useTour } from '@/tours'
 import { BUSINESS_TOUR_ID, businessTourSteps } from './tour'
 
 function BizLogo({ b, size = 28 }: { b: Pick<Business, 'name' | 'logo_url'>; size?: number }) {
-  if (b.logo_url) return <img src={b.logo_url} alt="" style={{ width: size, height: size }} className="shrink-0 rounded-lg object-cover ring-1 ring-border" />
+  const logo = safeImageUrl(b.logo_url)
+  if (logo) return <img src={logo} alt="" style={{ width: size, height: size }} className="shrink-0 rounded-lg object-cover ring-1 ring-border" />
   return (
     <span style={{ width: size, height: size }} className="flex shrink-0 items-center justify-center rounded-lg bg-accent-solid text-[12px] font-semibold text-accent-fg" aria-hidden="true">
       {b.name.trim().charAt(0).toUpperCase() || 'B'}
@@ -27,20 +31,16 @@ function BizLogo({ b, size = 28 }: { b: Pick<Business, 'name' | 'logo_url'>; siz
 
 function Switcher({ current, businesses, me }: { current: Business; businesses: Business[]; me: BusinessMe | null }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [q, setQ] = useState('')
   const navigate = useNavigate()
   const loc = useLocation()
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false)
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+  const close = useCallback(() => {
+    setOpen(false)
+    setQ('')
+  }, [])
+  useDismiss(open, close, [anchorRef, panelRef])
 
   const multi = businesses.length > 1
   const inner = (
@@ -58,14 +58,15 @@ function Switcher({ current, businesses, me }: { current: Business; businesses: 
   if (!multi) return <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">{inner}</div>
 
   const switchTo = (id: string) => {
-    setOpen(false)
+    close()
     // Keep the section (e.g. /cards) but drop detail ids, which belong to the other business.
     const section = loc.pathname.split('/')[3] ?? ''
     navigate(`/business/${id}${section ? `/${section}` : ''}`)
   }
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={anchorRef}
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -75,10 +76,20 @@ function Switcher({ current, businesses, me }: { current: Business; businesses: 
       >
         {inner}
       </button>
-      {open && (
-        <div className="animate-pop-in absolute inset-x-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-lg" role="listbox" aria-label="Businesses">
+      <FloatingPanel anchorRef={anchorRef} panelRef={panelRef} open={open} matchWidth maxHeight={380} role="listbox" ariaLabel="Businesses" className="p-1">
+          {businesses.length > 6 && (
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search businesses…"
+              aria-label="Search businesses"
+              className="mb-1 h-9 w-full rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] outline-none focus:border-accent"
+            />
+          )}
           <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-subtle uppercase">Your businesses</p>
-          {businesses.map((b) => (
+          <div className="min-h-0 overflow-y-auto">
+          {businesses.filter((b) => b.name.toLowerCase().includes(q.trim().toLowerCase())).map((b) => (
             <button
               key={b.id}
               role="option"
@@ -94,8 +105,8 @@ function Switcher({ current, businesses, me }: { current: Business; businesses: 
               {b.id === current.id && <Check className="h-4 w-4 text-accent" />}
             </button>
           ))}
-        </div>
-      )}
+          </div>
+      </FloatingPanel>
     </div>
   )
 }

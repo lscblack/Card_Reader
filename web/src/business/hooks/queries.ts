@@ -121,8 +121,10 @@ export function useBizMutation<TVars, TData = unknown>(bid: string, fn: (vars: T
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
-    onSuccess: async () => {
-      await Promise.all([
+    // Refresh in the background (don't await): awaiting would also wait for the refetch of an entity that was just
+    // deleted (or a business just left), flashing its 404/403 error screen before the caller navigates away.
+    onSuccess: () => {
+      void Promise.all([
         qc.invalidateQueries({ queryKey: bk.scope(bid) }),
         qc.invalidateQueries({ queryKey: bk.list }),
         ...extraKeys.map((queryKey) => qc.invalidateQueries({ queryKey })),

@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { EmptyState, ErrorState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorMeta'
+import { FloatingPanel } from '@/components/ui/Popover'
+import { useDismiss } from '@/components/ui/useDismiss'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { ConfirmDialog, Drawer, Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
@@ -49,7 +51,12 @@ function UserPicker({ picked, onChange }: { picked: Picked[]; onChange: (p: Pick
   const [q, setQ] = useState('')
   const dq = useDebounced(q.trim(), 300)
   const res = useQuery({ queryKey: ['admin', 'accounts', 'picker', dq], queryFn: () => adminConsoleApi.accounts({ q: dq, page: 1 }), enabled: dq.length >= 2 })
-  const options = (res.data?.items ?? []).filter((u) => !picked.some((p) => p.id === u.id)).slice(0, 6)
+  const options = (res.data?.items ?? []).filter((u) => !picked.some((p) => p.id === u.id)).slice(0, 8)
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [dismissed, setDismissed] = useState(false)
+  const showResults = dq.length >= 2 && !dismissed
+  useDismiss(showResults, () => setDismissed(true), [anchorRef, panelRef])
   return (
     <div className="space-y-2">
       {picked.length > 0 && (
@@ -64,11 +71,21 @@ function UserPicker({ picked, onChange }: { picked: Picked[]; onChange: (p: Pick
           ))}
         </div>
       )}
-      <div className="relative">
+      <div ref={anchorRef} className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-subtle" />
-        <Input aria-label="Add recipients" placeholder="Search users by name or email…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
-        {dq.length >= 2 && (
-          <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+        <Input
+          aria-label="Add recipients"
+          placeholder="Search users by name or email…"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value)
+            setDismissed(false)
+          }}
+          onFocus={() => setDismissed(false)}
+          className="pl-8"
+        />
+        <FloatingPanel anchorRef={anchorRef} panelRef={panelRef} open={showResults} matchWidth maxHeight={320}>
+          <div className="overflow-y-auto">
             {res.isLoading ? (
               <div className="flex justify-center py-3 text-subtle">
                 <Spinner className="h-4 w-4" />
@@ -93,17 +110,21 @@ function UserPicker({ picked, onChange }: { picked: Picked[]; onChange: (p: Pick
               ))
             )}
           </div>
-        )}
+        </FloatingPanel>
       </div>
     </div>
   )
 }
 
+/**
+ * Recipient estimate from `GET /admin/accounts` (type + status only — that endpoint has no email_verified/plan filters,
+ * so with those set the number is an upper bound; the server applies the full filter when sending).
+ */
 function useFilterCount(f: EmailFilter, enabled: boolean) {
-  const status = f.email_verified === false ? 'unverified' : f.status
+  const { account_type, status } = f
   return useQuery({
-    queryKey: ['admin', 'accounts', 'count', f],
-    queryFn: () => adminConsoleApi.accounts({ type: f.account_type, status, page: 1 }),
+    queryKey: ['admin', 'accounts', 'count', account_type ?? '', status ?? ''],
+    queryFn: () => adminConsoleApi.accounts({ type: account_type, status, page: 1 }),
     enabled,
     select: (r) => r.total,
   })
@@ -147,6 +168,8 @@ function Composer({ initialUsers }: { initialUsers: Picked[] }) {
   const area = useRef<HTMLTextAreaElement>(null)
   const count = useFilterCount(filter, mode === 'filter')
   const recipients = mode === 'users' ? picked.length : (count.data ?? null)
+  const upperBound = mode === 'filter' && (filter.email_verified !== undefined || !!filter.plan_code)
+  const countFailed = mode === 'filter' && !!count.error
   const cta = ctaLabel.trim() && /^https?:\/\//.test(ctaUrl.trim()) ? { label: ctaLabel.trim(), url: ctaUrl.trim() } : undefined
   const ctaInvalid = !!ctaLabel.trim() !== !!ctaUrl.trim() || (!!ctaUrl.trim() && !/^https?:\/\/\S+$/.test(ctaUrl.trim()))
 
@@ -172,7 +195,8 @@ function Composer({ initialUsers }: { initialUsers: Picked[] }) {
     })
   }
 
-  const invalid = !subject.trim() || !body.trim() || ctaInvalid || !recipients || (recipients ?? 0) > 5000
+  const invalid =
+    !subject.trim() || !body.trim() || ctaInvalid || (!countFailed && (!recipients || (!upperBound && (recipients ?? 0) > 5000)))
 
   async function doSend() {
     const req: SendEmailRequest = { subject: subject.trim(), body_markdown: body, cta }
@@ -247,13 +271,15 @@ function Composer({ initialUsers }: { initialUsers: Picked[] }) {
             )}
             <p className="flex items-center gap-1.5 text-[13px]">
               <Mail className="h-4 w-4 text-subtle" />
-              {recipients == null ? (
+              {countFailed ? (
+                <span className="text-muted">Couldn’t estimate the recipients — the server applies the filter when sending.</span>
+              ) : recipients == null ? (
                 <span className="text-muted">Counting recipients…</span>
               ) : (
                 <span>
-                  <span className="font-semibold tabular-nums">{mode === 'filter' ? '≈ ' : ''}
+                  <span className="font-semibold tabular-nums">{mode === 'filter' ? (upperBound ? 'up to ' : '≈ ') : ''}
                     {num(recipients)}</span> recipient{recipients === 1 ? '' : 's'}
-                  {recipients > 5000 && <span className="text-red-600 dark:text-red-400"> — max 5,000 per send</span>}
+                  {recipients > 5000 && <span className="text-red-600 dark:text-red-400">{upperBound ? ' — at most 5,000 per send' : ' — max 5,000 per send'}</span>}
                 </span>
               )}
             </p>
@@ -520,7 +546,15 @@ export default function AdminEmailsPage() {
   const userIds = useMemo(() => (params.get('users') ?? '').split(',').filter(Boolean), [params])
   const prefill = useQuery({
     queryKey: ['admin', 'emails', 'prefill', userIds],
-    queryFn: async () => Promise.all(userIds.slice(0, 200).map((id) => adminConsoleApi.account(id).then((a) => ({ id: a.id, email: a.email, full_name: a.full_name })))),
+    // Names/emails are only for the recipient chips: look up the first few (the API is rate limited) and keep every
+    // selected id even when a lookup fails, so a big or partly failing selection never silently drops recipients.
+    queryFn: async () => {
+      const looked = await Promise.allSettled(userIds.slice(0, 25).map((id) => adminConsoleApi.account(id)))
+      return userIds.map((id, i): Picked => {
+        const r = looked[i]
+        return r?.status === 'fulfilled' ? { id, email: r.value.email, full_name: r.value.full_name } : { id, email: `User ${id.slice(0, 8)}`, full_name: '' }
+      })
+    },
     enabled: userIds.length > 0,
   })
   const setTab = (t: Tab, extra: Record<string, string> = {}) => setParams({ tab: t, ...extra }, { replace: true })

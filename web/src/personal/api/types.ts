@@ -5,6 +5,7 @@ export type { Paginated } from '@/api/types'
 
 export type CardLayout = 'centered' | 'left' | 'split' | 'hero_photo' | 'banner' | 'compact'
 export type BackgroundStyle = 'solid' | 'gradient' | 'glass' | 'pattern'
+/** v1 font keys; v2 also accepts a font-pair id from `/personal/design-presets` (unknown ids fall back to sans). */
 export type CardFont = 'sans' | 'serif' | 'mono' | 'display'
 export type Visibility = 'public' | 'contacts' | 'hidden'
 
@@ -18,7 +19,17 @@ export interface CardDesign {
   font: CardFont
   corner_radius: number
   show_qr: boolean
+  // ── Part 5 (design v2) additions ──
+  secondary?: string
+  photo_shape?: PhotoShape
+  photo_ring?: boolean
+  icon_style?: IconStyle
+  decor_style?: string | null
+  background_image_opacity?: number
 }
+
+export type PhotoShape = 'circle' | 'rounded' | 'square' | 'hexagon'
+export type IconStyle = 'filled' | 'outline' | 'none'
 
 export interface LabeledValue {
   label: string
@@ -47,6 +58,11 @@ export interface CardFields {
   address?: string | null
   socials: SocialLinkP[]
   custom_links: LabeledUrl[]
+  // ── Part 5 badge fields ──
+  id_number?: string | null
+  valid_from?: string | null
+  valid_until?: string | null
+  barcode_value?: string | null
 }
 
 /** Field keys that carry a visibility setting (`photo` included). */
@@ -93,6 +109,10 @@ export interface DigitalCard {
   visibility: Partial<Record<VisibilityKey, Visibility>>
   share_settings: ShareSettings
   business_link: BusinessLink | null
+  /** Part 5: 2 when the template is a v2 (shape) template. */
+  design_version?: 1 | 2
+  sides_enabled?: SideId[]
+  arrangement?: Arrangement | null
   stats: CardStats
   created_at: ISODateTime
   updated_at: ISODateTime
@@ -107,16 +127,78 @@ export interface CardInput {
   share_settings?: Partial<ShareSettings>
   slug?: string
   status?: 'active' | 'inactive'
+  sides_enabled?: SideId[]
+  arrangement?: Arrangement | null
 }
 
-export interface CardTemplate {
+/** v1 (layout) template. */
+export interface CardTemplateV1 {
   id: string
+  engine?: 'v1'
   name: string
   description: string
   layout: CardLayout
   default_design: CardDesign
   supports: { photo: boolean; cover: boolean; logo: boolean }
   premium: boolean
+  category?: string
+}
+
+// ── Part 5 v2 (shape) templates ──
+export type BlockId = 'photo' | 'name' | 'logo' | 'company' | 'tagline' | 'qr' | 'contacts' | 'socials' | 'website' | 'address' | 'bio' | 'badge_meta' | 'barcode'
+export type SideId = 'front' | 'back'
+export type Arrangement = Partial<Record<SideId, Record<string, BlockId[]>>>
+
+export interface TemplateLayer {
+  path: string
+  fill: string
+  opacity?: number
+}
+
+export interface TemplateZone {
+  id: string
+  rect: [number, number, number, number]
+  align: 'start' | 'center' | 'end'
+  valign: 'start' | 'center' | 'end'
+  on: string
+  accepts: BlockId[]
+  max_blocks: number
+}
+
+export interface TemplateSide {
+  background: string
+  layers: TemplateLayer[]
+  zones: TemplateZone[]
+}
+
+export interface TemplateVariant {
+  id: string
+  name: string
+  canvas: Partial<Record<SideId, { layers: TemplateLayer[] }>>
+}
+
+export interface CardTemplateV2 {
+  id: string
+  engine: 'v2'
+  name: string
+  category: 'business' | 'badge' | 'minimal'
+  description: string
+  premium: boolean
+  format: 'landscape' | 'portrait'
+  sides: SideId[]
+  default_design: CardDesign
+  canvas: Partial<Record<SideId, TemplateSide>>
+  default_arrangement: Arrangement
+  variants?: TemplateVariant[]
+}
+
+export type CardTemplate = CardTemplateV1 | CardTemplateV2
+
+export const isV2 = (t: CardTemplate | null | undefined): t is CardTemplateV2 => !!t && t.engine === 'v2'
+
+export interface DesignPresets {
+  palettes: { id: string; name: string; primary: string; secondary: string; background: string; text: string; accent: string }[]
+  font_pairs: { id: string; heading: string; body: string; style: string; name?: string }[]
 }
 
 /** What a renderer needs (a full card, a public card or a contact snapshot). */
@@ -129,12 +211,16 @@ export interface RenderableCard {
   public_url?: string | null
   business?: { name: string; logo_url: string | null; verified: boolean } | null
   visibility?: Partial<Record<VisibilityKey, Visibility>>
+  arrangement?: Arrangement | null
+  sides_enabled?: SideId[] | null
 }
 
 export interface PublicCardResponse {
   card: {
     design: CardDesign
-    template: { id: string; layout: CardLayout; name?: string } | string
+    template: { id: string; layout?: CardLayout; name?: string; engine?: string } | string
+    arrangement?: Arrangement | null
+    sides_enabled?: SideId[] | null
     fields: Partial<CardFields> & { full_name: string }
     photo_url: string | null
     cover_url: string | null
@@ -163,7 +249,8 @@ export interface Contact {
   source: ContactSource
   counterpart_user_id: UUID | null
   counterpart_card_id: UUID | null
-  card: RenderableCard & { template_id?: string | null; layout?: CardLayout | null }
+  /** Exchanged cards carry the full snapshot; manual and web-lead contacts only have `{ fields }` (no design/template). */
+  card: Omit<RenderableCard, 'design'> & { design?: CardDesign | null; template_id?: string | null; layout?: CardLayout | null }
   live: boolean
   notes: string | null
   tags: string[]
@@ -188,8 +275,8 @@ export interface ActivityItem {
   card_id: UUID | null
   card_label?: string | null
   source?: string | null
-  title?: string | null
-  description?: string | null
+  /** Human-readable sentence from the server (e.g. "Jean received your card", "Read by a terminal of Acme"). */
+  detail?: string | null
   counterpart_name?: string | null
   created_at: ISODateTime
 }
@@ -230,16 +317,14 @@ export interface ExchangeQr {
   expires_at: ISODateTime
 }
 
+/** `GET /personal/business-invites` item (backend `invite_out`). */
 export interface BusinessInvite {
   id: UUID
-  business_name: string
-  business_logo_url?: string | null
-  employee_name?: string | null
-  email?: string
-  template_id?: string | null
-  design?: Partial<CardDesign> | null
-  locked_fields: string[]
+  business: { id: UUID; name: string; logo_url: string | null; verified: boolean }
+  email: string
   status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked'
+  expires_at: ISODateTime | null
   created_at: ISODateTime
-  expires_at?: ISODateTime | null
+  /** The business-linked card once accepted. */
+  card_id: UUID | null
 }

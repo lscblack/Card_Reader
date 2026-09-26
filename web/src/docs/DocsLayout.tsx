@@ -4,7 +4,7 @@ import { Menu, Search as SearchIcon, X } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { cn } from '@/lib/cn'
-import { DASHBOARD_PATH, POWERED_BY_URL, useIsLoggedIn, useProductName } from '@/marketing/lib'
+import { useDashboardPath, POWERED_BY_URL, useIsLoggedIn, useProductName } from '@/marketing/lib'
 import { DownloadApp } from '@/marketing/components/DownloadApp'
 import { docGroups, docPages, docPath } from './nav'
 import { SearchDialog } from './components/Search'
@@ -99,6 +99,7 @@ export default function DocsLayout() {
   const location = useLocation()
   const productName = useProductName()
   const loggedIn = useIsLoggedIn()
+  const dashboardPath = useDashboardPath()
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const articleRef = useRef<HTMLElement>(null)
@@ -188,7 +189,7 @@ export default function DocsLayout() {
           <div className="hidden items-center gap-3 md:ml-auto md:flex">
             <ThemeToggle />
             {loggedIn ? (
-              <Link to={DASHBOARD_PATH} className="rounded-lg bg-accent-solid px-3.5 py-2 text-[13px] font-semibold text-accent-fg hover:bg-accent-solid-hover">
+              <Link to={dashboardPath} className="rounded-lg bg-accent-solid px-3.5 py-2 text-[13px] font-semibold text-accent-fg hover:bg-accent-solid-hover">
                 Dashboard
               </Link>
             ) : (
@@ -225,7 +226,7 @@ export default function DocsLayout() {
             <div className="mt-6 flex flex-col gap-2 border-t border-border pt-5">
               <ThemeToggle className="self-start" />
               {loggedIn ? (
-                <Link to={DASHBOARD_PATH} className="rounded-lg bg-accent-solid px-3.5 py-2 text-center text-[14px] font-semibold text-accent-fg">
+                <Link to={dashboardPath} className="rounded-lg bg-accent-solid px-3.5 py-2 text-center text-[14px] font-semibold text-accent-fg">
                   Dashboard
                 </Link>
               ) : (

@@ -9,7 +9,7 @@ from typing import Literal
 from fastapi import APIRouter, Query, Response
 from sqlalchemy import select
 
-from app.api.deps import ClientDep, CurrentUser, SessionDep
+from app.api.deps import ClientDep, CurrentUser, SessionDep, platform_only
 from app.core.errors import AppError, not_found
 from app.models import Device, User
 from app.schemas.resources import DeviceOut, DeviceRenameIn
@@ -18,7 +18,7 @@ from app.services.applications import authorize_application, developer_app_ids, 
 from app.services.serializers import device_out
 from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/devices", tags=["Devices"])
+router = APIRouter(prefix="/devices", tags=["Devices"], dependencies=platform_only)
 
 
 async def _get_owned_device(

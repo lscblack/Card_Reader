@@ -72,3 +72,14 @@ function errorMessageSafe(err: unknown): string {
   if (err instanceof Error) return err.message
   return 'Something went wrong'
 }
+
+/**
+ * The error to show in a form-level `<FormError>`: null only when every field error is rendered next to a field in
+ * `shown`. Errors on fields the form doesn't display (e.g. `social_links.0.url`, `sections.2.items.0.url`) would
+ * otherwise vanish and the save would fail silently.
+ */
+export function formLevelError(err: unknown, shown: readonly string[]): unknown {
+  if (!err) return null
+  const keys = Object.keys(fieldErrorsOf(err))
+  return keys.length && keys.every((k) => shown.includes(k)) ? null : err
+}

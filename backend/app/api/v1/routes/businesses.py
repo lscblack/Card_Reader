@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import case, func, select, update
 
 from app.api.deps import BusinessContext, ClientDep, CurrentUser, SessionDep, business_permission
@@ -164,7 +165,7 @@ async def delete_business(ctx: Delete, session: SessionDep, client: ClientDep) -
 async def upload_logo(ctx: Settings_, session: SessionDep, client: ClientDep,
                       file: UploadFile = File(...)) -> BusinessOut:
     data = await file.read(media.settings.MEDIA_MAX_UPLOAD_BYTES + 1)
-    path = media.save_image(data, f"businesses/{ctx.business.id}", "logo")
+    path = await run_in_threadpool(media.save_image, data, f"businesses/{ctx.business.id}", "logo")
     old = ctx.business.logo_path
     ctx.business.logo_path = path
     audit.record(session, action="business.logo_update", user_id=ctx.user.id, client=client,

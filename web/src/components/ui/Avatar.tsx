@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/cn'
+import { safeImageUrl } from '@/lib/url'
 
 function initials(name: string | null | undefined, email: string | null | undefined) {
   const src = (name ?? '').trim() || (email ?? '')
@@ -11,7 +12,7 @@ const sizes = { xs: 'h-6 w-6 text-[10px]', sm: 'h-7 w-7 text-xs', md: 'h-9 w-9 t
 
 /** User avatar: uploaded image (Part 3 §4) or initials on the accent tint. */
 export function Avatar({
-  src,
+  src: rawSrc,
   name,
   email,
   size = 'sm',
@@ -24,6 +25,7 @@ export function Avatar({
   className?: string
 }) {
   const [broken, setBroken] = useState<string | null>(null)
+  const src = safeImageUrl(rawSrc)
   const show = src && broken !== src
   return (
     <span className={cn('inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-soft font-semibold text-accent', sizes[size], className)}>

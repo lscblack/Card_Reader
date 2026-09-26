@@ -103,7 +103,8 @@ export function useUpdateApplication(id: string) {
   const inv = useInvalidate()
   return useMutation({
     mutationFn: (body: UpdateApplicationRequest) => applicationsApi.update(id, body),
-    onSuccess: () => inv(qk.applications, qk.overview),
+    // ['biz']: business applications are also edited through these Part 1 endpoints (IntegrationAppPage).
+    onSuccess: () => inv(qk.applications, qk.overview, ['biz']),
   })
 }
 
@@ -111,7 +112,7 @@ export function useDeleteApplication() {
   const inv = useInvalidate()
   return useMutation({
     mutationFn: (id: string) => applicationsApi.remove(id),
-    onSuccess: () => inv(qk.applications, ['api-keys'], ['devices'], qk.overview),
+    onSuccess: () => inv(qk.applications, ['api-keys'], ['devices'], qk.overview, ['biz']),
   })
 }
 
@@ -119,7 +120,7 @@ export function useUpdateEndpoint(id: string) {
   const inv = useInvalidate()
   return useMutation({
     mutationFn: (body: UpdateEndpointRequest) => applicationsApi.updateEndpoint(id, body),
-    onSuccess: () => inv(qk.applications),
+    onSuccess: () => inv(qk.applications, ['biz']),
   })
 }
 

@@ -24,7 +24,7 @@ from app.services import audit, email
 from app.services import business as biz
 from app.services import team as team_service
 from app.services.business_serializers import invitation_out, member_out
-from app.services.permissions import GRANTABLE, ROLES
+from app.services.permissions import GRANTABLE, ROLE_RANK, ROLES
 
 router = APIRouter(prefix="/businesses/{business_id}", tags=["Team"])
 public_router = APIRouter(prefix="/invitations", tags=["Team"])
@@ -36,11 +36,17 @@ INVITE_TTL = timedelta(days=7)
 
 
 def _check_role_change(ctx: BusinessContext, target_role: str | None, new_role: str | None) -> None:
-    """Only owners manage owners; admins manage everyone else."""
+    """Only owners manage owners; others (with team.manage) manage roles up to their own rank — a manager or staff
+    member granted team.manage cannot invite/promote admins or edit members ranked above them."""
     if ctx.role == "owner":
         return
     if target_role == "owner" or new_role == "owner":
         raise AppError(403, "owner_required", "Only owners can manage owners")
+    own = ROLE_RANK.get(ctx.role, -1)
+    for role in (target_role, new_role):
+        if role is not None and ROLE_RANK.get(role, 99) > own:
+            raise AppError(403, "insufficient_permissions",
+                           f"Your role ({ctx.role}) cannot manage the {role} role", {"required": "role_rank"})
 
 
 @router.get("/members", response_model=list[MemberOut], summary="Team members")
@@ -72,8 +78,16 @@ async def update_member(member_id: uuid.UUID, body: MemberUpdateIn, ctx: TeamMan
         bad = [p for p in body.extra_permissions if p not in GRANTABLE]
         if bad:
             raise validation_error("body.extra_permissions", f"not grantable: {', '.join(bad)}")
+        if ctx.role != "owner":  # nobody but an owner can hand out a permission they don't hold themselves
+            missing = [p for p in body.extra_permissions if p not in ctx.permissions]
+            if missing:
+                raise AppError(403, "insufficient_permissions",
+                               f"You can only grant permissions you hold ({', '.join(missing)})",
+                               {"required": missing[0]})
         member.extra_permissions = sorted(set(body.extra_permissions))
     if body.status is not None:
+        if body.status == "active" and member.status != "active":  # reactivation counts against the plan
+            await biz.ensure_business_limit(session, ctx.business, "members")
         member.status = body.status
     audit.record(session, action="member.update", user_id=ctx.user.id, client=client, resource_type="member",
                  resource_id=member.id, metadata={k: v for k, v in data.items()})

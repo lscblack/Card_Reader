@@ -10,6 +10,7 @@ import '../../data/models/event_record.dart';
 import '../format.dart';
 import '../widgets/common.dart';
 import 'event_detail_screen.dart';
+import '../widgets/motion.dart';
 
 /// Local event history with a status filter.
 class HistoryScreen extends StatefulWidget {
@@ -105,7 +106,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     child: ListView.separated(
                       itemCount: _items.length,
                       separatorBuilder: (_, _) => const Divider(height: 1, indent: 16),
-                      itemBuilder: (context, i) => _EventTile(event: _items[i]),
+                      itemBuilder: (context, i) => StaggeredEntrance(index: i, child: _EventTile(event: _items[i])),
                     ),
                   ),
           ),

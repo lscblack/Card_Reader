@@ -126,8 +126,10 @@ export default function DevicesPage() {
     if (!v) void qc.invalidateQueries({ queryKey: bk.scope(business.id) })
   }
   const { data, error, isLoading, refetch } = useBizDevices(business.id)
-  const apps = useBizApps(business.id)
-  const terminal = apps.data?.find((a) => a.name === 'Business Terminal') ?? apps.data?.[0]
+  // Listing applications needs api.view, which managers (devices.manage) don't have: fall back to the terminal
+  // application the existing devices are paired to.
+  const apps = useBizApps(business.id, can('api.view'))
+  const terminalId = (apps.data?.find((a) => a.name === 'Business Terminal') ?? apps.data?.[0])?.id ?? data?.find((d) => d.application_id)?.application_id
   const [activity, setActivity] = useState<BusinessDevice | null>(null)
   const [renaming, setRenaming] = useState<BusinessDevice | null>(null)
   const [assigning, setAssigning] = useState<BusinessDevice | null>(null)
@@ -146,7 +148,7 @@ export default function DevicesPage() {
         description="Android phones running NFC Terminal as readers — at the counter, at events or for programming cards."
         actions={
           manage && (
-            <Button variant="primary" leftIcon={<QrCode className="h-4 w-4" />} onClick={() => setPairing(true)} disabled={!terminal}>
+            <Button variant="primary" leftIcon={<QrCode className="h-4 w-4" />} onClick={() => setPairing(true)} disabled={!terminalId}>
               Add device
             </Button>
           )
@@ -175,7 +177,7 @@ export default function DevicesPage() {
             description="Install NFC Terminal on an NFC-capable Android phone, then pair it by scanning a QR code. It can read cards at your counter and program new ones."
             action={
               manage && (
-                <Button variant="primary" size="sm" leftIcon={<QrCode className="h-3.5 w-3.5" />} onClick={() => setPairing(true)} disabled={!terminal}>
+                <Button variant="primary" size="sm" leftIcon={<QrCode className="h-3.5 w-3.5" />} onClick={() => setPairing(true)} disabled={!terminalId}>
                   Add device
                 </Button>
               )
@@ -281,7 +283,7 @@ export default function DevicesPage() {
         <ReaderTapHelp canRegister={business.settings.devices_can_register_cards} />
       </div>
 
-      {terminal && <PairPhoneModal open={pairing} onClose={() => setPairing(false)} applicationId={terminal.id} />}
+      {terminalId && <PairPhoneModal open={pairing} onClose={() => setPairing(false)} applicationId={terminalId} />}
       <ActivityDrawer device={activity} onClose={() => setActivity(null)} />
       <Modal
         open={!!renaming}

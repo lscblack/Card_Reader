@@ -1,5 +1,6 @@
 import { CardRender } from '@/marketing/components/digital/CardRender'
 import { templates } from '@/marketing/components/digital/data'
+import { TemplateShowcaseGrid } from '@/personal/components/TemplateShowcase'
 import { BusinessIssuedCard, IphoneWebPage, PrivacyPanel } from '@/marketing/components/digital/Showcase'
 import { PhoneExchange } from '@/marketing/components/digital/Exchange'
 import { CodeBlock, CodeTabs } from '../components/Code'
@@ -79,6 +80,9 @@ export default function DigitalCards() {
       <P>A phone can be signed in to your personal account and be a developer or business reader at the same time — the app shows both spaces.</P>
 
       <H2 id="templates">Templates & design</H2>
+      <P>Shape templates (business cards and vertical ID badges, front and back) — arrange blocks by dragging them between a template’s areas:</P>
+      <TemplateShowcaseGrid />
+      <P>Classic layouts:</P>
       <div className="my-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {templates
           .filter((t) => t.layout !== 'compact')

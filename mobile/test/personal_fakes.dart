@@ -1,3 +1,4 @@
+import 'package:nfc_terminal/data/models/design_presets.dart';
 import 'package:nfc_terminal/data/models/personal.dart';
 import 'package:nfc_terminal/data/personal_api.dart';
 import 'package:nfc_terminal/services/digital_card_scanner.dart';
@@ -119,7 +120,11 @@ class FakePersonalApi implements PersonalApi {
   @override
   Future<void> deleteImage(String id, String kind) async {}
   @override
-  Future<List<CardTemplate>> templates() async => CardTemplate.builtIn;
+  Future<List<CardTemplate>> templates() async => serverTemplates ?? CardTemplate.builtIn;
+  List<CardTemplate>? serverTemplates;
+  DesignPresets presets = DesignPresets.fallback;
+  @override
+  Future<DesignPresets> designPresets() async => presets;
   @override
   Future<String> exchangeQr(String cardId) async => 'nfcterminal://card?v=1&t=x';
   String? lastVia;

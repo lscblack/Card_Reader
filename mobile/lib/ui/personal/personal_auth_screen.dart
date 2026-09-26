@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_error.dart';
+import '../../core/config.dart';
 import '../../core/error_catalog.dart';
 import '../../core/http_client.dart';
 import '../../core/links.dart';
+import '../../services/app_state.dart';
 import '../../services/personal_state.dart';
 import '../screens/qr_scan_screen.dart';
 import '../theme.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/server_trust.dart';
 
 /// Sign in / create a personal account / scan the web "Sign in on your phone" QR.
 class PersonalAuthScreen extends StatefulWidget {
@@ -88,15 +91,42 @@ class _PersonalAuthScreenState extends State<PersonalAuthScreen> {
   }
 
   Future<void> _confirmLogin(LoginPayload link) async {
+    final warnings = ServerTrust.warnings(link.serverUrl, [
+      context.read<PersonalState>().serverUrl,
+      context.read<AppState>().serverUrl,
+      AppConfig.defaultServerUrl,
+    ]);
+    var trusted = false;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Sign in on this phone?'),
-        content: Text('Server: ${link.serverHost}\n\nOnly continue if you created this code yourself.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Sign in')),
-        ],
+      builder: (c) => StatefulBuilder(
+        builder: (c, setDialog) => AlertDialog(
+          key: const Key('loginConfirm'),
+          title: const Text('Sign in on this phone?'),
+          scrollable: true,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ServerTrustPanel(
+                serverUrl: link.serverUrl,
+                warnings: warnings,
+                trusted: trusted,
+                onTrustedChanged: (v) => setDialog(() => trusted = v),
+              ),
+              const SizedBox(height: 8),
+              const Text('Only continue if you created this code yourself.'),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            FilledButton(
+              key: const Key('loginConfirmButton'),
+              onPressed: warnings.isNotEmpty && !trusted ? null : () => Navigator.pop(c, true),
+              child: const Text('Sign in'),
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true || !mounted) return;

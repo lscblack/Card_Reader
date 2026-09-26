@@ -49,6 +49,10 @@ export const DEFAULT_VISIBILITY: Record<VisibilityKey, Visibility> = {
   phones: 'contacts',
   emails: 'contacts',
   address: 'hidden',
+  id_number: 'contacts',
+  barcode_value: 'contacts',
+  valid_from: 'public',
+  valid_until: 'public',
 }
 
 export function visibilityOf(card: Pick<RenderableCard, 'visibility'>, key: VisibilityKey): Visibility {

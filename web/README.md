@@ -15,7 +15,7 @@ lucide-react · qrcode (pairing QR, rendered as SVG). UI primitives are hand-bui
 ## Getting started
 
 ```bash
-cp .env.example .env         # adjust VITE_API_BASE_URL if the backend isn't on 127.0.0.1:8000
+cp .env.example .env         # empty VITE_API_BASE_URL = <page host>:8000 (dev only)
 npm install
 npm run dev                  # http://localhost:5173
 ```
@@ -44,7 +44,7 @@ dynamic import behind a compile-time constant, so it is **not included** in norm
 | Script | What it does |
 |---|---|
 | `npm run dev` | Dev server on port 5173 |
-| `npm run build` | `tsc -b` type-check + production build to `dist/` |
+| `npm run build` | `tsc -b` type-check + production build to `dist/` (needs `VITE_API_BASE_URL`, see below) |
 | `npm run lint` | ESLint (typescript-eslint, react-hooks, react-refresh) |
 | `npm run preview` | Serve the production build locally |
 
@@ -52,8 +52,14 @@ dynamic import behind a compile-time constant, so it is **not included** in norm
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_API_BASE_URL` | `http://127.0.0.1:8000` | Backend origin; the client appends `/api/v1`. The Swagger link uses `${VITE_API_BASE_URL}/docs`. |
+| `VITE_API_BASE_URL` | empty → `<page protocol>//<page host>:8000` | Backend origin; the client appends `/api/v1`. The Swagger link uses `${VITE_API_BASE_URL}/docs`. **Required for `npm run build`** (the build fails when it is empty). |
+| `VITE_ALLOW_SAME_HOST_API` | `false` | Set to `true` to build without `VITE_API_BASE_URL` and keep the `<page host>:8000` fallback on purpose. |
 | `VITE_USE_MOCKS` | `false` | Dev-only in-memory API mock. |
+
+## Deploying
+
+`npm run build` produces a static SPA in `dist/`. Serve it with an SPA fallback (every unknown path → `index.html`)
+and security headers; `deploy/nginx.conf.example` is a starting point (replace the API origin in its CSP).
 
 ## Project layout
 

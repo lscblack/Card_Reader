@@ -7,8 +7,9 @@ import '../../core/error_catalog.dart';
 import '../../core/links.dart';
 import '../../data/models/personal.dart';
 import '../../services/digital_card_scanner.dart';
+import '../../services/hce_bridge.dart';
 import '../../services/personal_state.dart';
-import '../digital_card/card_view.dart';
+import '../digital_card/any_card_view.dart';
 import '../screens/qr_scan_screen.dart';
 import '../theme.dart';
 import 'activity_screen.dart';
@@ -33,24 +34,30 @@ class _MyCardScreenState extends State<MyCardScreen> {
   bool _scanning = false;
   String? _scanMessage;
 
+  // Captured up front: dispose() must not look up providers (deactivated context).
+  late final DigitalCardScanner _scanner = context.read<DigitalCardScanner>();
+  late final HceBridge _hce = context.read<PersonalState>().hce;
+
   @override
   void initState() {
     super.initState();
-    unawaited(context.read<PersonalState>().hce.setPreferred(true));
+    _scanner; // resolve while the context is active
+    unawaited(_hce.setPreferred(true));
   }
 
   @override
   void dispose() {
     _cancelScan();
+    unawaited(_hce.setPreferred(false));
     super.dispose();
   }
 
   void _cancelScan() {
-    if (_scanning) unawaited(context.read<DigitalCardScanner>().cancel());
+    if (_scanning) unawaited(_scanner.cancel());
   }
 
   Future<void> _scan() async {
-    final scanner = context.read<DigitalCardScanner>();
+    final scanner = _scanner;
     setState(() {
       _scanning = true;
       _scanMessage = null;
@@ -141,7 +148,7 @@ class _MyCardScreenState extends State<MyCardScreen> {
                 onScanQr: _scanQr,
               ),
               const SizedBox(height: 16),
-              DigitalCardView(card: card, layout: p.templateFor(card.templateId).layout),
+              AnyCardView(card: card, template: p.templateFor(card.templateId)),
               const SizedBox(height: 14),
               _Stats(card: card),
               const SizedBox(height: 10),

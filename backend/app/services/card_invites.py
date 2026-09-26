@@ -32,9 +32,15 @@ async def accept(session: AsyncSession, invite: DigitalCardInvite, user: User, c
               "websites": [{"label": "Website", "url": business.website}] if business.website else [],
               "socials": [{"platform": s.get("platform", "other"), "url": s["url"]}
                           for s in (employee.social_links or []) if s.get("url", "").startswith("http")]}
+    badge = dict(invite.badge or {})
+    template = await personal.get_template(session, invite.template_id)
+    if badge or template.category == "badge":  # Part 5 §4: ID badge defaults from the employee number
+        badge.setdefault("id_number", employee.employee_number)
+        badge.setdefault("barcode_value", employee.employee_number)
+    fields.update({k: v for k, v in badge.items() if k in personal.BADGE_FIELDS})
     card = await personal.new_card(session, user, label=business.name[:60], template_id=invite.template_id,
                                    fields={k: v for k, v in fields.items() if v not in (None, "")},
-                                   design=invite.design or {})
+                                   design=invite.design or {}, arrangement=invite.arrangement)
     card.business_id, card.employee_id, card.linked_at = business.id, employee.id, now
     card.locked_fields = list(invite.locked_fields or DEFAULT_LOCKED)
     card.template_locked = bool(invite.template_id or invite.design)

@@ -69,8 +69,15 @@ class ApduHandler(
                     app = App.NONE
                     return SW_FILE_NOT_FOUND
                 }
+                // A malformed cache (e.g. empty secret → SecretKeySpec throws) must not crash the
+                // HCE service (it runs in the app process): answer "not found" instead.
+                val token = try {
+                    DigitalCardToken.generate(cache.shareId, cache.keyId, clockSeconds(), cache.secret)
+                } catch (_: Exception) {
+                    app = App.NONE
+                    return SW_FILE_NOT_FOUND
+                }
                 app = App.DIGITAL
-                val token = DigitalCardToken.generate(cache.shareId, cache.keyId, clockSeconds(), cache.secret)
                 PREFIX_NFCDC + token + SW_OK
             }
             aid.contentEquals(AID_NDEF) -> {

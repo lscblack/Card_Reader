@@ -40,10 +40,12 @@ class ShareCacheStore(context: Context) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, blob.copyOfRange(0, 12)))
         val j = JSONObject(String(cipher.doFinal(blob.copyOfRange(12, blob.size)), Charsets.UTF_8))
+        val secret = Base64.decode(j.getString("secret"), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+        require(secret.isNotEmpty()) { "empty share-key secret" } // → caught below: not sharing
         CardCache(
             shareId = DigitalCardToken.uuidBytes(j.getString("share_id")),
             keyId = j.getLong("key_id"),
-            secret = Base64.decode(j.getString("secret"), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP),
+            secret = secret,
             publicUrl = j.optString("public_url").ifBlank { null },
             webPageEnabled = j.optBoolean("web_page_enabled", false),
             nfcSharingEnabled = j.optBoolean("nfc_sharing_enabled", true),

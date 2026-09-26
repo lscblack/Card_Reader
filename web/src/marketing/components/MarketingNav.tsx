@@ -5,7 +5,7 @@ import { ArrowRight, Menu, X } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { cn } from '@/lib/cn'
-import { DASHBOARD_PATH, useIsLoggedIn, type NavTarget, useProductName, useReducedMotionPref } from '../lib'
+import { useDashboardPath, useIsLoggedIn, type NavTarget, useProductName, useReducedMotionPref } from '../lib'
 
 const links: { id: NavTarget; label: string }[] = [
   { id: 'product', label: 'Product' },
@@ -17,6 +17,7 @@ const links: { id: NavTarget; label: string }[] = [
 
 export function MarketingNav({ onNavigate }: { onNavigate: (t: NavTarget) => void }) {
   const loggedIn = useIsLoggedIn()
+  const dashboardPath = useDashboardPath()
   const [open, setOpen] = useState(false)
   const reduce = useReducedMotionPref()
   const productName = useProductName()
@@ -78,7 +79,7 @@ export function MarketingNav({ onNavigate }: { onNavigate: (t: NavTarget) => voi
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle className="mr-1" />
           {loggedIn ? (
-            <PrimaryLink to={DASHBOARD_PATH}>Go to dashboard</PrimaryLink>
+            <PrimaryLink to={dashboardPath}>Go to dashboard</PrimaryLink>
           ) : (
             <>
               <Link to="/login" className="rounded-lg px-3 py-2 text-[13.5px] font-medium text-muted transition-colors hover:text-fg">
@@ -133,7 +134,7 @@ export function MarketingNav({ onNavigate }: { onNavigate: (t: NavTarget) => voi
                   Theme <ThemeToggle />
                 </div>
                 {loggedIn ? (
-                  <PrimaryLink to={DASHBOARD_PATH} className="justify-center">
+                  <PrimaryLink to={dashboardPath} className="justify-center">
                     Go to dashboard
                   </PrimaryLink>
                 ) : (

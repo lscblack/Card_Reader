@@ -48,8 +48,46 @@ Build an APK:
 
 ```bash
 flutter build apk --debug      # build/app/outputs/flutter-apk/app-debug.apk
-flutter build apk --release    # signed with the debug key until you configure signing
+flutter build apk --release    # needs a release keystore, see "Release signing"
 ```
+
+### Release signing
+
+Release APKs must be signed with your own upload/release key. Without one, the build still
+succeeds but falls back to the **debug key** and Gradle prints
+`WARNING: NFC Terminal release build is signed with the DEBUG key …` — never publish such an APK
+(anyone with the public Android debug key could ship an "update" of it).
+
+1. Create a keystore once and keep it (and its passwords) safe — losing it means you can no
+   longer publish updates that install over the existing app:
+
+   ```bash
+   keytool -genkeypair -v -keystore ~/nfc-terminal-release.jks -alias nfc-terminal \
+     -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+2. Either create `mobile/android/key.properties` (git-ignored, like `*.jks`/`*.keystore`, see
+   `android/.gitignore`):
+
+   ```properties
+   # absolute, or relative to mobile/android/ (no trailing comments in .properties values)
+   storeFile=/home/you/nfc-terminal-release.jks
+   storePassword=…
+   keyAlias=nfc-terminal
+   keyPassword=…
+   ```
+
+   or, on CI / the admin build pipeline, set the environment variables `NFC_KEYSTORE_PATH`,
+   `NFC_KEYSTORE_PASSWORD`, `NFC_KEY_ALIAS` and `NFC_KEY_PASSWORD` (`key.properties` wins when both
+   are present).
+
+3. `flutter build apk --release` — check with
+   `apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk` that the
+   certificate is yours and not `CN=Android Debug`.
+
+Release builds only accept `https://` servers (plain `http://` only for `10.0.2.2`, `localhost`,
+`127.0.0.1`): the setup/sign-in forms and pairing/sign-in QR codes reject LAN `http://` URLs with a
+clear message, and the OS network security config blocks them anyway.
 
 **Troubleshooting: "What went wrong: 25.0.3".** The generated project uses Gradle 8.14,
 which cannot run on JDK 25 (the JDK bundled with recent Android Studio). You have two fixes:

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Navigate, useSearchParams } from 'react-router'
+import { useAuth } from '@/auth/context'
 import {
   CheckCircle2,
   CircleSlash,
@@ -17,9 +18,10 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react'
-import type { SandboxEndpoint, SandboxRequest, SignatureStatus } from '@/api/types'
+import type { Application, SandboxEndpoint, SandboxRequest, SignatureStatus } from '@/api/types'
 import { ApiError } from '@/api/client'
 import { useApplications } from '@/hooks/queries'
+import { useBizApps } from '@/business/hooks/queries'
 import { useSandboxEndpoints, useSandboxMutations, useSandboxRequest, useSandboxRequests } from '@/hooks/useConsole'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useNow } from '@/hooks/useNow'
@@ -503,9 +505,23 @@ function RequestStream({ ep }: { ep: SandboxEndpoint }) {
 
 // ---------------------------------------------------------------------------------------------
 
+/** `?business_id=` → a business's sandbox (linked from the business dashboard); otherwise the developer's own. */
+function useSandboxScope() {
+  const [params] = useSearchParams()
+  return params.get('business_id') || null
+}
+
+/** Applications that sandbox endpoints in this scope can verify signatures with / be used for. */
+function useScopeApps(): { data: Application[] | undefined } {
+  const businessId = useSandboxScope()
+  const dev = useApplications()
+  const biz = useBizApps(businessId ?? '', !!businessId)
+  return businessId ? biz : dev
+}
+
 function EndpointHeader({ ep }: { ep: SandboxEndpoint }) {
   const toast = useToast()
-  const apps = useApplications()
+  const apps = useScopeApps()
   const m = useSandboxMutations()
   const [useForOpen, setUseForOpen] = useState(false)
   const [appId, setAppId] = useState('')
@@ -679,6 +695,7 @@ function EndpointHeader({ ep }: { ep: SandboxEndpoint }) {
 
 function CreateEndpointModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: string) => void }) {
   const { create } = useSandboxMutations()
+  const businessId = useSandboxScope()
   const [name, setName] = useState('')
   const [appId, setAppId] = useState('')
   return (
@@ -696,7 +713,7 @@ function CreateEndpointModal({ open, onClose, onCreated }: { open: boolean; onCl
             disabled={!name.trim()}
             onClick={async () => {
               try {
-                const ep = await create.mutateAsync({ name: name.trim(), application_id: appId || null })
+                const ep = await create.mutateAsync({ body: { name: name.trim(), application_id: appId || null }, businessId })
                 setName('')
                 onCreated(ep.id)
                 onClose()
@@ -727,7 +744,7 @@ function CreateEndpointModal({ open, onClose, onCreated }: { open: boolean; onCl
 }
 
 function AppOptions() {
-  const apps = useApplications()
+  const apps = useScopeApps()
   return (
     <>
       {apps.data?.map((a) => (
@@ -740,19 +757,32 @@ function AppOptions() {
 }
 
 export default function SandboxPage() {
+  const { user } = useAuth()
+  const businessId = useSandboxScope()
+  const endpoint = useSearchParams()[0].get('endpoint')
+  // Business accounts have no developer-scoped sandbox (creating one is refused): open their business's sandbox.
+  const bizDefault = !businessId && user?.account_type === 'business' && user.role !== 'admin' ? user.memberships?.[0]?.business_id : undefined
+  if (bizDefault) return <Navigate to={`/dashboard/sandbox?business_id=${encodeURIComponent(bizDefault)}${endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : ''}`} replace />
+  return <SandboxWorkspace />
+}
+
+function SandboxWorkspace() {
   useDocumentTitle('Sandbox')
-  const { data, isLoading, error, refetch } = useSandboxEndpoints()
-  const apps = useApplications()
+  const businessId = useSandboxScope()
+  const { data, isLoading, error, refetch } = useSandboxEndpoints(businessId)
+  const apps = useScopeApps()
   const [params, setParams] = useSearchParams()
   const [creating, setCreating] = useState(false)
   const selectedId = params.get('endpoint')
   const ep = data?.find((e) => e.id === selectedId) ?? data?.[0]
-  const select = (id: string) => setParams({ endpoint: id }, { replace: true })
+  // Keep ?business_id= (the scope) when switching endpoints.
+  const scope: Record<string, string> = businessId ? { business_id: businessId } : {}
+  const select = (id: string) => setParams({ ...scope, endpoint: id }, { replace: true })
 
   // Keep the URL pointing at a real endpoint after deletes.
   useEffect(() => {
-    if (data && selectedId && !data.some((e) => e.id === selectedId)) setParams({}, { replace: true })
-  }, [data, selectedId, setParams])
+    if (data && selectedId && !data.some((e) => e.id === selectedId)) setParams(businessId ? { business_id: businessId } : {}, { replace: true })
+  }, [data, selectedId, setParams, businessId])
 
   const linkedApp = apps.data?.find((a) => a.id === ep?.application_id)
   useTour('developer.sandbox', developerSandboxTour, { ready: !!ep })

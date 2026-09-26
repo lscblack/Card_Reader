@@ -16,20 +16,27 @@ class NfcRipple extends StatefulWidget {
 class _NfcRippleState extends State<NfcRipple> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
 
+  bool _reduce = false;
+
+  /// Reduced motion: static rings (a still frame of the ripple) instead of the loop.
+  void _sync() {
+    final run = widget.active && !_reduce;
+    if (run && !_c.isAnimating) _c.repeat();
+    if (!run && _c.isAnimating) _c.stop();
+    if (!run) _c.value = widget.active ? 0.45 : 0;
+  }
+
   @override
-  void initState() {
-    super.initState();
-    if (widget.active) _c.repeat();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    _sync();
   }
 
   @override
   void didUpdateWidget(covariant NfcRipple old) {
     super.didUpdateWidget(old);
-    if (widget.active && !_c.isAnimating) _c.repeat();
-    if (!widget.active && _c.isAnimating) {
-      _c.stop();
-      _c.value = 0;
-    }
+    _sync();
   }
 
   @override

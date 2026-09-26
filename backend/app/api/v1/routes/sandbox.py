@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query, Request, Response
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import ClientDep, CurrentUser, PaginationDep, SessionDep, load_business_context
+from app.api.deps import ClientDep, CurrentUser, PaginationDep, SessionDep, ensure_developer_account, load_business_context, platform_only
 from app.core.errors import AppError, not_found, validation_error
 from app.core.security import decrypt_secret
 from app.models import Application, SandboxEndpoint, SandboxRequest, User
@@ -30,7 +30,7 @@ from app.services.resources_validation import validate_response_headers
 from app.services.serializers import application_out_single
 from app.services.url_validation import host_matches_allowlist
 
-router = APIRouter(prefix="/sandbox", tags=["Sandbox"])
+router = APIRouter(prefix="/sandbox", tags=["Sandbox"], dependencies=platform_only)
 
 
 async def first_app_sandbox(session: AsyncSession, user: User) -> SandboxEndpoint | None:
@@ -88,6 +88,8 @@ async def list_endpoints(user: CurrentUser, session: SessionDep, request: Reques
 async def create_endpoint(body: SandboxEndpointIn, user: CurrentUser, session: SessionDep, request: Request,
                           business_id: uuid.UUID | None = Query(default=None)) -> SandboxEndpointOut:
     await _scope(session, user, business_id, request)
+    if business_id is None:
+        ensure_developer_account(user)
     await _check_app(session, user, None, business_id, body.application_id)
     endpoint = sandbox_service.new_endpoint(user.id, body.name.strip(), business_id, body.application_id)
     endpoint.response_status = body.response_status

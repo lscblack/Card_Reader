@@ -3,10 +3,11 @@ import {
   useId,
   type InputHTMLAttributes,
   type ReactNode,
-  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
 import { cn } from '@/lib/cn'
+
+export { Select, type SelectProps } from './Select'
 
 const control =
   'w-full rounded-lg border border-border-strong bg-surface px-3 text-sm text-fg placeholder:text-subtle shadow-xs transition-colors ' +
@@ -25,17 +26,6 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   ref,
 ) {
   return <textarea ref={ref} className={cn(control, 'min-h-[80px] py-2', className)} {...rest} />
-})
-
-export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select(
-  { className, children, ...rest },
-  ref,
-) {
-  return (
-    <select ref={ref} className={cn(control, 'h-9 pr-8', className)} {...rest}>
-      {children}
-    </select>
-  )
 })
 
 export interface FieldProps {

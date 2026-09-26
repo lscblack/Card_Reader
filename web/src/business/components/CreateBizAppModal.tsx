@@ -8,7 +8,7 @@ import type { CreateApplicationResponse, DeliveryMode } from '@/api/types'
 import { bizAppsApi } from '../api/integrations'
 import { useBusiness } from '../hooks/context'
 import { useBizMutation } from '../hooks/queries'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { FormError } from './BizError'
 
 /** `POST /businesses/{id}/applications` — the caller shows the one-time secrets. */
@@ -48,7 +48,7 @@ export function CreateBizAppModal({ onClose, onCreated }: { onClose: () => void;
       }
     >
       <form id="new-biz-app" onSubmit={submit} className="space-y-4" noValidate>
-        <FormError error={create.error && !Object.keys(errs).length ? create.error : null} />
+        <FormError error={formLevelError(create.error, ['description', 'endpoint_url', 'name'])} />
         <Field label="Name" error={errs.name}>
           {(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="POS loyalty integration" data-autofocus />}
         </Field>

@@ -21,6 +21,7 @@ import type { PersonalSession, Visibility } from '../api/types'
 import { sessionsApi } from '../api/personal'
 import { usePMutation, useSessions } from '../hooks/queries'
 import { VisibilityToggle } from '../components/editorBits'
+import { PasswordCard } from '@/components/PasswordCard'
 
 interface PrivacyDefaults {
   phones: Visibility
@@ -29,6 +30,21 @@ interface PrivacyDefaults {
   auto_exchange: boolean
 }
 const DEFAULTS: PrivacyDefaults = { phones: 'contacts', emails: 'contacts', address: 'hidden', auto_exchange: true }
+
+/** Stored as `preferences.personal_defaults = { visibility: {...}, share_settings: {...} }` (the shape the backend reads). */
+interface StoredDefaults {
+  visibility?: Partial<Record<'phones' | 'emails' | 'address', Visibility>>
+  share_settings?: { auto_exchange?: boolean }
+}
+function readDefaults(raw: unknown): PrivacyDefaults {
+  const d = (raw ?? {}) as StoredDefaults
+  return {
+    phones: d.visibility?.phones ?? DEFAULTS.phones,
+    emails: d.visibility?.emails ?? DEFAULTS.emails,
+    address: d.visibility?.address ?? DEFAULTS.address,
+    auto_exchange: typeof d.share_settings?.auto_exchange === 'boolean' ? d.share_settings.auto_exchange : DEFAULTS.auto_exchange,
+  }
+}
 
 function ProfileForm() {
   const { user, setUser } = useAuth()
@@ -60,7 +76,7 @@ function ProfileForm() {
           <Field label="Phone" optional>
             {(p) => <Input {...p} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+14155550123" />}
           </Field>
-          <Field label="Email" hint="Change it from your account security settings.">
+          <Field label="Email" hint="Contact support to change the email address of your account.">
             {(p) => <Input {...p} value={user?.email ?? ''} disabled />}
           </Field>
         </CardBody>
@@ -78,7 +94,10 @@ function Sessions() {
   const now = useNow()
   const toast = useToast()
   const onError = useErrorToast()
-  const { data, error, isLoading, refetch } = useSessions()
+  const sessions = useSessions()
+  const { error, isLoading, refetch } = sessions
+  // The API also lists revoked sessions (with `revoked_at`); only phones still signed in belong here.
+  const data = sessions.data?.filter((s) => !s.revoked_at)
   const [target, setTarget] = useState<PersonalSession | null>(null)
   const revoke = usePMutation((id: string) => sessionsApi.revoke(id))
   return (
@@ -135,10 +154,10 @@ function Privacy() {
   const { user, setUser } = useAuth()
   const toast = useToast()
   const onError = useErrorToast()
-  const stored = (user?.preferences?.personal_defaults ?? {}) as Partial<PrivacyDefaults>
-  const [p, setP] = useState<PrivacyDefaults>({ ...DEFAULTS, ...stored })
+  const stored = readDefaults(user?.preferences?.personal_defaults)
+  const [p, setP] = useState<PrivacyDefaults>(stored)
   const [saving, setSaving] = useState(false)
-  const dirty = JSON.stringify(p) !== JSON.stringify({ ...DEFAULTS, ...stored })
+  const dirty = JSON.stringify(p) !== JSON.stringify(stored)
   return (
     <Card>
       <CardHeader title="Privacy defaults" description="Used for new cards. You can change each card’s visibility in the editor." />
@@ -171,7 +190,11 @@ function Privacy() {
           onClick={async () => {
             setSaving(true)
             try {
-              setUser(await preferencesApi.patch({ personal_defaults: p }))
+              const personal_defaults: StoredDefaults = {
+                visibility: { phones: p.phones, emails: p.emails, address: p.address },
+                share_settings: { auto_exchange: p.auto_exchange },
+              }
+              setUser(await preferencesApi.patch({ personal_defaults }))
               toast.success('Privacy defaults saved')
             } catch (e) {
               onError(e)
@@ -191,9 +214,10 @@ export default function SettingsPage() {
   useDocumentTitle('Settings')
   return (
     <>
-      <PageHeader title="Settings" description="Your profile, signed-in phones and privacy defaults." />
+      <PageHeader title="Settings" description="Your profile, password, signed-in phones and privacy defaults." />
       <div className="space-y-6">
         <ProfileForm />
+        <PasswordCard />
         <Sessions />
         <Privacy />
       </div>

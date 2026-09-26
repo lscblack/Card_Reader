@@ -17,6 +17,8 @@ function SettingsForm({ s }: { s: PlatformSettings }) {
   const toast = useToast()
   const [dev, setDev] = useState(s.signups_enabled.developer)
   const [biz, setBiz] = useState(s.signups_enabled.business)
+  const personalWas = s.signups_enabled.personal ?? true
+  const [personal, setPersonal] = useState(personalWas)
   const [retention, setRetention] = useState(String(s.request_log_retention_days))
   const [reqs, setReqs] = useState(String(s.default_rate_limit.requests))
   const [windowS, setWindowS] = useState(String(s.default_rate_limit.window_seconds))
@@ -29,17 +31,18 @@ function SettingsForm({ s }: { s: PlatformSettings }) {
   const errors = {
     retention: !Number.isInteger(retentionN) || retentionN < 1 || retentionN > 3650 ? 'Between 1 and 3650 days.' : null,
     reqs: !Number.isInteger(reqsN) || reqsN < 1 ? 'At least 1.' : null,
-    window: !Number.isInteger(windowN) || windowN < 1 || windowN > 86400 ? '1 – 86400 seconds.' : null,
+    window: !Number.isInteger(windowN) || windowN < 1 || windowN > 3600 ? '1 – 3600 seconds.' : null,
   }
   const next: PlatformSettings = {
-    signups_enabled: { developer: dev, business: biz },
+    signups_enabled: { developer: dev, business: biz, personal },
     request_log_retention_days: retentionN,
     default_rate_limit: { requests: reqsN, window_seconds: windowN },
     maintenance_message: maint.trim() || null,
   }
-  const dirty = JSON.stringify(next) !== JSON.stringify({ ...s, maintenance_message: s.maintenance_message ?? null })
+  const baseline: PlatformSettings = { ...s, signups_enabled: { developer: s.signups_enabled.developer, business: s.signups_enabled.business, personal: personalWas }, maintenance_message: s.maintenance_message ?? null }
+  const dirty = JSON.stringify(next) !== JSON.stringify(baseline)
   const invalid = Object.values(errors).some(Boolean)
-  const risky = (!dev && s.signups_enabled.developer) || (!biz && s.signups_enabled.business) || retentionN < s.request_log_retention_days || (!!maint.trim() && !s.maintenance_message)
+  const risky = (!dev && s.signups_enabled.developer) || (!biz && s.signups_enabled.business) || (!personal && personalWas) || retentionN < s.request_log_retention_days || (!!maint.trim() && !s.maintenance_message)
 
   async function save() {
     try {
@@ -66,6 +69,7 @@ function SettingsForm({ s }: { s: PlatformSettings }) {
           {[
             { label: 'Developer sign-ups', v: dev, set: setDev },
             { label: 'Business sign-ups', v: biz, set: setBiz },
+            { label: 'Personal sign-ups', v: personal, set: setPersonal },
           ].map((r) => (
             <li key={r.label} className="flex items-center justify-between px-4 py-3 sm:px-5">
               <span className="text-[13.5px] font-medium">{r.label}</span>

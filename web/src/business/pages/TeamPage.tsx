@@ -24,7 +24,7 @@ import { teamApi } from '../api/team'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBizMutation, useInvitations, useMembers } from '../hooks/queries'
 import { useErrorToast } from '../hooks/useErrorToast'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { GRANTABLE_PERMISSIONS, PERMISSION_LABELS, ROLES, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLE_PERMISSIONS } from '../lib/permissions'
 import { Avatar, RoleBadge } from '../components/bits'
 import { BizErrorState, FormError } from '../components/BizError'
@@ -132,7 +132,7 @@ function InviteForm({ onInvited }: { onInvited: (i: Invitation) => void }) {
   }
   return (
     <form onSubmit={submit} className="space-y-3" noValidate>
-      <FormError error={invite.error && !Object.keys(errs).length ? invite.error : null} />
+      <FormError error={formLevelError(invite.error, ['email'])} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Field label="Email" error={errs.email ?? (bad ? 'Enter a valid email address.' : null)} className="min-w-0 flex-1">
           {(p) => <Input {...p} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colleague@company.com" />}

@@ -132,9 +132,11 @@ class _SetupScreenState extends State<SetupScreen> {
                     Row(
                       children: [
                         const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('or enter an API key', style: t.labelMedium),
+                        Flexible(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('or enter an API key', style: t.labelMedium, textAlign: TextAlign.center),
+                          ),
                         ),
                         const Expanded(child: Divider()),
                       ],

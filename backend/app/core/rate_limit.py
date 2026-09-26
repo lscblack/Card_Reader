@@ -56,7 +56,12 @@ def client_ip(request: Request) -> str:
     if settings.TRUST_PROXY_HEADERS:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            # Proxies append the address they received the request from, so only the right-most
+            # TRUSTED_PROXY_HOPS entries are trustworthy; the left-most one is whatever the client sent.
+            hops = [part.strip() for part in forwarded.split(",") if part.strip()]
+            if hops:
+                return hops[-max(1, settings.TRUSTED_PROXY_HOPS)] if len(hops) >= settings.TRUSTED_PROXY_HOPS \
+                    else hops[0]
         real_ip = request.headers.get("x-real-ip")
         if real_ip:
             return real_ip.strip()
@@ -112,6 +117,56 @@ def bucket_for(request: Request) -> tuple[str, int, int] | None:
         except jwt.PyJWTError:
             pass
     return f"ip:{ip}", limit, window
+
+
+def ip_bucket_for(request: Request) -> tuple[str, int, int] | None:
+    """The per-IP bucket every non-exempt request also counts against (see RATE_LIMIT_IP_MULTIPLIER)."""
+    path = request.url.path
+    if request.method == "OPTIONS" or path.startswith(EXEMPT_PREFIXES):
+        return None
+    if not path.startswith(("/api/", "/t/", "/downloads/", "/sandbox/")):
+        return None
+    limit, window = _default_limit()
+    return f"any:ip:{client_ip(request)}", limit * max(1, settings.RATE_LIMIT_IP_MULTIPLIER), window
+
+
+def _email_key(email: str) -> str:
+    return f"nfc:rl:login-fail:{_hash(email.strip().lower())}"
+
+
+async def login_blocked(email: str) -> int | None:
+    """Seconds to wait when this email has too many recent failed sign-ins (any IP); None otherwise/fail open."""
+    key = _email_key(email)
+    window_ms = settings.LOGIN_FAILURE_WINDOW_SECONDS * 1000
+    now_ms = int(time.time() * 1000)
+    try:
+        redis = get_redis()
+        await redis.zremrangebyscore(key, 0, now_ms - window_ms)
+        if await redis.zcard(key) < settings.LOGIN_FAILURES_PER_EMAIL:
+            return None
+        oldest = await redis.zrange(key, 0, 0, withscores=True)
+        oldest_ms = int(oldest[0][1]) if oldest else now_ms
+        return max(1, math.ceil((oldest_ms + window_ms - now_ms) / 1000))
+    except Exception:
+        return None
+
+
+async def record_login_failure(email: str) -> None:
+    key = _email_key(email)
+    now_ms = int(time.time() * 1000)
+    try:
+        redis = get_redis()
+        await redis.zadd(key, {f"{now_ms}-{secrets.token_hex(4)}": now_ms})
+        await redis.pexpire(key, settings.LOGIN_FAILURE_WINDOW_SECONDS * 1000)
+    except Exception:
+        pass
+
+
+async def clear_login_failures(email: str) -> None:
+    try:
+        await get_redis().delete(_email_key(email))
+    except Exception:
+        pass
 
 
 async def hit(bucket: str, limit: int, window: int) -> RateLimitResult | None:

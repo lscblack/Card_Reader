@@ -11,6 +11,17 @@ from app.schemas.common import Schema, UTCDateTime
 from app.schemas.resources import DeviceOut, PlanOut
 
 Role = Literal["owner", "admin", "manager", "staff"]
+# Unique per business; also the default badge id / Code-128 barcode value (printable ASCII).
+EMPLOYEE_NUMBER_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,31}$"
+
+
+def _safe_link(value: str | None) -> str | None:
+    """Links shown on public pages / vCards: no javascript:, data: or other non-web schemes."""
+    from app.services.url_validation import unsafe_url_scheme
+
+    if value is not None and unsafe_url_scheme(value):
+        raise ValueError("must be an http(s) URL")
+    return value
 
 
 # ── Registration / auth additions ───────────────────────────────────────
@@ -30,6 +41,11 @@ class BusinessRegistrationIn(Schema):
         if not v.isalpha():
             raise ValueError("country must be an ISO-3166 alpha-2 code")
         return v.upper()
+
+    @field_validator("website")
+    @classmethod
+    def _website(cls, v: str | None) -> str | None:
+        return _safe_link(v)
 
 
 class MembershipOut(Schema):
@@ -88,6 +104,11 @@ class BusinessUpdateIn(Schema):
     address: str | None = Field(default=None, max_length=500)
     settings: dict[str, Any] | None = None
 
+    @field_validator("website")
+    @classmethod
+    def _website(cls, v: str | None) -> str | None:
+        return _safe_link(v)
+
 
 class BusinessMeOut(Schema):
     role: Role
@@ -115,6 +136,15 @@ class SocialLink(Schema):
     platform: str = Field(min_length=1, max_length=32)
     url: str = Field(min_length=1, max_length=2048)
 
+    @field_validator("url")
+    @classmethod
+    def _http_url(cls, value: str) -> str:
+        # Rendered as a link on the public employee page: only http(s) (no javascript:/data: URLs).
+        value = value.strip()
+        if not value.lower().startswith(("https://", "http://")) or len(value) < 11 or any(c.isspace() for c in value):
+            raise ValueError("must be an http(s) URL")
+        return value
+
 
 class EmployeeOut(Schema):
     id: uuid.UUID
@@ -138,6 +168,7 @@ class EmployeeOut(Schema):
     last_tap_at: UTCDateTime | None
     created_at: UTCDateTime
     digital_card: dict[str, Any] | None = None  # Part 4 §6
+    employee_number: str | None = None  # Part 5 §4
 
 
 class EmployeeIn(Schema):
@@ -149,6 +180,7 @@ class EmployeeIn(Schema):
     email: str | None = Field(default=None, max_length=320)
     social_links: list[SocialLink] = Field(default_factory=list, max_length=20)
     profile_published: bool | None = None
+    employee_number: str | None = Field(default=None, max_length=32, pattern=EMPLOYEE_NUMBER_PATTERN)
 
 
 class EmployeeUpdateIn(Schema):
@@ -160,6 +192,7 @@ class EmployeeUpdateIn(Schema):
     email: str | None = Field(default=None, max_length=320)
     social_links: list[SocialLink] | None = Field(default=None, max_length=20)
     profile_published: bool | None = None
+    employee_number: str | None = Field(default=None, max_length=32, pattern=EMPLOYEE_NUMBER_PATTERN)
 
 
 class CustomerOut(Schema):
@@ -323,6 +356,7 @@ class ProfileUpdateIn(Schema):
 # ── Team ────────────────────────────────────────────────────────────────
 class MemberOut(Schema):
     id: uuid.UUID
+    business_id: uuid.UUID
     user_id: uuid.UUID
     full_name: str
     email: str

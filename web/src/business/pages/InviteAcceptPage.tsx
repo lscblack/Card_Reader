@@ -12,6 +12,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { dateTime } from '@/lib/format'
 import { useMutation } from '@tanstack/react-query'
 import { inviteApi } from '../api/team'
+import { businessApi } from '../api/business'
 import { bk } from '../hooks/queries'
 import { formatError } from '../lib/errors'
 import { ROLE_DESCRIPTIONS, ROLE_LABELS } from '../lib/permissions'
@@ -32,10 +33,12 @@ export default function InviteAcceptPage() {
   })
   const accept = useMutation({
     mutationFn: () => inviteApi.accept(token),
-    onSuccess: async (res) => {
-      await qc.invalidateQueries({ queryKey: bk.list })
+    onSuccess: async () => {
+      // The accept response is the new membership (no business id): find the business just joined by name.
+      const list = await qc.fetchQuery({ queryKey: bk.list, queryFn: businessApi.list, staleTime: 0 }).catch(() => [])
+      const joined = list.filter((b) => b.name === inv.data?.business_name)
       toast.success(`Welcome to ${inv.data?.business_name ?? 'the team'}!`)
-      navigate(res?.business_id ? `/business/${res.business_id}` : '/business', { replace: true })
+      navigate(joined.length === 1 ? `/business/${joined[0].id}` : '/business', { replace: true })
     },
   })
   const next = encodeURIComponent(`/invite/${token}`)

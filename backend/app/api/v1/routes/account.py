@@ -9,7 +9,7 @@ from typing import Literal
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, PaginationDep, SessionDep
+from app.api.deps import CurrentUser, PaginationDep, SessionDep, PlatformUser
 from app.models import ApiKey, Application, AuditLog, NfcEvent, Plan, Promotion, UsageDaily
 from app.schemas.common import Schema
 from pydantic import Field
@@ -34,7 +34,7 @@ router = APIRouter(tags=["Account"])
 
 
 @router.get("/overview", response_model=OverviewOut, tags=["Account"], summary="Dashboard overview")
-async def overview(user: CurrentUser, session: SessionDep) -> OverviewOut:
+async def overview(user: PlatformUser, session: SessionDep) -> OverviewOut:
     today = datetime.now(UTC).date()
     month_start, month_end = usage.month_bounds()
     events_today = (await usage.events_in_range(session, user.id, today, today + timedelta(days=1)))[0]
@@ -70,7 +70,7 @@ async def overview(user: CurrentUser, session: SessionDep) -> OverviewOut:
 
 @router.get("/usage", response_model=UsageOut, tags=["Usage & billing"], summary="Usage for the current period")
 async def get_usage(
-    user: CurrentUser, session: SessionDep, days: int = Query(default=30, ge=1, le=365)
+    user: PlatformUser, session: SessionDep, days: int = Query(default=30, ge=1, le=365)
 ) -> UsageOut:
     sub = await plan_service.get_subscription(session, user)
     plan = sub.plan

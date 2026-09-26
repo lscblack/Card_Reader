@@ -51,7 +51,13 @@ class RetryQueue {
     required this.delivery,
     required this.configProvider,
     DateTime Function()? clock,
-  }) : _now = clock ?? DateTime.now;
+  }) : _now = clock ?? DateTime.now {
+    _createdAt = _now().toUtc();
+  }
+
+  /// A `pending` event older than this without an attempt in flight was abandoned (the app
+  /// was killed mid-delivery). Longer than the slowest attempt (endpoint timeout + API timeout).
+  static const stalePending = Duration(minutes: 5);
 
   final EventRepository repository;
   final DeliveryService delivery;
@@ -60,6 +66,7 @@ class RetryQueue {
   final DeviceConfig? Function() configProvider;
   final DateTime Function() _now;
 
+  late final DateTime _createdAt;
   Timer? _timer;
   bool _running = false;
   bool _rerun = false;
@@ -76,19 +83,25 @@ class RetryQueue {
     _timer = null;
   }
 
-  /// Processes everything due now, then re-arms the timer.
+  Completer<void>? _pass;
+
+  /// Processes everything due now, then re-arms the timer. While a pass is running, another
+  /// pass is scheduled right after it and the returned future waits for both (so callers such
+  /// as [retryNow] only continue once their event was actually attempted).
   Future<void> kick() async {
     if (!_started) return;
     if (_running) {
       _rerun = true;
-      return;
+      return _pass?.future;
     }
     _running = true;
+    final pass = _pass = Completer<void>();
     try {
       do {
         _rerun = false;
         final config = configProvider();
         if (config == null) break;
+        await _recoverStalePending();
         await delivery.flushReports();
         for (final e in await repository.dueForRetry(_now())) {
           if (!_started) break;
@@ -99,7 +112,32 @@ class RetryQueue {
       Log.e('retry', 'retry pass failed', e);
     } finally {
       _running = false;
-      await _arm();
+      try {
+        await _arm();
+      } finally {
+        pass.complete();
+      }
+    }
+  }
+
+  /// Events stay `pending` only while their first attempt runs. If the process died during it
+  /// (e.g. a background read, then Android killed the app), nothing would ever send them: they
+  /// are not `queued` and history pruning keeps them forever. Re-queue those left over from a
+  /// previous run (older than this queue) or stuck for [stalePending]. Relay resubmits are
+  /// idempotent (Idempotency-Key = event_id).
+  Future<void> _recoverStalePending() async {
+    final now = _now().toUtc();
+    for (final e in await repository.list(status: EventStatus.pending, limit: 1000)) {
+      final updated = e.updatedAt.toUtc();
+      final stale = updated.isBefore(_createdAt) || now.difference(updated) > stalePending;
+      if (!stale || delivery.isInFlight(e.eventId)) continue;
+      final fresh = await repository.get(e.eventId); // may have finished meanwhile
+      if (fresh == null || fresh.status != EventStatus.pending || delivery.isInFlight(e.eventId)) continue;
+      await repository.upsert(fresh.copyWith(
+        status: EventStatus.queued,
+        lastError: () => fresh.lastError ?? 'Interrupted before it was sent — retrying',
+        nextAttemptAt: () => now,
+      ));
     }
   }
 

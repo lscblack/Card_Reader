@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useParams } from 'react-router'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -116,6 +116,8 @@ function Attempt({ a }: { a: LiveDeliveryAttempt }) {
 }
 
 function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
+  // Inside the business dashboard the sandbox is the business's one (/dashboard/sandbox?business_id=…).
+  const { businessId } = useParams()
   const r = t.received
   const card = r?.card_id ?? t.business?.card_id
   return (
@@ -158,7 +160,7 @@ function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
           <span className={s.checks_failed ? 'text-red-400' : 'text-zinc-400'}>
             {s.checks_failed ? `${s.checks_failed} failed check${s.checks_failed === 1 ? '' : 's'}` : 'all checks passed'}
           </span>
-          <Link to={`/dashboard/sandbox?endpoint=${s.endpoint_id}`} className="text-zinc-400 underline-offset-2 hover:text-white hover:underline">
+          <Link to={`/dashboard/sandbox?${businessId ? `business_id=${businessId}&` : ''}endpoint=${s.endpoint_id}`} className="text-zinc-400 underline-offset-2 hover:text-white hover:underline">
             inspect →
           </Link>
         </p>

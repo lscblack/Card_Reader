@@ -142,7 +142,7 @@ function FieldControl({
           case 'select':
             return (
               <Select {...p} value={sv || String(field.default ?? '')} onChange={(e) => onChange(e.target.value)}>
-                {!field.required && <option value="">—</option>}
+                {!field.required ? <option value="">—</option> : !sv && field.default == null && <option value="" disabled>Select…</option>}
                 {(field.options ?? []).map(optionOf).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -335,7 +335,11 @@ export function ActionConfigurator({
     if (t === value?.type) return
     const d = available.find((x) => x.type === t)
     const config: Record<string, unknown> = {}
-    for (const f of d?.fields ?? []) if (f.default !== undefined) config[f.name] = f.default
+    for (const f of d?.fields ?? []) {
+      if (f.default !== undefined) config[f.name] = f.default
+      // A required select without a server default would *display* its first option without sending it.
+      else if (f.type === 'select' && f.required && f.options?.length) config[f.name] = optionOf(f.options[0]).value
+    }
     onChange({ type: t, config })
   }
 

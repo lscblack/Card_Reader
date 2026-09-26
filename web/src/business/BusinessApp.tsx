@@ -21,6 +21,7 @@ const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'))
 const IntegrationAppPage = lazy(() => import('./pages/IntegrationAppPage'))
 const TeamPage = lazy(() => import('./pages/TeamPage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
@@ -60,6 +61,7 @@ export default function BusinessApp() {
         <Route path="team" element={page(<TeamPage />)} />
         <Route path="billing" element={page(<BillingPage />)} />
         <Route path="settings" element={page(<SettingsPage />)} />
+        <Route path="notifications" element={page(<NotificationsPage />)} />
         <Route path="*" element={page(<NotFound />)} />
       </Route>
     </Routes>

@@ -1,0 +1,64 @@
+# Example nginx server block for the web dashboard (static SPA built with `npm run build`).
+#
+# Replace:
+#   app.example.com          → the dashboard host
+#   https://api.example.com  → the backend origin (same value as VITE_API_BASE_URL at build time)
+#   /srv/nfc-web/dist        → where you copied web/dist
+#
+# The script-src hash allows the small inline theme script in index.html (applied before first paint).
+# If you edit that script, recompute it:
+#   python3 -c "import re,hashlib,base64;s=open('dist/index.html').read();print(base64.b64encode(hashlib.sha256(re.search(r'<script>(.*?)</script>',s,re.S).group(1).encode()).digest()).decode())"
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name app.example.com;
+
+    # ssl_certificate     /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
+
+    root /srv/nfc-web/dist;
+    index index.html;
+
+    # ---- Security headers (sent on every response, including errors) ----
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-KM28Fz67+vxK7qrZyr35byUu+c+xZxvs1xvObknyagU='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.example.com; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+
+    # Hashed build assets: cache forever.
+    location /assets/ {
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        # add_header in a location drops the server-level ones, so repeat them here.
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-KM28Fz67+vxK7qrZyr35byUu+c+xZxvs1xvObknyagU='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.example.com; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    }
+
+    # SPA fallback: every client-side route (/dashboard/…, /b/…, /p/…) serves index.html; never cache it.
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-KM28Fz67+vxK7qrZyr35byUu+c+xZxvs1xvObknyagU='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.example.com; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+    }
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+}
+
+server {
+    listen 80;
+    server_name app.example.com;
+    return 301 https://$host$request_uri;
+}

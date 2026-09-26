@@ -56,11 +56,16 @@ const statusTone: Record<EventStatus, Tone> = {
   pending: 'neutral',
   retrying: 'warning',
   failed: 'danger',
+  logged: 'info',
 }
 
 export function EventStatusBadge({ status }: { status: EventStatus }) {
   return (
-    <Badge tone={statusTone[status] ?? 'neutral'} dot>
+    <Badge
+      tone={statusTone[status] ?? 'neutral'}
+      dot
+      title={status === 'logged' ? 'Recorded only — no endpoint is configured, so nothing was delivered. This is not an error.' : undefined}
+    >
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </Badge>
   )

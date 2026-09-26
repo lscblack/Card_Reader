@@ -16,5 +16,6 @@ export const teamApi = {
 
 export const inviteApi = {
   get: (token: string) => request<PublicInvitation>('GET', `/invitations/${encodeURIComponent(token)}`, { auth: false }),
-  accept: (token: string) => api.post<{ business_id?: string } | null>(`/invitations/${encodeURIComponent(token)}/accept`),
+  /** Returns the new membership (`MemberOut`); it doesn't include the business id. */
+  accept: (token: string) => api.post<unknown>(`/invitations/${encodeURIComponent(token)}/accept`),
 }

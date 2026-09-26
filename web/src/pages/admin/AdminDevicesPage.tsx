@@ -43,7 +43,7 @@ export default function AdminDevicesPage() {
         <div className="flex flex-col gap-2 border-b border-border px-4 py-3 sm:flex-row sm:px-5">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-subtle" />
-            <Input aria-label="Search devices" placeholder="Search device, owner or business" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" />
+            <Input aria-label="Search devices" placeholder="Search device name or model" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" />
           </div>
           <Select aria-label="Connectivity" value={online} onChange={(e) => { setOnline(e.target.value); setPage(1) }} className="sm:w-36">
             <option value="">Online + offline</option>

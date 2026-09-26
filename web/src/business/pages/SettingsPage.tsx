@@ -20,7 +20,7 @@ import { businessApi } from '../api/business'
 import { useBusiness, useCan } from '../hooks/context'
 import { bk, useBizMutation, useCategories } from '../hooks/queries'
 import { useErrorToast } from '../hooks/useErrorToast'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { SLUG_RE, isE164, normalizePhone } from '../lib/format'
 import { FormError } from '../components/BizError'
 import { ImageUpload } from '../components/inputs'
@@ -130,7 +130,7 @@ function InfoForm() {
           }
         />
         <CardBody className="space-y-5">
-          <FormError error={save.error && !Object.keys(errs).length && !slugTaken ? save.error : null} />
+          <FormError error={slugTaken ? null : formLevelError(save.error, ['address', 'category', 'country', 'description', 'email', 'name', 'phone', 'slug', 'website'])} />
           <ImageUpload
             name={business.name}
             src={business.logo_url}

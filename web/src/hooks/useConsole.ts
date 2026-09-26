@@ -16,7 +16,8 @@ export const useRequestLogs = (f: RequestLogFilters, refetchInterval: number | f
 
 // ---------- Sandbox ----------
 
-export const useSandboxEndpoints = () => useQuery({ queryKey: ['sandbox'], queryFn: sandboxApi.list })
+export const useSandboxEndpoints = (businessId?: string | null) =>
+  useQuery({ queryKey: ['sandbox', 'endpoints', businessId ?? ''], queryFn: () => sandboxApi.list(businessId) })
 
 export const useSandboxRequests = (endpointId: string | undefined, page: number, live: boolean) =>
   useQuery({
@@ -34,7 +35,7 @@ export function useSandboxMutations() {
   const qc = useQueryClient()
   const inv = () => qc.invalidateQueries({ queryKey: ['sandbox'] })
   return {
-    create: useMutation({ mutationFn: (b: SandboxEndpointInput) => sandboxApi.create(b), onSuccess: inv }),
+    create: useMutation({ mutationFn: ({ body, businessId }: { body: SandboxEndpointInput; businessId?: string | null }) => sandboxApi.create(body, businessId), onSuccess: inv }),
     update: useMutation({ mutationFn: ({ id, body }: { id: string; body: SandboxEndpointInput }) => sandboxApi.update(id, body), onSuccess: inv }),
     remove: useMutation({ mutationFn: (id: string) => sandboxApi.remove(id), onSuccess: inv }),
     clear: useMutation({ mutationFn: (id: string) => sandboxApi.clear(id), onSuccess: inv }),
@@ -43,6 +44,7 @@ export function useSandboxMutations() {
       onSuccess: () => {
         void inv()
         void qc.invalidateQueries({ queryKey: ['applications'] })
+        void qc.invalidateQueries({ queryKey: ['biz'] })
       },
     }),
     sendTest: useMutation({ mutationFn: (id: string) => sandboxApi.sendTest(id), onSettled: inv }),

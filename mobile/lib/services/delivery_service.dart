@@ -36,7 +36,9 @@ Map<String, Object?> buildEndpointPayload({
     'technologies': event.technologies,
     'type': event.cardType,
   },
-  'security': {'authenticated': false, 'level': event.digitalCardToken == null ? 'uid_only' : 'signed_token'},
+  // The phone can't verify digital-card tokens, so direct mode never claims `signed_token`
+  // (Part 4 §9: that level means platform-verified); `digital_card.verified` is false.
+  'security': {'authenticated': false, 'level': 'uid_only'},
   'device_id': config.deviceId,
   'application_id': config.applicationId,
   'delivery_mode': mode.name,

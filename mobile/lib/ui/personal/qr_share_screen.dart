@@ -36,6 +36,7 @@ class QrShareScreen extends StatefulWidget {
 
 class _QrShareScreenState extends State<QrShareScreen> {
   String? _exchange;
+  bool _exchangeFailed = false;
   Timer? _timer;
   bool _public = false;
 
@@ -60,14 +61,27 @@ class _QrShareScreenState extends State<QrShareScreen> {
         payload = await p.api!.exchangeQr(widget.card.id);
       } catch (_) {}
     }
-    if (mounted) setState(() => _exchange = payload);
+    if (mounted) {
+      setState(() {
+        // Keep the last good code on a transient failure (it stays valid for 10 minutes).
+        if (payload != null && payload.isNotEmpty) _exchange = payload;
+        _exchangeFailed = payload == null || payload.isEmpty;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final url = widget.card.publicUrl;
-    final data = _public ? url : _exchange;
+    final webOn = widget.card.shareSettings.webPageEnabled;
+    final data = _public ? (webOn && url != null && url.isNotEmpty ? url : null) : _exchange;
+    // Instead of an endless spinner: say why there is no code.
+    final String? unavailable = data != null
+        ? null
+        : _public
+        ? (webOn ? 'This card has no public link yet.' : 'Your public web page is off. Turn it on in My Card settings.')
+        : (_exchangeFailed ? 'Could not create an exchange code. Check your connection and try again.' : null);
     return Scaffold(
       appBar: AppBar(title: const Text('Share with QR')),
       body: ListView(
@@ -86,9 +100,29 @@ class _QrShareScreenState extends State<QrShareScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-              child: data == null
-                  ? const SizedBox(width: 240, height: 240, child: Center(child: CircularProgressIndicator()))
-                  : QrImageView(key: const Key('shareQr'), data: data, size: 240, backgroundColor: Colors.white),
+              child: data != null
+                  ? QrImageView(key: const Key('shareQr'), data: data, size: 240, backgroundColor: Colors.white)
+                  : SizedBox(
+                      width: 240,
+                      height: 240,
+                      child: Center(
+                        child: unavailable == null
+                            ? const CircularProgressIndicator()
+                            : Column(mainAxisSize: MainAxisSize.min, children: [
+                                Text(
+                                  unavailable,
+                                  key: const Key('qrUnavailable'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.black87),
+                                ),
+                                if (!_public)
+                                  TextButton(
+                                    onPressed: _refresh,
+                                    child: const Text('Try again'),
+                                  ),
+                              ]),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 16),
@@ -100,12 +134,12 @@ class _QrShareScreenState extends State<QrShareScreen> {
             textAlign: TextAlign.center,
             style: t.bodyMedium,
           ),
-          if (_public && url != null) ...[
+          if (_public && data != null) ...[
             const SizedBox(height: 12),
-            SelectableText(url, textAlign: TextAlign.center, style: t.bodySmall),
+            SelectableText(data, textAlign: TextAlign.center, style: t.bodySmall),
             TextButton.icon(
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: url));
+                await Clipboard.setData(ClipboardData(text: data));
                 if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
               },
               icon: const Icon(Icons.copy),

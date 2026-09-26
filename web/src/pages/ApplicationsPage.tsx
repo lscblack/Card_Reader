@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AppWindow, Globe, Plus, Smartphone } from 'lucide-react'
+import { AppWindow, Globe, Smartphone } from 'lucide-react'
 import { useApplications } from '@/hooks/queries'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { dateOnly } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { ActiveBadge, Badge } from '@/components/ui/Badge'
 import { EmptyState, ErrorState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Spinner'
-import { CreateApplicationModal } from '@/components/CreateApplicationModal'
+import { CreateApplicationModal, NewApplicationButton } from '@/components/CreateApplicationModal'
 
 export default function ApplicationsPage() {
   useDocumentTitle('Applications')
@@ -23,11 +22,7 @@ export default function ApplicationsPage() {
       <PageHeader
         title="Applications"
         description="Each application has its own API keys, devices, endpoint and signing secret."
-        actions={
-          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>
-            New application
-          </Button>
-        }
+        actions={<NewApplicationButton onCreate={() => setCreating(true)} />}
       />
 
       {error ? (
@@ -50,11 +45,7 @@ export default function ApplicationsPage() {
             icon={AppWindow}
             title="No applications yet"
             description="Create your first application to get an API key and start registering NFC readers."
-            action={
-              <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>
-                Create application
-              </Button>
-            }
+            action={<NewApplicationButton onCreate={() => setCreating(true)} label="Create application" />}
           />
         </Card>
       ) : (

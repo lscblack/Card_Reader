@@ -19,7 +19,7 @@ import type { Action, AssigneeType, Card as NfcCard, CardKind, CardStatus } from
 import { cardsApi } from '../api/cards'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBizMutation, useCards } from '../hooks/queries'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { maskUid } from '../lib/format'
 import { Avatar, CardStatusBadge, FilterBar, FilterSelect, SearchInput } from '../components/bits'
 import { BizErrorState, FormError } from '../components/BizError'
@@ -74,7 +74,7 @@ function CreateCardModal({ open, onClose, kind }: { open: boolean; onClose: () =
       }
     >
       <form id="create-card" onSubmit={submit} className="space-y-4" noValidate>
-        <FormError error={create.error && !Object.keys(errs).length ? create.error : null} />
+        <FormError error={formLevelError(create.error, ['name', 'uid'])} />
         <Field label="Name" error={errs.name} hint={kind === 'tag' ? 'e.g. “Table 4” or “Front window poster”.' : 'e.g. “John’s card”.'}>
           {(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-autofocus />}
         </Field>

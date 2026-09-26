@@ -1,7 +1,68 @@
+import { API_BASE_URL } from '@/api/client'
+
 /** Only allow same-origin relative paths as post-login redirect targets (no open redirects). */
 export function safeNext(raw: string | null): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return '/'
   return raw
+}
+
+// ---------- Rendering user-controlled URLs (public pages, cards, contacts) ----------
+
+const LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:'])
+
+function isRelativePath(v: string): boolean {
+  return v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\')
+}
+
+/**
+ * A stored URL that is safe to use as an `href`: http(s), mailto:, tel: or a same-origin relative path.
+ * Anything else (javascript:, data:, vbscript:, garbage) → null, so callers render plain text instead of a link.
+ */
+export function safeHref(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const v = raw.trim()
+  if (!v) return null
+  if (isRelativePath(v)) return v
+  try {
+    const u = new URL(v)
+    return LINK_SCHEMES.has(u.protocol) ? u.href : null
+  } catch {
+    return null
+  }
+}
+
+function apiOrigin(): string | null {
+  try {
+    return new URL(API_BASE_URL).origin
+  } catch {
+    return null
+  }
+}
+
+/**
+ * A stored image URL that is safe for `<img src>` / CSS: any https URL, http only for the platform's own
+ * uploads (API origin or a `/media/` path), same-origin relative paths, local previews (blob:, data:image/…).
+ */
+export function safeImageUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const v = raw.trim()
+  if (!v) return null
+  if (isRelativePath(v)) return v
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=]+$/i.test(v)) return v
+  try {
+    const u = new URL(v)
+    if (u.protocol === 'https:' || u.protocol === 'blob:') return u.href
+    if (u.protocol === 'http:' && (u.origin === apiOrigin() || u.origin === window.location.origin || u.pathname.startsWith('/media/'))) return u.href
+    return null
+  } catch {
+    return null
+  }
+}
+
+/** `background-image` value for a stored image URL (quoted, validated), or undefined when unsafe/empty. */
+export function cssImage(raw: unknown): string | undefined {
+  const u = safeImageUrl(raw)
+  return u ? `url("${u.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")` : undefined
 }
 
 export interface UrlCheck {

@@ -9,6 +9,7 @@ import '../../services/personal_state.dart';
 import '../widgets/error_ref.dart';
 import 'contact_detail_screen.dart';
 import 'exchange_flow.dart';
+import '../widgets/motion.dart';
 
 /// Contacts collected by exchanges, QR and web leads.
 class ContactsScreen extends StatefulWidget {
@@ -120,7 +121,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                     child: ListView.separated(
                       itemCount: _items.length,
                       separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-                      itemBuilder: (context, i) => _ContactTile(
+                      itemBuilder: (context, i) => StaggeredEntrance(index: i, child: _ContactTile(
                         contact: _items[i],
                         onOpen: () async {
                           await Navigator.of(context).push(MaterialPageRoute<void>(
@@ -128,7 +129,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                           ));
                           await _load();
                         },
-                      ),
+                      )),
                     ),
                   ),
           ),

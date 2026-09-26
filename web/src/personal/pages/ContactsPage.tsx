@@ -20,17 +20,20 @@ import { Avatar, FilterBar, FilterSelect, SearchInput } from '@/business/compone
 import { BizErrorState, FormError } from '@/business/components/BizError'
 import { TagsInput } from '@/business/components/inputs'
 import { useErrorToast } from '@/business/hooks/useErrorToast'
-import type { Contact, ContactSource } from '../api/types'
+import type { Contact, ContactSource, SideId } from '../api/types'
 import { contactsApi, downloadAuthed } from '../api/personal'
-import { useContact, useContacts, usePMutation } from '../hooks/queries'
-import { SOURCE_LABELS } from '../lib/card'
+import { useContact, useContacts, usePMutation, useTemplates } from '../hooks/queries'
+import { SOURCE_LABELS, templateFor } from '../lib/card'
 import { DigitalCardRender } from '../components/DigitalCardRender'
+import { DEFAULT_DESIGN } from '../lib/design'
 
 function slugName(n: string) {
   return n.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'contact'
 }
 
 function ContactDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
+  const templates = useTemplates()
+  const [side, setSide] = useState<SideId>('front')
   const toast = useToast()
   const onError = useErrorToast()
   const { data: c, error, isLoading, refetch } = useContact(id)
@@ -84,7 +87,7 @@ function ContactDrawer({ id, onClose }: { id: string | null; onClose: () => void
             </button>
           </div>
           <div className="mx-auto max-w-[380px]">
-            <DigitalCardRender card={c.card} layout={c.card.layout ?? 'centered'} audience="all" interactive />
+            <DigitalCardRender card={{ ...c.card, design: c.card.design ?? DEFAULT_DESIGN }} layout={c.card.layout ?? 'centered'} template={c.card.design ? templateFor(c.card.template_id, templates.data) : null} side={side} onSideChange={setSide} audience="all" interactive />
           </div>
           <div>
             <p className="mb-1.5 text-[13px] font-medium">Tags</p>
@@ -146,17 +149,15 @@ function AddContactModal({ onClose }: { onClose: () => void }) {
   const [f, setF] = useState({ full_name: '', company: '', job_title: '', email: '', phone: '', notes: '' })
   const create = usePMutation(() =>
     contactsApi.create({
-      card: {
-        fields: {
-          full_name: f.full_name.trim(),
-          company: f.company || null,
-          job_title: f.job_title || null,
-          emails: f.email ? [{ label: 'Email', value: f.email }] : [],
-          phones: f.phone ? [{ label: 'Mobile', value: f.phone }] : [],
-          websites: [],
-          socials: [],
-          custom_links: [],
-        },
+      fields: {
+        full_name: f.full_name.trim(),
+        company: f.company || null,
+        job_title: f.job_title || null,
+        emails: f.email ? [{ label: 'Email', value: f.email }] : [],
+        phones: f.phone ? [{ label: 'Mobile', value: f.phone }] : [],
+        websites: [],
+        socials: [],
+        custom_links: [],
       },
       notes: f.notes || undefined,
     }),
@@ -217,7 +218,7 @@ function Row({ c, onOpen }: { c: Contact; onOpen: () => void }) {
     <li>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/70 sm:px-5">
         {c.card.photo_url ? <Avatar name={f.full_name} src={c.card.photo_url} size={40} /> : (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold text-white" style={{ background: c.card.design.primary }} aria-hidden="true">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold text-white" style={{ background: c.card.design?.primary ?? DEFAULT_DESIGN.primary }} aria-hidden="true">
             {f.full_name.split(/\s+/).map((x) => x[0]).slice(0, 2).join('').toUpperCase()}
           </span>
         )}

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,9 +10,13 @@ import '../../core/error_catalog.dart';
 import '../../data/models/personal.dart';
 import '../../services/personal_state.dart';
 import '../digital_card/card_style.dart';
+import '../card_v2/card_math.dart';
+import '../digital_card/any_card_view.dart';
 import '../digital_card/card_view.dart';
 import '../digital_card/color_picker.dart';
 import '../widgets/error_ref.dart';
+import 'editor_arrange.dart';
+import 'editor_design_v2.dart';
 
 /// Picks (camera/gallery) and crops an image; returns a local file path or null. Mockable.
 typedef ImageSourcePicker = Future<String?> Function(BuildContext context, String kind);
@@ -66,32 +72,104 @@ class CardEditorScreen extends StatefulWidget {
   State<CardEditorScreen> createState() => _CardEditorScreenState();
 }
 
+enum SaveStatus { saved, unsaved, saving, failed }
+
 class _CardEditorScreenState extends State<CardEditorScreen> {
   late DigitalCard _draft = widget.card;
   bool _saving = false;
   bool _dirty = false;
   AppError? _error;
 
-  void _update(DigitalCard c) => setState(() {
-    _draft = c;
-    _dirty = true;
-  });
+  // Undo / redo (text edits of the same field within a second are coalesced).
+  late final List<DigitalCard> _history = [widget.card];
+  int _hIndex = 0;
+  String? _lastKind;
+  DateTime _lastAt = DateTime(0);
 
-  void _fields(Map<String, Object?> patch) => _update(_draft.copyWith(fields: _draft.fields.copyWithJson(patch)));
+  /// Bumped on undo/redo so text fields re-read their initial values.
+  int _revision = 0;
 
-  Future<void> _save() async {
+  // Preview
+  String _side = 'front';
+  String _viewer = 'owner';
+
+  // Autosave
+  static const autosaveDelay = Duration(seconds: 4);
+  Timer? _autosave;
+  bool _saveFailed = false;
+
+  SaveStatus get _status => _saving
+      ? SaveStatus.saving
+      : _saveFailed
+      ? SaveStatus.failed
+      : (_dirty ? SaveStatus.unsaved : SaveStatus.saved);
+
+  @override
+  void dispose() {
+    _autosave?.cancel();
+    super.dispose();
+  }
+
+  void _update(DigitalCard c, {String? kind}) {
+    final now = DateTime.now();
+    setState(() {
+      if (kind != null && kind == _lastKind && now.difference(_lastAt) < const Duration(seconds: 1)) {
+        _history[_hIndex] = c;
+      } else {
+        _history.removeRange(_hIndex + 1, _history.length);
+        _history.add(c);
+        if (_history.length > 60) _history.removeAt(0);
+        _hIndex = _history.length - 1;
+      }
+      _lastKind = kind;
+      _lastAt = now;
+      _draft = c;
+      _dirty = true;
+      _saveFailed = false;
+    });
+    _scheduleAutosave();
+  }
+
+  void _jump(int to) {
+    setState(() {
+      _hIndex = to;
+      _draft = _history[to];
+      _lastKind = null;
+      _dirty = true;
+      _revision++;
+    });
+    _scheduleAutosave();
+  }
+
+  void _scheduleAutosave() {
+    _autosave?.cancel();
+    _autosave = Timer(autosaveDelay, () => _save(silent: true));
+  }
+
+  void _fields(Map<String, Object?> patch) =>
+      _update(_draft.copyWith(fields: _draft.fields.copyWithJson(patch)), kind: 'fields:${patch.keys.join(',')}');
+
+  Future<bool> _save({bool silent = false}) async {
+    _autosave?.cancel();
+    if (_saving) return false;
+    final sent = _draft;
     setState(() {
       _saving = true;
       _error = null;
     });
-    final err = await context.read<PersonalState>().saveCard(_draft);
-    if (!mounted) return;
+    final err = await context.read<PersonalState>().saveCard(sent);
+    if (!mounted) return err == null;
     setState(() {
       _saving = false;
       _error = err;
-      if (err == null) _dirty = false;
+      _saveFailed = err != null;
+      if (err == null && identical(_draft, sent)) _dirty = false;
     });
-    if (err == null) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Card saved ✓')));
+    if (err == null && !silent) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Card saved ✓')));
+    }
+    if (err == null && _dirty) _scheduleAutosave();
+    return err == null;
   }
 
   Future<void> _image(String kind) async {
@@ -133,12 +211,16 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
     });
   }
 
-  Future<bool> _confirmDiscard() async {
+  /// Leaving with changes: save them (autosave semantics); ask only when saving fails.
+  Future<bool> _leave() async {
     if (!_dirty) return true;
+    if (await _save(silent: true)) return true;
+    if (!mounted) return false;
     final r = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Discard changes?'),
+        title: const Text('Changes not saved'),
+        content: const Text('Your latest changes could not be saved. Leave anyway?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep editing')),
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Discard')),
@@ -148,23 +230,129 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
     return r ?? false;
   }
 
+  Widget _statusChip(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (icon, text, color) = switch (_status) {
+      SaveStatus.saved => (Icons.cloud_done_outlined, 'Saved', scheme.onSurfaceVariant),
+      SaveStatus.unsaved => (Icons.edit_outlined, 'Unsaved', scheme.onSurfaceVariant),
+      SaveStatus.saving => (Icons.cloud_upload_outlined, 'Saving…', scheme.primary),
+      SaveStatus.failed => (Icons.cloud_off_outlined, 'Not saved', scheme.error),
+    };
+    return Tooltip(
+      message: 'Changes save automatically',
+      child: Row(
+        key: const Key('saveStatus'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 4),
+          Text(text, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _preview(BuildContext context, CardTemplate template) {
+    final v2 = template.v2;
+    final twoSided = v2 != null && v2.hasBack && _draft.sidesEnabled.contains('back');
+    final card = KeyedSubtree(
+      key: const Key('editorPreview'),
+      child: AnyCardView(
+        card: _draft,
+        template: template,
+        interactive: false,
+        viewer: _viewer,
+        side: twoSided ? _side : 'front',
+        onSideChanged: (s) => setState(() => _side = s),
+        maxPortraitWidth: 170,
+      ),
+    );
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      child: Column(
+        children: [
+          if (v2 != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                children: [
+                  if (twoSided)
+                    TextButton.icon(
+                      key: const Key('previewFlip'),
+                      onPressed: () => setState(() => _side = _side == 'front' ? 'back' : 'front'),
+                      icon: const Icon(Icons.flip, size: 18),
+                      label: Text(_side == 'front' ? 'Front' : 'Back'),
+                    ),
+                  PopupMenuButton<String>(
+                    key: const Key('viewAs'),
+                    tooltip: 'View as',
+                    initialValue: _viewer,
+                    onSelected: (v) => setState(() => _viewer = v),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'owner', child: Text('Me (all but hidden)')),
+                      PopupMenuItem(value: 'contact', child: Text('A contact')),
+                      PopupMenuItem(value: 'public', child: Text('The public')),
+                    ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.visibility_outlined, size: 18),
+                        const SizedBox(width: 4),
+                        Text(switch (_viewer) { 'public' => 'Public', 'contact' => 'Contact', _ => 'Me' }),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: v2 == null
+                ? SingleChildScrollView(padding: const EdgeInsets.all(16), child: card)
+                : InteractiveViewer(
+                    maxScale: 4,
+                    child: Center(child: Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), child: card)),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<PersonalState>();
-    final layout = p.templateFor(_draft.templateId).layout;
+    final template = p.templateFor(_draft.templateId);
+    final v2 = template.v2;
+    final designLocked = _draft.businessLink?.templateLocked ?? false;
+    final screenH = MediaQuery.sizeOf(context).height;
     return PopScope(
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final nav = Navigator.of(context);
-        if (await _confirmDiscard()) nav.pop();
+        if (await _leave()) nav.pop();
       },
       child: DefaultTabController(
-        length: 6,
+        length: 7,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Edit card'),
             actions: [
+              IconButton(
+                key: const Key('undo'),
+                tooltip: 'Undo',
+                onPressed: _hIndex > 0 ? () => _jump(_hIndex - 1) : null,
+                icon: const Icon(Icons.undo),
+              ),
+              IconButton(
+                key: const Key('redo'),
+                tooltip: 'Redo',
+                onPressed: _hIndex < _history.length - 1 ? () => _jump(_hIndex + 1) : null,
+                icon: const Icon(Icons.redo),
+              ),
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilledButton(
@@ -182,6 +370,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                 Tab(text: 'Design'),
                 Tab(text: 'Photos'),
                 Tab(text: 'Details'),
+                Tab(text: 'Arrange'),
                 Tab(text: 'Privacy'),
                 Tab(text: 'Sharing'),
               ],
@@ -189,33 +378,68 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
           ),
           body: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: Row(children: [
+                  _statusChip(context),
+                  const Spacer(),
+                  if (_draft.businessLink != null)
+                    Flexible(
+                      flex: 3,
+                      child: Text(
+                        'Issued by ${_draft.businessLink!.businessName}',
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                ]),
+              ),
               if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: ErrorMessage(_error!)),
               if (_draft.businessLink != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: Text(
-                    'Issued by ${_draft.businessLink!.businessName}. Locked fields${_draft.businessLink!.templateLocked ? ' and design' : ''} are managed by your company.',
+                    'Locked fields${designLocked ? ', design and layout' : ''} are managed by your company.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-              // Live preview
-              Container(
-                height: 250,
-                color: Theme.of(context).colorScheme.surfaceContainerLowest,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: DigitalCardView(key: const Key('editorPreview'), card: _draft, layout: layout, interactive: false),
-                ),
-              ),
+              SizedBox(height: (screenH * 0.3).clamp(170.0, 270.0), child: _preview(context, template)),
               Expanded(
                 child: TabBarView(
                   children: [
-                    _TemplateTab(draft: _draft, templates: p.templates, onChanged: _update),
-                    _DesignTab(draft: _draft, onChanged: _update),
+                    _TemplateTab(
+                      draft: _draft,
+                      templates: p.templates,
+                      templateFor: p.templateFor,
+                      onChanged: (c) {
+                        _side = 'front';
+                        _update(c);
+                      },
+                    ),
+                    v2 != null
+                        ? DesignV2Panel(
+                            card: _draft,
+                            presets: p.presets,
+                            variants: v2.variants,
+                            locked: designLocked,
+                            onChanged: (d) => _update(_draft.copyWith(design: d), kind: 'design'),
+                          )
+                        : _DesignTab(draft: _draft, onChanged: (c) => _update(c, kind: 'design')),
                     _PhotosTab(draft: _draft, busy: _saving, onPick: _image, onRemove: _removeImage),
-                    _FieldsTab(draft: _draft, onFields: _fields),
+                    _FieldsTab(key: ValueKey('fields_$_revision'), draft: _draft, onFields: _fields),
+                    v2 != null
+                        ? ArrangePanel(
+                            card: _draft,
+                            template: v2,
+                            side: _draft.sidesEnabled.contains(_side) ? _side : 'front',
+                            locked: designLocked,
+                            onSide: (s) => setState(() => _side = s),
+                            onChanged: (a, sides) => _update(_draft.copyWith(arrangement: a, sidesEnabled: sides)),
+                          )
+                        : const _ArrangeUnavailable(),
                     _VisibilityTab(draft: _draft, onChanged: _update),
-                    _SharingTab(draft: _draft, onChanged: _update),
+                    _SharingTab(key: ValueKey('sharing_$_revision'), draft: _draft, onChanged: (c) => _update(c, kind: 'sharing')),
                   ],
                 ),
               ),
@@ -227,66 +451,141 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
   }
 }
 
+class _ArrangeUnavailable extends StatelessWidget {
+  const _ArrangeUnavailable();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.dashboard_customize_outlined, size: 40, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(height: 12),
+        const Text(
+          'Pick a Business, ID badge or Minimal template to arrange blocks on the front and back of your card.',
+          textAlign: TextAlign.center,
+        ),
+      ]),
+    ),
+  );
+}
+
 // --------------------------------------------------------------- template --
 
-class _TemplateTab extends StatelessWidget {
-  const _TemplateTab({required this.draft, required this.templates, required this.onChanged});
+class _TemplateTab extends StatefulWidget {
+  const _TemplateTab({required this.draft, required this.templates, required this.templateFor, required this.onChanged});
   final DigitalCard draft;
   final List<CardTemplate> templates;
+  final CardTemplate Function(String id) templateFor;
   final ValueChanged<DigitalCard> onChanged;
 
   @override
+  State<_TemplateTab> createState() => _TemplateTabState();
+}
+
+class _TemplateTabState extends State<_TemplateTab> {
+  static const _cats = [('business', 'Business'), ('badge', 'ID badge'), ('minimal', 'Minimal'), ('classic', 'Classic')];
+  late String _cat = widget.templateFor(widget.draft.templateId).category;
+
+  @override
   Widget build(BuildContext context) {
+    final draft = widget.draft;
     final locked = draft.businessLink?.templateLocked ?? false;
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 220, childAspectRatio: 0.72, crossAxisSpacing: 10, mainAxisSpacing: 10),
-      itemCount: templates.length,
-      itemBuilder: (context, i) {
-        final t = templates[i];
-        final selected = t.id == draft.templateId;
-        final preview = draft.copyWith(design: t.defaultDesign, templateId: t.id);
-        return InkWell(
-          key: Key('template_${t.id}'),
-          borderRadius: BorderRadius.circular(16),
-          onTap: locked ? null : () => onChanged(draft.copyWith(templateId: t.id, design: t.defaultDesign)),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outlineVariant,
-                width: selected ? 3 : 1,
-              ),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: IgnorePointer(
-                      child: FittedBox(
-                        fit: BoxFit.fitWidth,
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: 340,
-                          child: DigitalCardView(card: preview, layout: t.layout, showFields: false, interactive: false),
-                        ),
-                      ),
-                    ),
+    final scheme = Theme.of(context).colorScheme;
+    final list = widget.templates.where((t) => t.category == _cat).toList();
+    final portrait = _cat == 'badge';
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Row(
+            children: [
+              for (final (id, label) in _cats)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    key: Key('cat_$id'),
+                    label: Text(label),
+                    selected: _cat == id,
+                    onSelected: (_) => setState(() => _cat = id),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Row(children: [
-                  Expanded(child: Text(t.name, style: const TextStyle(fontWeight: FontWeight.w600))),
-                  if (t.premium) const Icon(Icons.workspace_premium, size: 16),
-                  if (selected) Icon(Icons.check_circle, size: 18, color: Theme.of(context).colorScheme.primary),
-                ]),
-              ],
-            ),
+            ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: list.isEmpty
+              ? const Center(child: Text('No templates in this category yet.'))
+              : GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: portrait ? 170 : 240,
+                    childAspectRatio: portrait ? 0.56 : (_cat == 'classic' ? 0.72 : 1.3),
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: list.length,
+                  itemBuilder: (context, i) {
+                    final t = list[i];
+                    final selected = t.id == draft.templateId;
+                    final preview = draft.withTemplate(t);
+                    return Semantics(
+                      selected: selected,
+                      button: true,
+                      label: 'Template ${t.name}',
+                      child: InkWell(
+                        key: Key('template_${t.id}'),
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: locked || selected ? null : () => widget.onChanged(preview),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: selected ? scheme.primary : scheme.outlineVariant,
+                              width: selected ? 2.5 : 1,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: IgnorePointer(
+                                  child: t.isV2
+                                      ? Center(child: AnyCardView(card: preview, template: t, thumbnail: true, interactive: false))
+                                      : ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: FittedBox(
+                                            fit: BoxFit.fitWidth,
+                                            alignment: Alignment.topCenter,
+                                            child: SizedBox(
+                                              width: 340,
+                                              child: DigitalCardView(card: preview, layout: t.layout, showFields: false, interactive: false),
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(children: [
+                                Expanded(
+                                  child: Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                                ),
+                                if (t.premium) const Icon(Icons.workspace_premium, size: 16),
+                                if (t.v2?.hasBack ?? false) Icon(Icons.flip, size: 14, color: scheme.onSurfaceVariant),
+                                if (selected) Icon(Icons.check_circle, size: 18, color: scheme.primary),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }
@@ -422,7 +721,7 @@ class _PhotosTab extends StatelessWidget {
 // ----------------------------------------------------------------- fields --
 
 class _FieldsTab extends StatelessWidget {
-  const _FieldsTab({required this.draft, required this.onFields});
+  const _FieldsTab({super.key, required this.draft, required this.onFields});
   final DigitalCard draft;
   final void Function(Map<String, Object?>) onFields;
 
@@ -476,6 +775,36 @@ class _FieldsTab extends StatelessWidget {
         _RowsEditor(key: const Key('rows_custom_links'), title: 'Links', rows: f.customLinks, locked: draft.isLocked('custom_links'),
             labelHint: 'Book a meeting', valueHint: 'https://…', keyboard: TextInputType.url,
             onChanged: (r) => onFields({'custom_links': r.map((e) => e.toJson('label', 'url')).toList()})),
+        if (draft.isV2) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+            child: Text('ID badge', style: Theme.of(context).textTheme.titleSmall),
+          ),
+          text('id_number', 'ID number', f.idNumber, icon: Icons.tag),
+          _DateField(key: const Key('field_valid_from'), label: 'Valid from', value: f.validFrom,
+              locked: draft.isLocked('valid_from'), onChanged: (v) => onFields({'valid_from': v})),
+          _DateField(key: const Key('field_valid_until'), label: 'Valid until', value: f.validUntil,
+              locked: draft.isLocked('valid_until'), onChanged: (v) => onFields({'valid_until': v})),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            child: TextFormField(
+              key: const Key('field_barcode_value'),
+              initialValue: f.barcodeValue ?? '',
+              enabled: !draft.isLocked('barcode_value'),
+              maxLength: 48,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: barcodeValueError,
+              decoration: InputDecoration(
+                labelText: 'Barcode (Code 128)',
+                prefixIcon: const Icon(Icons.view_week_outlined),
+                suffixIcon: draft.isLocked('barcode_value') ? const Icon(Icons.lock_outline, size: 18) : null,
+              ),
+              onChanged: (v) {
+                if (barcodeValueError(v.trim()) == null) onFields({'barcode_value': v.trim().isEmpty ? null : v.trim()});
+              },
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -608,8 +937,13 @@ class _VisibilityTab extends StatelessWidget {
     'websites': 'Websites', 'address': 'Address', 'socials': 'Social profiles', 'custom_links': 'Links',
   };
 
+  static const _badgeLabels = {
+    'id_number': 'ID number', 'valid_from': 'Valid from', 'valid_until': 'Valid until', 'barcode_value': 'Barcode',
+  };
+
   @override
   Widget build(BuildContext context) {
+    final labels = {..._labels, if (draft.isV2) ..._badgeLabels};
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -618,7 +952,7 @@ class _VisibilityTab extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
-        for (final e in _labels.entries)
+        for (final e in labels.entries)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(children: [
@@ -645,7 +979,7 @@ class _VisibilityTab extends StatelessWidget {
 // ---------------------------------------------------------------- sharing --
 
 class _SharingTab extends StatelessWidget {
-  const _SharingTab({required this.draft, required this.onChanged});
+  const _SharingTab({super.key, required this.draft, required this.onChanged});
   final DigitalCard draft;
   final ValueChanged<DigitalCard> onChanged;
 
@@ -745,4 +1079,48 @@ class _SharingTab extends StatelessWidget {
       ],
     );
   }
+}
+
+/// ISO date (YYYY-MM-DD) with a date picker and clear.
+class _DateField extends StatelessWidget {
+  const _DateField({super.key, required this.label, required this.value, required this.onChanged, this.locked = false});
+  final String label;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+    child: InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        enabled: !locked,
+        prefixIcon: const Icon(Icons.event_outlined),
+        suffixIcon: locked
+            ? const Icon(Icons.lock_outline, size: 18)
+            : (value == null
+                  ? null
+                  : IconButton(tooltip: 'Clear', icon: const Icon(Icons.close), onPressed: () => onChanged(null))),
+      ),
+      child: InkWell(
+        onTap: locked
+            ? null
+            : () async {
+                final now = DateTime.now();
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.tryParse(value ?? '') ?? now,
+                  firstDate: DateTime(now.year - 30),
+                  lastDate: DateTime(now.year + 30),
+                );
+                if (picked != null) {
+                  onChanged('${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-'
+                      '${picked.day.toString().padLeft(2, '0')}');
+                }
+              },
+        child: Text(value ?? 'Not set'),
+      ),
+    ),
+  );
 }

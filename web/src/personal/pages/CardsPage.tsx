@@ -18,7 +18,7 @@ import { useErrorToast } from '@/business/hooks/useErrorToast'
 import type { CardTemplate, DigitalCard } from '../api/types'
 import { cardsApi } from '../api/personal'
 import { usePCards, usePMutation, useTemplates } from '../hooks/queries'
-import { layoutFor, renderableOf } from '../lib/card'
+import { renderableOf, templateFor } from '../lib/card'
 import { CardThumb } from '../components/DigitalCardRender'
 import { TemplateGallery } from '../components/TemplateGallery'
 
@@ -27,7 +27,10 @@ function NewCardModal({ onClose, sample }: { onClose: () => void; sample?: Digit
   const toast = useToast()
   const [label, setLabel] = useState('')
   const [tpl, setTpl] = useState<CardTemplate | null>(null)
-  const create = usePMutation(() => cardsApi.create({ label: label.trim() || 'New card', template_id: tpl?.id }))
+  // Copy the details from the primary card (not from a business-issued one — its fields belong to the company).
+  const create = usePMutation(() =>
+    cardsApi.create({ label: label.trim() || 'New card', template_id: tpl?.id, ...(sample && !sample.business_link ? { fields: sample.fields } : {}) }),
+  )
   return (
     <Modal
       open
@@ -78,7 +81,7 @@ function CardTile({ card, onDelete }: { card: DigitalCard; onDelete: () => void 
   return (
     <Card className="flex flex-col overflow-hidden">
       <Link to={`/me/cards/${card.id}`} className="block bg-surface-2/50 p-3" aria-label={`Edit ${card.label}`}>
-        <CardThumb card={renderableOf(card)} layout={layoutFor(card.template_id, templates.data)} audience="public" qrValue={card.public_url} maxHeight={300} />
+        <CardThumb card={renderableOf(card)} template={templateFor(card.template_id, templates.data)} audience="public" qrValue={card.public_url} maxHeight={300} />
       </Link>
       <div className="flex items-start gap-2 border-t border-border px-4 py-3">
         <div className="min-w-0 flex-1">

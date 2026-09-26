@@ -47,7 +47,7 @@ export function HeldCards({ cards, assignee, kindPath = 'cards' }: { cards: Card
                 <Nfc className="h-4 w-4 shrink-0 text-subtle" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13.5px] font-medium">{c.name}</span>
-                  <span className="block font-mono text-[11.5px] text-subtle">{c.uid_masked ?? 'Not programmed'}</span>
+                  <span className="block font-mono text-[11.5px] text-subtle">{c.uid_masked ?? (c.public_code ? `Code ${c.public_code}` : c.kind === 'tag' ? 'NFC tag' : 'NFC card')}</span>
                 </span>
                 <CardStatusBadge status={c.effective_status} />
               </Link>

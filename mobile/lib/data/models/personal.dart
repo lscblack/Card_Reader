@@ -3,10 +3,16 @@ library;
 
 import 'dart:convert';
 
+import 'template_v2.dart';
+
 Map<String, dynamic> _map(Object? o) => o is Map ? o.cast<String, dynamic>() : <String, dynamic>{};
 List<Map<String, dynamic>> _maps(Object? o) =>
     o is List ? o.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList() : [];
 String? _str(Object? o) => o is String && o.isNotEmpty ? o : null;
+
+extension _Let<T> on T {
+  R let<R>(R Function(T) f) => f(this);
+}
 
 class CardDesign {
   const CardDesign({
@@ -19,9 +25,33 @@ class CardDesign {
     this.font = 'sans',
     this.cornerRadius = 20,
     this.showQr = false,
+    this.secondary,
+    this.photoShape,
+    this.photoRing,
+    this.iconStyle,
+    this.decorStyle,
+    this.backgroundImageOpacity,
   });
 
   final String primary, background, text, accent;
+
+  // Part 5 (design v2) — null when the server didn't send them (v1 designs): never sent back then,
+  // so v1 PATCHes stay valid on servers that don't know these keys.
+  final String? secondary;
+
+  /// circle | rounded | square | hexagon
+  final String? photoShape;
+  final bool? photoRing;
+
+  /// filled | outline | none
+  final String? iconStyle;
+  final String? decorStyle;
+
+  /// 0–0.8: the cover image drawn over the whole card background.
+  final double? backgroundImageOpacity;
+
+  static const photoShapes = ['circle', 'rounded', 'square', 'hexagon'];
+  static const iconStyles = ['filled', 'outline', 'none'];
 
   /// solid | gradient | glass | pattern
   final String backgroundStyle;
@@ -44,8 +74,17 @@ class CardDesign {
       font: _str(j['font']) ?? 'sans',
       cornerRadius: ((j['corner_radius'] as num?)?.toInt() ?? 20).clamp(0, 32),
       showQr: j['show_qr'] as bool? ?? false,
+      secondary: _str(j['secondary']),
+      photoShape: photoShapes.contains(j['photo_shape']) ? j['photo_shape'] as String : null,
+      photoRing: j['photo_ring'] as bool?,
+      iconStyle: iconStyles.contains(j['icon_style']) ? j['icon_style'] as String : null,
+      decorStyle: _str(j['decor_style']),
+      backgroundImageOpacity: (j['background_image_opacity'] as num?)?.toDouble().clamp(0.0, 0.8),
     );
   }
+
+  /// Defaults of a v2 template over this design (switching template: its defaults win).
+  bool get hasV2 => secondary != null || photoShape != null || iconStyle != null;
 
   Map<String, Object?> toJson() => {
     'primary': primary,
@@ -57,6 +96,12 @@ class CardDesign {
     'font': font,
     'corner_radius': cornerRadius,
     'show_qr': showQr,
+    'secondary': ?secondary,
+    'photo_shape': ?photoShape,
+    'photo_ring': ?photoRing,
+    'icon_style': ?iconStyle,
+    if (decorStyle != null || hasV2) 'decor_style': decorStyle,
+    'background_image_opacity': ?backgroundImageOpacity,
   };
 
   CardDesign copyWith({
@@ -69,6 +114,12 @@ class CardDesign {
     String? font,
     int? cornerRadius,
     bool? showQr,
+    String? secondary,
+    String? photoShape,
+    bool? photoRing,
+    String? iconStyle,
+    String? Function()? decorStyle,
+    double? backgroundImageOpacity,
   }) => CardDesign(
     primary: primary ?? this.primary,
     background: background ?? this.background,
@@ -79,7 +130,27 @@ class CardDesign {
     font: font ?? this.font,
     cornerRadius: cornerRadius ?? this.cornerRadius,
     showQr: showQr ?? this.showQr,
+    secondary: secondary ?? this.secondary,
+    photoShape: photoShape ?? this.photoShape,
+    photoRing: photoRing ?? this.photoRing,
+    iconStyle: iconStyle ?? this.iconStyle,
+    decorStyle: decorStyle != null ? decorStyle() : this.decorStyle,
+    backgroundImageOpacity: backgroundImageOpacity ?? this.backgroundImageOpacity,
   );
+
+  /// Fills the v2 keys (for a card switching to a v2 template) without dropping explicit values.
+  CardDesign withV2Defaults() => copyWith(
+    secondary: secondary ?? '#1F2937',
+    photoShape: photoShape ?? 'circle',
+    photoRing: photoRing ?? true,
+    iconStyle: iconStyle ?? 'filled',
+    backgroundImageOpacity: backgroundImageOpacity ?? 0,
+  );
+
+  /// Only the v1 keys (for a card switching back to a v1 template).
+  CardDesign v1Only() => CardDesign(
+    primary: primary, background: background, text: text, accent: accent, backgroundStyle: backgroundStyle,
+    pattern: pattern, font: font, cornerRadius: cornerRadius, showQr: showQr);
 }
 
 /// `{label, value}` / `{label, url}` / `{platform, url}` rows.
@@ -110,10 +181,26 @@ class CardFields {
     this.address,
     this.socials = const [],
     this.customLinks = const [],
+    this.idNumber,
+    this.validFrom,
+    this.validUntil,
+    this.barcodeValue,
   });
 
   final String fullName;
   final String? pronouns, headline, jobTitle, company, department, bio, address;
+
+  /// Part 5 badge fields (ISO dates for valid_from / valid_until).
+  final String? idNumber, validFrom, validUntil, barcodeValue;
+
+  static const badgeKeys = ['id_number', 'valid_from', 'valid_until', 'barcode_value'];
+
+  /// True when `valid_until` is before [today] (date only).
+  bool isExpired(DateTime today) {
+    final d = DateTime.tryParse(validUntil ?? '');
+    if (d == null) return false;
+    return DateTime(d.year, d.month, d.day).isBefore(DateTime(today.year, today.month, today.day));
+  }
   final List<LabeledValue> phones, emails, websites, socials, customLinks;
 
   static const keys = [
@@ -137,10 +224,16 @@ class CardFields {
       address: _str(j['address']),
       socials: LabeledValue.list(j['socials'], 'platform', 'url'),
       customLinks: LabeledValue.list(j['custom_links'], 'label', 'url'),
+      idNumber: _str(j['id_number']),
+      validFrom: _str(j['valid_from']),
+      validUntil: _str(j['valid_until']),
+      barcodeValue: _str(j['barcode_value']),
     );
   }
 
-  Map<String, Object?> toJson() => {
+  /// [badge]: always include the badge keys (v2 cards, so they can be cleared); otherwise only
+  /// when set, so v1 PATCHes stay valid on servers without Part 5.
+  Map<String, Object?> toJson({bool badge = false}) => {
     'full_name': fullName,
     'pronouns': pronouns,
     'headline': headline,
@@ -154,9 +247,13 @@ class CardFields {
     'address': address,
     'socials': socials.map((e) => e.toJson('platform', 'url')).toList(),
     'custom_links': customLinks.map((e) => e.toJson('label', 'url')).toList(),
+    if (badge || idNumber != null) 'id_number': idNumber,
+    if (badge || validFrom != null) 'valid_from': validFrom,
+    if (badge || validUntil != null) 'valid_until': validUntil,
+    if (badge || barcodeValue != null) 'barcode_value': barcodeValue,
   };
 
-  CardFields copyWithJson(Map<String, Object?> patch) => CardFields.fromJson({...toJson(), ...patch});
+  CardFields copyWithJson(Map<String, Object?> patch) => CardFields.fromJson({...toJson(badge: true), ...patch});
 
   String get subtitle => [
     ?jobTitle,
@@ -233,8 +330,22 @@ class FieldVisibility {
     'custom_links': 'public', 'phones': 'contacts', 'emails': 'contacts', 'address': 'hidden',
   };
 
+  /// Part 5 badge fields.
+  static const badgeDefaults = <String, String>{
+    'id_number': 'contacts', 'barcode_value': 'contacts', 'valid_until': 'public', 'valid_from': 'public',
+  };
+
   static Map<String, String> parse(Object? json) =>
-      {...defaults, ..._map(json).map((k, v) => MapEntry(k, v.toString()))};
+      {...defaults, ...badgeDefaults, ..._map(json).map((k, v) => MapEntry(k, v.toString()))};
+
+  /// Viewer levels for rendering: `owner` (hides `hidden`), `contact`, `public`, or `all`
+  /// (snapshot already filtered by the server).
+  static bool visibleTo(String? v, String viewer) => switch (viewer) {
+    'public' => (v ?? 'public') == 'public',
+    'contact' => v != 'hidden',
+    'owner' => v != 'hidden',
+    _ => true,
+  };
 }
 
 class DigitalCard {
@@ -257,7 +368,30 @@ class DigitalCard {
     this.businessLink,
     this.stats = const {},
     this.raw = const {},
+    this.designVersion = 1,
+    this.sidesEnabled = const ['front'],
+    this.arrangement = const {},
   });
+
+  /// Part 5: 2 when the template is a v2 (shape) template.
+  final int designVersion;
+
+  /// `["front"]` or `["front","back"]`.
+  final List<String> sidesEnabled;
+
+  /// `{side: {zoneId: [blockId]}}`; empty → the template default.
+  final Map<String, Map<String, List<String>>> arrangement;
+
+  bool get isV2 => designVersion == 2;
+
+  static Map<String, Map<String, List<String>>> parseArrangement(Object? json) => {
+    for (final side in _map(json).entries)
+      if (side.value is Map)
+        side.key: {
+          for (final z in _map(side.value).entries)
+            if (z.value is List) z.key: (z.value as List).whereType<String>().toList(),
+        },
+  };
 
   final String id;
   final String shareId;
@@ -299,19 +433,29 @@ class DigitalCard {
       businessLink: BusinessLink.fromJson(j['business_link']),
       stats: _map(j['stats']).map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
       raw: j,
+      designVersion: (j['design_version'] as num?)?.toInt() == 2 ? 2 : 1,
+      sidesEnabled: (j['sides_enabled'] as List?)?.whereType<String>().where((s) => s == 'front' || s == 'back').toList()
+          .let((l) => l.isEmpty ? const ['front'] : l) ?? const ['front'],
+      arrangement: parseArrangement(j['arrangement']),
     );
   }
 
   /// Body for `PATCH /personal/cards/{id}` (editable parts only; locked fields left out).
   Map<String, Object?> toPatch() {
-    final f = fields.toJson()..removeWhere((k, _) => isLocked(k));
+    final f = fields.toJson(badge: isV2)..removeWhere((k, _) => isLocked(k));
+    final templateLocked = businessLink?.templateLocked ?? false;
     return {
       'label': label,
-      if (!(businessLink?.templateLocked ?? false)) 'template_id': templateId,
-      if (!(businessLink?.templateLocked ?? false)) 'design': design.toJson(),
+      if (!templateLocked) 'template_id': templateId,
+      if (!templateLocked) 'design': (isV2 ? design : design.v1Only()).toJson(),
       'fields': f,
-      'visibility': visibility,
+      // Badge visibility keys only for v2 cards (servers without Part 5 reject unknown keys).
+      'visibility': isV2
+          ? visibility
+          : ({...visibility}..removeWhere((k, _) => FieldVisibility.badgeDefaults.containsKey(k))),
       'share_settings': shareSettings.toJson(),
+      if (isV2 && !templateLocked) 'sides_enabled': sidesEnabled,
+      if (isV2 && arrangement.isNotEmpty) 'arrangement': arrangement,
     };
   }
 
@@ -326,6 +470,9 @@ class DigitalCard {
     String? Function()? photoUrl,
     String? Function()? coverUrl,
     String? Function()? logoUrl,
+    int? designVersion,
+    List<String>? sidesEnabled,
+    Map<String, Map<String, List<String>>>? arrangement,
   }) => DigitalCard(
     id: id,
     shareId: shareId,
@@ -345,7 +492,27 @@ class DigitalCard {
     businessLink: businessLink,
     stats: stats,
     raw: raw,
+    designVersion: designVersion ?? this.designVersion,
+    sidesEnabled: sidesEnabled ?? this.sidesEnabled,
+    arrangement: arrangement ?? this.arrangement,
   );
+
+  /// Switches to [t] (editor): the template's default design; for v2 templates the current
+  /// arrangement is mapped onto the new zones (Part 5 §2), else the template default is used.
+  DigitalCard withTemplate(CardTemplate t) {
+    final v2 = t.v2;
+    if (v2 == null) {
+      return copyWith(templateId: t.id, design: t.defaultDesign.v1Only(), designVersion: 1,
+          arrangement: const {}, sidesEnabled: const ['front']);
+    }
+    return copyWith(
+      templateId: t.id,
+      design: t.defaultDesign.withV2Defaults(),
+      designVersion: 2,
+      arrangement: isV2 && arrangement.isNotEmpty ? v2.mapFrom(arrangement) : v2.resolve(null),
+      sidesEnabled: v2.sides,
+    );
+  }
 
   String toCacheJson() => jsonEncode(raw.isEmpty ? {'id': id, 'share_id': shareId} : raw);
 }
@@ -361,7 +528,19 @@ class CardTemplate {
     this.supportsCover = false,
     this.supportsLogo = false,
     this.premium = false,
+    this.v2,
+    this.raw = const {},
   });
+
+  /// Server JSON (offline cache).
+  final Map<String, dynamic> raw;
+
+  /// Part 5 shape template (`engine: "v2"`); null for v1 layout templates.
+  final TemplateV2? v2;
+  bool get isV2 => v2 != null;
+
+  /// business | badge | minimal (v2) or `classic` (v1 layout templates).
+  String get category => v2?.category ?? 'classic';
 
   final String id, name, description;
 
@@ -386,6 +565,8 @@ class CardTemplate {
       supportsCover: s['cover'] as bool? ?? false,
       supportsLogo: s['logo'] as bool? ?? false,
       premium: j['premium'] as bool? ?? false,
+      v2: TemplateV2.fromJson(j),
+      raw: j,
     );
   }
 

@@ -23,7 +23,7 @@ from app.core.security import decrypt_secret, new_nonce, sign_payload
 from app.models import Application, Delivery, NfcEvent
 from app.schemas.common import _iso_z
 from app.services import usage
-from app.services.url_validation import InvalidEndpointURL, url_matches_allowlist, validate_endpoint_url
+from app.services.url_validation import InvalidEndpointURL, pin_url, resolve_endpoint_url, url_matches_allowlist
 
 logger = logging.getLogger("app.delivery")
 
@@ -224,9 +224,10 @@ async def _send_signed(
 ) -> AttemptResult:
     """One signed POST. Never raises; never follows redirects."""
     try:
-        await validate_endpoint_url(url)
+        _, pinned_ip = await resolve_endpoint_url(url)
     except InvalidEndpointURL as exc:
         return AttemptResult(success=False, error=f"invalid_endpoint_url: {exc}")
+    target, extensions = url, {}
 
     raw_body = serialize_body(payload)
     headers = signed_headers(
@@ -237,12 +238,15 @@ async def _send_signed(
         mode="relay",
         custom_headers=custom_headers,
     )
+    if pinned_ip is not None:  # connect to the vetted address only (no second DNS lookup → no rebinding)
+        target, host_header, extensions = pin_url(url, pinned_ip)
+        headers.update(host_header)
     started = time.perf_counter()
     status_code: int | None = None
     try:
         async with asyncio.timeout(timeout_seconds):
             async with get_http_client().stream(
-                "POST", url, content=raw_body, headers=headers, timeout=timeout_seconds
+                "POST", target, content=raw_body, headers=headers, timeout=timeout_seconds, extensions=extensions
             ) as response:
                 status_code = response.status_code
                 latency_ms = int((time.perf_counter() - started) * 1000)
@@ -438,7 +442,8 @@ async def _load_event(session: AsyncSession, event_id: uuid.UUID) -> NfcEvent | 
 async def process_event(session: AsyncSession, event_id: uuid.UUID, now: datetime | None = None) -> bool:
     """Processes one due retry. Returns True if an attempt was made."""
     event = await _load_event(session, event_id)
-    if event is None or event.status != "retrying":
+    if event is None or not (event.status == "retrying"
+                             or (event.status == "pending" and event.delivery_mode == "relay")):
         return False
     now = now or datetime.now(UTC)
     if event.next_attempt_at and event.next_attempt_at > now + timedelta(seconds=1):
@@ -473,9 +478,16 @@ async def process_due(
     return processed
 
 
+# A relay event stays `pending` only while `POST /device/events` makes its first (synchronous, ≤ 30 s) attempt.
+# Older ones were interrupted (process restart/crash between commit and attempt) and would never be delivered.
+PENDING_STALE_AFTER = timedelta(minutes=5)
+
+
 async def recover_orphans(session_factory: async_sessionmaker[AsyncSession], grace_seconds: int = 30) -> int:
-    """Re-queues `retrying` events whose queue entry was lost (Redis outage/crash)."""
-    cutoff = datetime.now(UTC) - timedelta(seconds=grace_seconds)
+    """Re-queues `retrying` events whose queue entry was lost (Redis outage/crash) and relay events stuck in
+    `pending` because their first attempt was interrupted."""
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(seconds=grace_seconds)
     async with session_factory() as session:
         rows = (
             await session.execute(
@@ -484,10 +496,19 @@ async def recover_orphans(session_factory: async_sessionmaker[AsyncSession], gra
                 .limit(500)
             )
         ).all()
-    if not rows:
+        stuck = (
+            await session.execute(
+                select(NfcEvent.id).where(NfcEvent.status == "pending", NfcEvent.delivery_mode == "relay",
+                                          NfcEvent.received_at < now - PENDING_STALE_AFTER)
+                .limit(500)
+            )
+        ).scalars().all()
+    due = {str(r[0]): r[1].timestamp() for r in rows}
+    due.update({str(event_id): now.timestamp() for event_id in stuck})
+    if not due:
         return 0
     redis = get_redis()
-    added = await redis.zadd(QUEUE_KEY, {str(r[0]): r[1].timestamp() for r in rows}, nx=True)
+    added = await redis.zadd(QUEUE_KEY, due, nx=True)
     if added:
         logger.info("Recovered %d orphaned retries", added)
     return int(added)

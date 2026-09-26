@@ -8,6 +8,7 @@ import type {
   CardTemplate,
   Contact,
   ContactFilters,
+  DesignPresets,
   DigitalCard,
   ExchangeQr,
   LeadInput,
@@ -37,12 +38,13 @@ export const cardsApi = {
 
 export const templatesApi = {
   list: () => request<CardTemplate[]>('GET', '/personal/templates', { auth: false }),
+  presets: () => request<DesignPresets>('GET', '/personal/design-presets', { auth: false }),
 }
 
 export const contactsApi = {
   list: (f: ContactFilters) => api.get<Paginated<Contact>>('/personal/contacts', { ...f }),
   get: (id: string) => api.get<Contact>(`/personal/contacts/${id}`),
-  create: (body: { card: { fields: Contact['card']['fields'] }; notes?: string; tags?: string[] }) => api.post<Contact>('/personal/contacts', body),
+  create: (body: { fields: Contact['card']['fields']; notes?: string }) => api.post<Contact>('/personal/contacts', body),
   update: (id: string, body: { notes?: string | null; tags?: string[]; favorite?: boolean }) => api.patch<Contact>(`/personal/contacts/${id}`, body),
   remove: (id: string) => api.delete(`/personal/contacts/${id}`),
 }

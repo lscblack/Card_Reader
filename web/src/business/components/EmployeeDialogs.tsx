@@ -9,7 +9,7 @@ import { employeesApi } from '../api/people'
 import { useBusiness } from '../hooks/context'
 import { useBizMutation, useEmployees } from '../hooks/queries'
 import { useErrorToast } from '../hooks/useErrorToast'
-import { fieldErrorsOf } from '../lib/errors'
+import { fieldErrorsOf, formLevelError } from '../lib/errors'
 import { isE164, normalizePhone } from '../lib/format'
 import { FormError } from './BizError'
 import { ImageUpload, SocialLinksEditor } from './inputs'
@@ -25,14 +25,20 @@ export function EmployeeFormModal({ open, onClose, employee, onCreated }: { open
     last_name: employee?.last_name ?? '',
     position: employee?.position ?? '',
     department: employee?.department ?? '',
+    employee_number: employee?.employee_number ?? '',
     phone: employee?.phone ?? '',
     email: employee?.email ?? '',
     social_links: employee?.social_links ?? [],
   }))
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(employee?.photo_url ?? null)
+  // Set once the employee exists: if the photo upload fails after a successful create, retrying must update that
+  // employee instead of creating a duplicate.
+  const [created, setCreated] = useState<Employee | null>(null)
   const save = useBizMutation(business.id, async (body: EmployeeInput) => {
-    const saved = employee ? await employeesApi.update(business.id, employee.id, body) : await employeesApi.create(business.id, body)
+    const target = employee ?? created
+    const saved = target ? await employeesApi.update(business.id, target.id, body) : await employeesApi.create(business.id, body)
+    if (!target) setCreated(saved)
     if (photo) return employeesApi.uploadPhoto(business.id, saved.id, photo)
     return saved
   })
@@ -48,6 +54,7 @@ export function EmployeeFormModal({ open, onClose, employee, onCreated }: { open
       last_name: f.last_name.trim(),
       position: f.position?.trim() || null,
       department: f.department?.trim() || null,
+      employee_number: f.employee_number?.trim() || null,
       phone: f.phone?.trim() ? normalizePhone(f.phone) : null,
       email: f.email?.trim() || null,
       social_links: (f.social_links ?? []).filter((l) => l.url.trim()),
@@ -79,7 +86,7 @@ export function EmployeeFormModal({ open, onClose, employee, onCreated }: { open
       }
     >
       <form id="employee-form" onSubmit={submit} className="space-y-4" noValidate>
-        <FormError error={save.error && !Object.keys(errs).length ? save.error : null} />
+        <FormError error={formLevelError(save.error, ['department', 'employee_number', 'email', 'first_name', 'last_name', 'phone', 'position'])} />
         <ImageUpload
           name={`${f.first_name} ${f.last_name}`}
           src={preview}
@@ -110,6 +117,9 @@ export function EmployeeFormModal({ open, onClose, employee, onCreated }: { open
                 </datalist>
               </>
             )}
+          </Field>
+          <Field label="Employee number" optional error={errs.employee_number} hint="Used as the ID number and barcode on ID badges.">
+            {(p) => <Input {...p} value={f.employee_number ?? ''} onChange={(e) => set('employee_number', e.target.value)} placeholder="EMP-0042" maxLength={40} className="font-mono" />}
           </Field>
           <Field label="Phone" optional error={errs.phone} hint={phoneWarn}>
             {(p) => <Input {...p} type="tel" value={f.phone ?? ''} onChange={(e) => set('phone', e.target.value)} onBlur={() => f.phone && set('phone', normalizePhone(f.phone))} placeholder="+14155550123" />}

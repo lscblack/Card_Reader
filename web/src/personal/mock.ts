@@ -9,6 +9,7 @@ import type {
   CardDesign,
   CardFields,
   CardTemplate,
+  CardTemplateV1,
   Contact,
   DigitalCard,
   PersonalSession,
@@ -16,6 +17,10 @@ import type {
   VisibilityKey,
 } from './api/types'
 import { DEFAULT_VISIBILITY } from './lib/design'
+import { mapArrangement, resolveArrangement } from './lib/v2'
+import type { Arrangement, BlockId, CardTemplateV2, DesignPresets, SideId } from './api/types'
+// Same JSON the backend seeds (generated together into backend/app/data/card_templates_v2.json).
+import templatesV2Raw from './data/card_templates_v2.json?raw'
 
 type Query = Record<string, string | number | boolean | null | undefined> | undefined
 type Body = Record<string, unknown>
@@ -43,7 +48,7 @@ const DAY = 24 * HOUR
 const rand = (n: number) => Math.floor(rnd() * n)
 const pick = <T,>(xs: T[]): T => xs[rand(xs.length)]
 const WEB = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173'
-const REFS: Record<string, string> = { not_found: 'NFC-2004', validation_error: 'NFC-2001', card_unavailable: 'NFC-6041', plan_limit_reached: 'NFC-7001', field_locked: 'NFC-6043', slug_taken: 'NFC-6002', invalid_login_code: 'NFC-1020' }
+const REFS: Record<string, string> = { invalid_arrangement: 'NFC-6050', not_found: 'NFC-2004', validation_error: 'NFC-2001', card_unavailable: 'NFC-6041', plan_limit_reached: 'NFC-7001', field_locked: 'NFC-6043', slug_taken: 'NFC-6002', invalid_login_code: 'NFC-1020' }
 const ok = (body: unknown, status = 200): RawResponse => ({ status, headers: new Headers(), body })
 const fail = (status: number, code: string, message: string, details: unknown = null): RawResponse => ({
   status,
@@ -62,7 +67,40 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const design = (p: Partial<CardDesign>): CardDesign => ({
   primary: '#b91c1c', background: '#ffffff', text: '#1c1717', accent: '#b91c1c', background_style: 'solid', pattern: null, font: 'sans', corner_radius: 20, show_qr: true, ...p,
 })
-const templates: CardTemplate[] = [
+const templatesV2 = JSON.parse(templatesV2Raw) as CardTemplateV2[]
+
+const presets: DesignPresets = {
+  palettes: [
+    ['crimson_navy', 'Crimson & navy', '#B91C1C', '#1E293B', '#FFFFFF', '#111827', '#B91C1C'],
+    ['crimson_black', 'Crimson & black', '#C8102E', '#141414', '#FFFFFF', '#141414', '#C8102E'],
+    ['gold_black', 'Gold & black', '#C9A227', '#111111', '#FFFFFF', '#1A1A1A', '#C9A227'],
+    ['navy_gold', 'Navy & gold', '#1E3A8A', '#0B1733', '#FFFFFF', '#0F172A', '#D4A017'],
+    ['teal', 'Teal', '#0F766E', '#134E4A', '#FFFFFF', '#0F172A', '#14B8A6'],
+    ['ocean', 'Ocean', '#1D4ED8', '#0C4A6E', '#FFFFFF', '#0F172A', '#0EA5E9'],
+    ['forest', 'Forest', '#15803D', '#14532D', '#FFFFFF', '#052E16', '#65A30D'],
+    ['sunset', 'Sunset', '#EA580C', '#7C2D12', '#FFFFFF', '#1C1917', '#F59E0B'],
+    ['berry', 'Berry', '#BE123C', '#4C0519', '#FFFFFF', '#1F1315', '#E11D48'],
+    ['mono', 'Mono', '#1C1917', '#44403C', '#FFFFFF', '#1C1917', '#57534E'],
+    ['graphite', 'Graphite', '#374151', '#111827', '#F9FAFB', '#111827', '#EF4444'],
+    ['pastel', 'Pastel', '#F472B6', '#A5B4FC', '#FFFBFE', '#312E38', '#F472B6'],
+    ['sand', 'Sand', '#A16207', '#422006', '#FFFBF3', '#292524', '#CA8A04'],
+    ['mint', 'Mint', '#059669', '#064E3B', '#F7FEFB', '#0B2A22', '#10B981'],
+    ['coral', 'Coral', '#F43F5E', '#1F2937', '#FFFFFF', '#1F2937', '#FB7185'],
+    ['midnight', 'Midnight', '#DC2626', '#0B0B12', '#FFFFFF', '#0B0B12', '#F87171'],
+  ].map(([id, name, primary, secondary, background, text, accent]) => ({ id, name, primary, secondary, background, text, accent })),
+  font_pairs: [
+    { id: 'sans', heading: 'Inter', body: 'Inter', style: 'Clean', name: 'Inter' },
+    { id: 'display', heading: 'Space Grotesk', body: 'Inter', style: 'Modern', name: 'Grotesk + Inter' },
+    { id: 'geometric', heading: 'Montserrat', body: 'Inter', style: 'Geometric', name: 'Geometric' },
+    { id: 'elegant', heading: 'Serif', body: 'Inter', style: 'Elegant', name: 'Serif + Inter' },
+    { id: 'serif', heading: 'Serif', body: 'Serif', style: 'Classic', name: 'Classic serif' },
+    { id: 'humanist', heading: 'Optima', body: 'Optima', style: 'Friendly', name: 'Humanist' },
+    { id: 'condensed', heading: 'Condensed', body: 'Inter', style: 'Bold', name: 'Condensed + Inter' },
+    { id: 'mono', heading: 'Mono', body: 'Inter', style: 'Technical', name: 'Mono + Inter' },
+  ],
+}
+
+const templates: CardTemplateV1[] = [
   { id: 'modern', name: 'Modern', description: 'Round photo, centred name and quick actions.', layout: 'centered', default_design: design({}), supports: { photo: true, cover: false, logo: true }, premium: false },
   { id: 'classic', name: 'Classic', description: 'Photo beside your name, clean and left-aligned.', layout: 'left', default_design: design({ primary: '#1f2937', accent: '#b91c1c', font: 'serif', corner_radius: 12 }), supports: { photo: true, cover: false, logo: true }, premium: false },
   { id: 'minimal', name: 'Minimal', description: 'Quiet and typographic.', layout: 'centered', default_design: design({ primary: '#111111', accent: '#57524f', font: 'display', corner_radius: 8, show_qr: false }), supports: { photo: true, cover: false, logo: false }, premium: false },
@@ -86,9 +124,15 @@ const loginCodes = new Map<string, { status: 'pending' | 'used' | 'expired'; exp
 
 const baseFields = (p: Partial<CardFields>): CardFields => ({ full_name: '', phones: [], emails: [], websites: [], socials: [], custom_links: [], ...p })
 
+const findTpl = (id: unknown): CardTemplate | CardTemplateV2 | undefined => templatesV2.find((x) => x.id === id) ?? templates.find((x) => x.id === id)
+
 function makeCard(p: Partial<DigitalCard> & { label: string; template_id: string; fields: CardFields; slug: string }): DigitalCard {
-  const t = templates.find((x) => x.id === p.template_id) ?? templates[0]
+  const t = findTpl(p.template_id) ?? templates[0]
+  const v2 = 'engine' in t && t.engine === 'v2'
   return {
+    design_version: v2 ? 2 : 1,
+    sides_enabled: v2 ? [...(t as CardTemplateV2).sides] : ['front'],
+    arrangement: v2 ? (t as CardTemplateV2).default_arrangement : null,
     id: uuid(),
     share_id: uuid(),
     is_primary: false,
@@ -130,7 +174,7 @@ function seed() {
   seeded = true
   const work = makeCard({
     label: 'Work',
-    template_id: 'modern',
+    template_id: 'diagonal_crimson',
     slug: 'ada-developer',
     is_primary: true,
     fields: baseFields({
@@ -213,7 +257,7 @@ function seed() {
       card_label: null,
       source: type === 'view' ? pick(['nfc', 'qr', 'link']) : null,
       counterpart_name: type === 'exchange' || type === 'lead' ? c.card.fields.full_name : null,
-      description: type === 'terminal_read' ? 'Read by a terminal of Acme Café' : null,
+      detail: type === 'terminal_read' ? 'Read by a terminal of Acme Café' : null,
       created_at: ago(Math.floor(Math.pow(rnd(), 1.4) * 30 * DAY)),
     })
   }
@@ -226,16 +270,12 @@ function seed() {
   )
   invites.push({
     id: uuid(),
-    business_name: 'Acme Café',
-    business_logo_url: null,
-    employee_name: 'Ada Developer',
+    business: { id: uuid(), name: 'Acme Café', logo_url: null, verified: true },
     email: 'dev@example.com',
-    template_id: 'bold',
-    design: { primary: '#991b1b', accent: '#b91c1c' },
-    locked_fields: ['company', 'job_title', 'logo'],
     status: 'pending',
     created_at: ago(1 * DAY),
     expires_at: ago(-6 * DAY),
+    card_id: null,
   })
 }
 
@@ -307,18 +347,21 @@ export function handlePersonalMock(method: string, path: string, q: Query, body:
   seed()
 
   // ---- public ----
-  if (is('GET', '/personal/templates')) return ok(templates)
+  if (is('GET', '/personal/templates')) return ok([...templatesV2, ...templates])
+  if (is('GET', '/personal/design-presets')) return ok(presets)
   if (seg[0] === 'public') {
     const card = cards.find((c) => c.slug === seg[2])
     if (!card || card.status !== 'active' || !card.share_settings.web_page_enabled) return fail(404, 'card_unavailable', 'This card isn’t available.')
     if (is('GET', '/public/p/:slug')) {
       card.stats.views++
-      const t = templates.find((x) => x.id === card.template_id) ?? templates[0]
+      const t = findTpl(card.template_id) ?? templates[0]
       const pub = publicFields(card)
       return ok({
         card: {
           design: card.design,
-          template: { id: t.id, layout: t.layout, name: t.name },
+          template: 'engine' in t && t.engine === 'v2' ? { id: t.id, engine: 'v2', name: t.name } : { id: t.id, layout: (t as CardTemplateV1).layout, name: t.name },
+          arrangement: card.arrangement ?? null,
+          sides_enabled: card.sides_enabled ?? ['front'],
           fields: pub,
           photo_url: (card.visibility.photo ?? 'public') === 'public' ? card.photo_url : null,
           cover_url: card.cover_url,
@@ -384,7 +427,41 @@ export function handlePersonalMock(method: string, path: string, q: Query, body:
         c.public_url = `${WEB}/p/${c.slug}`
       }
       if (typeof body.label === 'string') c.label = body.label
-      if (typeof body.template_id === 'string') c.template_id = body.template_id
+      if (typeof body.template_id === 'string' && body.template_id !== c.template_id) {
+        const nt = findTpl(body.template_id)
+        if (!nt) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.template_id', message: 'Unknown template' }])
+        c.template_id = nt.id
+        if ('engine' in nt && nt.engine === 'v2') {
+          c.design_version = 2
+          c.arrangement = mapArrangement(c.arrangement, nt)
+          c.sides_enabled = [...nt.sides]
+        } else {
+          c.design_version = 1
+        }
+      }
+      if (body.arrangement !== undefined) {
+        const t2 = templatesV2.find((x) => x.id === c.template_id)
+        if (t2 && body.arrangement) {
+          const a = body.arrangement as Arrangement
+          const errs: { field: string; message: string }[] = []
+          const seen = new Set<BlockId>()
+          for (const [side, zones] of Object.entries(a) as [SideId, Record<string, BlockId[]>][]) {
+            for (const [zid, blocks] of Object.entries(zones)) {
+              const z = t2.canvas[side]?.zones.find((x) => x.id === zid)
+              if (!z) { errs.push({ field: `body.arrangement.${side}.${zid}`, message: 'Unknown zone' }); continue }
+              if (blocks.length > z.max_blocks) errs.push({ field: `body.arrangement.${side}.${zid}`, message: `At most ${z.max_blocks} blocks` })
+              for (const bl of blocks) {
+                if (!z.accepts.includes(bl)) errs.push({ field: `body.arrangement.${side}.${zid}`, message: `${bl} isn't allowed here` })
+                if (seen.has(bl)) errs.push({ field: `body.arrangement.${side}.${zid}`, message: `${bl} is used twice` })
+                seen.add(bl)
+              }
+            }
+          }
+          if (errs.length) return fail(422, 'invalid_arrangement', 'The arrangement doesn’t fit this template.', errs)
+          c.arrangement = resolveArrangement(t2, a)
+        } else c.arrangement = null
+      }
+      if (Array.isArray(body.sides_enabled)) c.sides_enabled = (body.sides_enabled as SideId[]).includes('front') ? (body.sides_enabled as SideId[]) : ['front']
       if (body.status === 'active' || body.status === 'inactive') c.status = body.status
       if (body.design) c.design = { ...c.design, ...(body.design as Partial<CardDesign>) }
       if (body.fields) c.fields = { ...c.fields, ...f }
@@ -449,8 +526,8 @@ export function handlePersonalMock(method: string, path: string, q: Query, body:
     return ok(paginate(list, q))
   }
   if (is('POST', '/personal/contacts')) {
-    const card = (body.card ?? {}) as { fields?: Partial<CardFields> }
-    if (!card.fields?.full_name) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.card.fields.full_name', message: 'Field required' }])
+    const card = { fields: body.fields as Partial<CardFields> | undefined }
+    if (!card.fields?.full_name) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.fields', message: 'Field required' }])
     const c: Contact = { id: uuid(), source: 'manual', counterpart_user_id: null, counterpart_card_id: null, card: { design: { ...templates[0].default_design }, layout: 'centered', fields: baseFields(card.fields as CardFields) }, live: false, notes: str(body.notes) || null, tags: (body.tags as string[]) ?? [], favorite: false, met_at: now(), created_at: now(), updated_at: now() }
     contacts.unshift(c)
     return ok(c, 201)
@@ -520,20 +597,21 @@ export function handlePersonalMock(method: string, path: string, q: Query, body:
     }
     if (is('POST', '/personal/business-invites/:id/accept')) {
       inv.status = 'accepted'
-      const t = templates.find((x) => x.id === inv.template_id) ?? templates[0]
+      const t = templates.find((x) => x.id === 'bold') ?? templates[0]
       const base = cards[0]
       const c = makeCard({
-        label: inv.business_name,
+        label: inv.business.name,
         template_id: t.id,
-        slug: uniqueSlug(`${base?.fields.full_name ?? 'me'} ${inv.business_name}`),
-        design: { ...t.default_design, ...(inv.design ?? {}) },
-        fields: { ...(base?.fields ?? baseFields({ full_name: 'Your name' })), company: inv.business_name, job_title: 'Store Manager' },
-        business_link: { business_id: uuid(), business_name: inv.business_name, employee_id: uuid(), locked_fields: inv.locked_fields, template_locked: true, status: 'active' },
+        slug: uniqueSlug(`${base?.fields.full_name ?? 'me'} ${inv.business.name}`),
+        design: { ...t.default_design },
+        fields: { ...(base?.fields ?? baseFields({ full_name: 'Your name' })), company: inv.business.name, job_title: 'Store Manager' },
+        business_link: { business_id: inv.business.id, business_name: inv.business.name, employee_id: uuid(), locked_fields: ['company'], template_locked: true, status: 'active' },
         created_at: now(),
         updated_at: now(),
         stats: { views: 0, nfc_taps: 0, exchanges: 0, leads: 0 },
       })
       cards.push(c)
+      inv.card_id = c.id
       return ok(c)
     }
   }

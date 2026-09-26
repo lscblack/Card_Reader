@@ -267,6 +267,7 @@ function seedAcme(): Db {
       slug,
       status: i === 10 ? 'inactive' : 'active',
       profile_published: i !== 10,
+      employee_number: `EMP-${1001 + i}`,
       digital_card: i === 0 ? { status: 'active', user_email: 'john@acme-cafe.example', accepted_at: ago(12 * DAY) } : i === 3 ? { status: 'invited', user_email: 'sofia@acme-cafe.example', accepted_at: null } : null,
       cards: [],
       total_taps: 0,
@@ -1221,7 +1222,7 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
     if (!e) return fail(404, 'not_found', 'Employee not found')
     if (at('GET', '/employees/:eid')) return ok(e)
     if (at('PATCH', '/employees/:eid')) {
-      for (const f of ['first_name', 'last_name', 'position', 'department', 'phone', 'email', 'social_links'] as const) {
+      for (const f of ['first_name', 'last_name', 'position', 'department', 'phone', 'email', 'social_links', 'employee_number'] as const) {
         if (f in body) (e as unknown as Record<string, unknown>)[f] = body[f] ?? null
       }
       e.full_name = `${e.first_name} ${e.last_name}`

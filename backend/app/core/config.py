@@ -92,6 +92,15 @@ class Settings(BaseSettings):
     DELIVERY_WORKER_POLL_SECONDS: float = 1.0
     # Trust X-Forwarded-For / X-Forwarded-Proto (only behind a trusted proxy).
     TRUST_PROXY_HEADERS: bool = False
+    # Number of trusted proxies in front of the API: the client IP is the Nth entry from the RIGHT of
+    # X-Forwarded-For (entries to the left of it are client-supplied and can be spoofed).
+    TRUSTED_PROXY_HOPS: int = 1
+    # Every request also counts against a per-IP bucket of RATE_LIMIT_REQUESTS × this factor (so rotating
+    # made-up bearer tokens / sandbox paths can't escape per-IP limiting; generous for NATed offices).
+    RATE_LIMIT_IP_MULTIPLIER: int = 5
+    # Failed sign-ins per email address (any IP) within the window before 429.
+    LOGIN_FAILURES_PER_EMAIL: int = 10
+    LOGIN_FAILURE_WINDOW_SECONDS: int = 900
     # Reject plain-http requests + send HSTS. Defaults to true in production.
     ENFORCE_HTTPS: bool | None = None
     # Link placed in password reset emails (token appended as ?token=...).
@@ -106,6 +115,10 @@ class Settings(BaseSettings):
     # Base for /b/{slug}, /invite/{token}, /docs/errors, /tap/unavailable.
     PUBLIC_WEB_URL: str = "http://localhost:5173"
     MEDIA_ROOT: str = "./media"
+    # Built APKs: private (never under MEDIA_ROOT, which /media serves publicly); served only by /downloads/*.
+    RELEASES_ROOT: str = "./releases"
+    # Part 5: card design v2 templates (relative paths are resolved from the backend directory).
+    CARD_TEMPLATES_V2_PATH: str = "app/data/card_templates_v2.json"
     MEDIA_MAX_UPLOAD_BYTES: int = 2 * 1024 * 1024
     SEED_DEMO_DATA: bool = False
     DEMO_PASSWORD: str = "DemoPassword123"
@@ -166,6 +179,13 @@ class Settings(BaseSettings):
                     )
             if self.DEBUG:
                 problems.append("DEBUG must be false in production")
+            for name, url in (("PUBLIC_WEB_URL", self.PUBLIC_WEB_URL), ("PASSWORD_RESET_URL", self.PASSWORD_RESET_URL)):
+                if _local_or_http(url):
+                    problems.append(f"{name} must be a public https URL (got {url!r})")
+            bad_origins = [o for o in self.CORS_ORIGINS if _local_or_http(o)]
+            if bad_origins:
+                problems.append("CORS_ORIGINS must only contain public https origins (got "
+                                + ", ".join(bad_origins) + ")")
             if problems:
                 raise ValueError(
                     "Refusing to start in production: " + "; ".join(problems)
@@ -175,7 +195,8 @@ class Settings(BaseSettings):
     # ── Derived ──────────────────────────────────────────────────
     @property
     def is_production(self) -> bool:
-        return self.ENVIRONMENT == "production"
+        # Anything that isn't explicitly "development" (staging, prod, typos…) gets the production safeguards.
+        return self.ENVIRONMENT != "development"
 
     @property
     def is_development(self) -> bool:
@@ -204,6 +225,19 @@ class Settings(BaseSettings):
     @property
     def device_token_prefix(self) -> str:
         return "nfcd_"
+
+
+def _local_or_http(url: str) -> bool:
+    """True for plain-http URLs and loopback/unspecified hosts (not usable by real users in production)."""
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit((url or "").strip())
+    except ValueError:
+        return True
+    host = (parts.hostname or "").lower()
+    return parts.scheme != "https" or not host or host in ("localhost", "127.0.0.1", "0.0.0.0", "::1") \
+        or host.endswith(".localhost")
 
 
 @lru_cache

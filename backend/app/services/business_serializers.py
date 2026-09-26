@@ -119,7 +119,7 @@ async def employees_out(session: AsyncSession, business: Business, employees: li
             public_url=business_public_url(business, prof.slug if prof else e.slug),
             cards=[card_summary(c, business) for c in cards.get(e.id, [])],
             total_taps=e.total_taps, last_tap_at=e.last_tap_at, created_at=e.created_at,
-            digital_card=digital.get(e.id),
+            digital_card=digital.get(e.id), employee_number=e.employee_number,
         ))
     return out
 
@@ -192,7 +192,7 @@ def tap_out(t: CardTap) -> CardTapOut:
 
 def member_out(m: BusinessMember, user: User) -> MemberOut:
     return MemberOut(
-        id=m.id, user_id=m.user_id, full_name=user.full_name, email=user.email, role=m.role,  # type: ignore[arg-type]
+        id=m.id, business_id=m.business_id, user_id=m.user_id, full_name=user.full_name, email=user.email, role=m.role,  # type: ignore[arg-type]
         extra_permissions=list(m.extra_permissions or []),
         permissions=ordered(permissions_for(m.role, m.extra_permissions)),
         status=m.status,  # type: ignore[arg-type]

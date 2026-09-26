@@ -8,6 +8,7 @@ import '../../data/models/business.dart';
 import '../../services/card_programmer.dart';
 import '../theme.dart';
 import '../widgets/error_ref.dart';
+import '../widgets/motion.dart';
 
 /// Pick a business card and write its tap URL to a physical card (C3).
 class ProgramCardScreen extends StatefulWidget {
@@ -204,7 +205,7 @@ class _ProgramWriteScreenState extends State<ProgramWriteScreen> {
                 const SizedBox(height: 24),
                 OutlinedButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
               ] else if (o.ok) ...[
-                Icon(Icons.check_circle_outline, size: 96, color: StatusColors.success(context)),
+                Center(child: SuccessCheck(size: 96, color: StatusColors.success(context))),
                 const SizedBox(height: 16),
                 Text('Card programmed ✓', key: const Key('programSuccess'), style: t.headlineSmall, textAlign: TextAlign.center),
                 const SizedBox(height: 8),

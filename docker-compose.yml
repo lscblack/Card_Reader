@@ -66,9 +66,20 @@ services:
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.com}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-ChangeThisImmediately}
       TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-false}
+      # Public URLs: tap links (/t/...), sandbox URLs, emails and the phone's "Server URL".
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:5173}
+      DEVICE_SERVER_URL: ${DEVICE_SERVER_URL:-}
+      MEDIA_ROOT: /app/media
+      RELEASES_ROOT: /app/releases
+    volumes:
+      - media:/app/media          # uploaded logos/photos (served at /media)
+      - releases:/app/releases    # built APKs (private; served via /downloads/*)
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
 
 volumes:
   pgdata:
   redisdata:
+  media:
+  releases:

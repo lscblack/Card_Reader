@@ -17,6 +17,7 @@ from app.schemas.business import ProfileIn, ProfileOut, ProfileUpdateIn
 from app.services import audit
 from app.services import business as biz
 from app.services.actions import validate_action
+from app.services.url_validation import unsafe_url_scheme
 from app.services.business_serializers import profile_out
 
 router = APIRouter(prefix="/businesses/{business_id}", tags=["Profiles"])
@@ -28,11 +29,28 @@ SECTION_TYPES = {"about", "contact", "hours", "social", "services", "products", 
 HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
+_LINK_KEYS = {"url", "href", "link", "src", "image", "images", "image_url", "photo_url", "cover_image_url", "website"}
+
+
+def _check_links(value: Any, field: str, link: bool = False) -> None:
+    """Public pages render section links/images: reject javascript:/data:/vbscript: & other non-web schemes."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _check_links(item, f"{field}.{key}", key in _LINK_KEYS or key.endswith("_url"))
+    elif isinstance(value, list):
+        for j, item in enumerate(value):
+            _check_links(item, f"{field}.{j}", link)
+    elif link and isinstance(value, str) and unsafe_url_scheme(value):
+        raise validation_error(field, "must be an http(s), mailto: or tel: URL")
+
+
 async def _validate_sections(session: SessionDep, business_id: uuid.UUID, sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for i, section in enumerate(sections):
         if not isinstance(section, dict) or section.get("type") not in SECTION_TYPES:
             raise validation_error(f"body.sections.{i}.type", f"one of: {', '.join(sorted(SECTION_TYPES))}")
+        _check_links({k: v for k, v in section.items() if k != "items" or section["type"] != "buttons"},
+                     f"body.sections.{i}")
         if section["type"] == "buttons":
             items = section.get("items") or []
             if not isinstance(items, list) or len(items) > 20:
@@ -53,6 +71,7 @@ def _validate_theme(theme: dict[str, Any]) -> dict[str, Any]:
     accent = theme.get("accent")
     if accent is not None and not (isinstance(accent, str) and HEX_RE.match(accent)):
         raise validation_error("body.theme.accent", "accent must be a hex colour like #b91c1c")
+    _check_links({"cover_image_url": theme.get("cover_image_url")}, "body.theme")
     return {k: v for k, v in theme.items() if k in ("accent", "cover_image_url")}
 
 

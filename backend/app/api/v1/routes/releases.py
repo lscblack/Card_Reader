@@ -17,7 +17,6 @@ from app.core.errors import AppError, not_found, validation_error
 from app.models import AppRelease
 from app.schemas.common import Schema
 from app.services import app_builds, audit
-from app.services.media import media_root
 from app.services.request_logs import set_actor
 
 router = APIRouter(tags=["App releases"])
@@ -71,8 +70,8 @@ async def latest_release(session: SessionDep, request: Request) -> dict[str, Any
 async def _serve(session: SessionDep, r: AppRelease | None) -> Response:
     if r is None or not r.artifact_path or r.status != "succeeded":
         raise AppError(404, "no_release", "Release not available")
-    path = (media_root() / r.artifact_path).resolve()
-    if media_root() not in path.parents or not path.exists():
+    path = app_builds.artifact_file(r.artifact_path).resolve()
+    if app_builds.releases_root() not in path.parents or not path.exists():
         raise AppError(404, "no_release", "Release file missing")
     await session.execute(update(AppRelease).where(AppRelease.id == r.id).values(downloads=AppRelease.downloads + 1))
     await session.commit()
@@ -127,7 +126,7 @@ async def create_release(body: ReleaseIn, admin: AdminUser, session: SessionDep,
     except app_builds.BuildArgError as exc:
         raise validation_error("body.version_name", str(exc)) from None
     try:
-        api_url = app_builds.validate_api_base_url(body.api_base_url or settings.public_api_url)
+        api_url = app_builds.validate_api_base_url(body.api_base_url or settings.public_api_url, body.build_type)
     except app_builds.BuildArgError as exc:
         raise validation_error("body.api_base_url", str(exc)) from None
     release = AppRelease(version_name=version, build_number=body.build_number or await app_builds.next_build_number(session),
@@ -203,9 +202,7 @@ async def delete_release(release_id: uuid.UUID, admin: AdminUser, session: Sessi
         raise AppError(409, "release_published", "Unpublish the release before deleting it")
     if r.status == "building":
         raise AppError(409, "build_in_progress", "Cancel the running build first")
-    from app.services.media import delete_file
-
-    delete_file(r.artifact_path)
+    app_builds.delete_artifact(r.artifact_path)
     audit.record(session, action="admin.app_release_delete", user_id=admin.id, client=client,
                  resource_type="app_release", resource_id=r.id)
     await session.delete(r)

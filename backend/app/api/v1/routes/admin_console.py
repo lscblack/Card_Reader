@@ -234,10 +234,20 @@ def _account_row(user: User, business: Business | None, stats: dict[str, Any]) -
 async def list_accounts(admin: AdminUser, session: SessionDep, pagination: PaginationDep,
                         type: Literal["developer", "business", "personal"] | None = None,
                         q: str | None = Query(default=None, max_length=100),
-                        status: Literal["active", "inactive"] | None = None) -> dict[str, Any]:
+                        status: Literal["active", "inactive"] | None = None,
+                        role: Literal["developer", "admin"] | None = None,
+                        email_verified: bool | None = None,
+                        plan_code: str | None = Query(default=None, max_length=32)) -> dict[str, Any]:
     conds = []
     if type:
         conds.append(User.account_type == type)
+    if role:
+        conds.append(User.role == role)
+    if email_verified is not None:
+        conds.append(User.email_verified_at.is_not(None) if email_verified else User.email_verified_at.is_(None))
+    if plan_code:
+        conds.append(User.id.in_(select(Subscription.user_id).join(Plan, Plan.id == Subscription.plan_id)
+                                 .where(Plan.code == plan_code)))
     if status:
         conds.append(User.is_active.is_(status == "active"))
     if q:

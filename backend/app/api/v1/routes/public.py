@@ -327,8 +327,11 @@ async def sandbox_receiver(token: str, session: SessionDep, request: Request) ->
         json.loads(body)
     except ValueError:
         media = "text/plain"
-    headers = {k: v for k, v in (endpoint.response_headers or {}).items()
-               if k.lower() not in ("content-length", "transfer-encoding", "connection")}
+    from app.services.resources_validation import forbidden_sandbox_header
+
+    headers = {k: v for k, v in (endpoint.response_headers or {}).items() if not forbidden_sandbox_header(k)}
+    # The body is attacker-controllable and served from the API origin: never let a browser run it.
+    headers.update({"Content-Security-Policy": "sandbox; default-src 'none'", "X-Content-Type-Options": "nosniff"})
     return Response(content=body if request.method != "HEAD" else b"", status_code=status, media_type=media,
                     headers=headers)
 

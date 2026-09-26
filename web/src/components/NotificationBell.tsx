@@ -5,6 +5,7 @@ import { AlertTriangle, Bell, CheckCheck, CheckCircle2, Info, XCircle } from 'lu
 import { notificationsApi } from '@/api/platform'
 import type { AppNotification } from '@/api/types'
 import { useNow } from '@/hooks/useNow'
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { Spinner } from './ui/Spinner'
@@ -18,11 +19,6 @@ const sevColor = {
   error: 'text-red-500',
 }
 
-function countOf(r: { count: number } | { unread: number } | undefined): number {
-  if (!r) return 0
-  return 'count' in r ? r.count : r.unread
-}
-
 /** In-app notifications (Part 3 §10): unread badge, dropdown, mark read, toast for new success/error items. */
 export function NotificationBell() {
   const qc = useQueryClient()
@@ -33,13 +29,7 @@ export function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null)
   const seen = useRef<Set<string> | null>(null)
 
-  const unread = useQuery({
-    queryKey: ['notifications', 'unread-count'],
-    queryFn: notificationsApi.unreadCount,
-    refetchInterval: 30_000,
-    retry: false,
-  })
-  const count = countOf(unread.data)
+  const { count, supported } = useUnreadNotifications()
   const list = useQuery({
     queryKey: ['notifications', 'list'],
     queryFn: () => notificationsApi.list({ page: 1 }),
@@ -81,7 +71,7 @@ export function NotificationBell() {
   }, [open])
 
   // Hide entirely when the API doesn't support notifications yet.
-  if (unread.isError && !unread.data) return null
+  if (!supported) return null
 
   const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: ['notifications'] })])
 
@@ -128,7 +118,7 @@ export function NotificationBell() {
             <button
               className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline disabled:opacity-50"
               disabled={!count}
-              onClick={() => void notificationsApi.readAll().then(refresh)}
+              onClick={() => void notificationsApi.readAll().then(refresh).catch((e: unknown) => toast.fromError(e))}
             >
               <CheckCheck className="h-3.5 w-3.5" /> Mark all read
             </button>
