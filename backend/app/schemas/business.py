@@ -321,7 +321,8 @@ class CardTapOut(Schema):
 class ProfileOut(Schema):
     id: uuid.UUID
     business_id: uuid.UUID
-    type: Literal["business", "employee", "custom", "menu", "product"]
+    type: Literal["business", "employee", "custom", "menu", "product", "links", "offer", "event", "gallery", "form",
+                  "wifi"]
     slug: str
     title: str
     employee_id: uuid.UUID | None
@@ -332,13 +333,36 @@ class ProfileOut(Schema):
     updated_at: UTCDateTime
 
 
+PageType = Literal["custom", "menu", "product", "links", "offer", "event", "gallery", "form", "wifi"]
+
+
 class ProfileIn(Schema):
-    type: Literal["custom", "menu", "product"] = "custom"
+    type: PageType | None = None  # default "custom" (or the template's page type)
     title: str = Field(min_length=1, max_length=160)
     slug: str | None = Field(default=None, min_length=1, max_length=64)
     published: bool = False
-    theme: dict[str, Any] = Field(default_factory=dict)
-    sections: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
+    theme: dict[str, Any] | None = None
+    sections: list[dict[str, Any]] | None = Field(default=None, max_length=50)
+    template_id: str | None = Field(default=None, max_length=64)  # Part 6: create from a page template
+
+
+class ProfileDuplicateIn(Schema):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    slug: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class SaveAsTemplateIn(Schema):
+    name: str = Field(min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=300)
+    category: str | None = Field(default=None, max_length=40)
+
+
+class PageTemplateUpdateIn(Schema):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=300)
+    category: str | None = Field(default=None, max_length=40)
+    theme: dict[str, Any] | None = None
+    sections: list[dict[str, Any]] | None = Field(default=None, max_length=50)
 
 
 class ProfileUpdateIn(Schema):

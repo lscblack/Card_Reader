@@ -38,6 +38,7 @@ EXEMPT_PREFIXES = ("/api/v1/health", "/docs", "/redoc", "/openapi.json", "/media
 PUBLIC_PREFIXES = (
     "/api/v1/public/", "/api/v1/errors", "/api/v1/meta", "/api/v1/actions/types", "/api/v1/billing/plans",
     "/api/v1/invitations/", "/api/v1/billing/promotions/active", "/api/v1/personal/templates",
+    "/api/v1/page-templates", "/api/v1/personal/design-presets",
 )
 
 _last_warning = 0.0

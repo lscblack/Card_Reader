@@ -213,6 +213,11 @@ export type ActionTypeCode =
   | 'product_info'
   | 'wifi'
   | 'developer_webhook'
+  | 'links_page'
+  | 'offer_page'
+  | 'event_page'
+  | 'feedback_form'
+  | 'gallery_page'
 
 export interface Action {
   type: ActionTypeCode | string
@@ -251,6 +256,8 @@ export interface ActionField {
   one_of?: string | null
   /** For `profile` fields: restrict to these profile types. */
   profile_types?: ProfileType[] | null
+  /** Part 6 §3 — for `profile_id` fields: the page type it must point at (offer "pick or create from a template"). */
+  page_type?: ProfileType | null
 }
 
 export interface ActionTypeDef {
@@ -365,7 +372,7 @@ export interface PeopleFilters {
 
 // ---------- Profiles (B6) ----------
 
-export type ProfileType = 'business' | 'employee' | 'custom' | 'menu' | 'product'
+export type ProfileType = 'business' | 'employee' | 'custom' | 'menu' | 'product' | 'links' | 'offer' | 'event' | 'gallery' | 'form' | 'wifi'
 
 export interface HoursRow {
   day: string
@@ -374,17 +381,62 @@ export interface HoursRow {
   closed: boolean
 }
 
+export type MenuBadge = 'vegetarian' | 'vegan' | 'spicy' | 'gluten_free' | 'new' | 'popular' | 'sold_out'
+/** Prices are numbers (formatted with the section currency); legacy pages may hold preformatted strings. */
+export type Price = number | string
+
+export interface MenuItem {
+  name: string
+  description?: string
+  price: Price
+  image_url?: string | null
+  badges?: MenuBadge[]
+  variants?: { label: string; price: Price }[]
+  /** Legacy free-form tags (Part 2). */
+  tags?: string[]
+}
+
+export interface ProductItem {
+  title: string
+  description?: string
+  price?: Price
+  compare_at_price?: Price | null
+  image_url?: string | null
+  badge?: string | null
+  cta?: { label: string; url: string } | null
+  in_stock?: boolean
+  /** Legacy link (Part 2). */
+  url?: string
+}
+
+export type LinkIcon = 'link' | 'phone' | 'email' | 'map' | 'whatsapp' | 'instagram' | 'facebook' | 'tiktok' | 'x' | 'linkedin' | 'youtube' | 'spotify' | 'github' | string
+
+export type FormFieldType = 'text' | 'textarea' | 'email' | 'phone' | 'rating' | 'select' | 'checkbox'
+export interface FormField {
+  id: string
+  label: string
+  type: FormFieldType
+  required: boolean
+  options?: string[]
+  placeholder?: string
+}
+
 export interface SectionDataMap {
   about: { text: string }
   contact: { phone?: string; email?: string; website?: string; address?: string }
   hours: { rows: HoursRow[] }
   social: { links: SocialLink[] }
-  services: { items: { title: string; description: string; price?: string }[] }
-  products: { items: { title: string; description: string; price?: string; image_url?: string; url?: string }[] }
-  menu: { categories: { name: string; items: { name: string; description: string; price: string; tags: string[] }[] }[] }
+  services: { items: { title: string; description: string; price?: Price; duration?: string }[] }
+  products: { currency?: string; items: ProductItem[] }
+  menu: { currency?: string; show_images?: boolean; categories: { name: string; description?: string; items: MenuItem[] }[] }
   buttons: { items: { label: string; action: Action }[] }
-  gallery: { images: string[] }
+  gallery: { images: string[]; captions?: string[] }
   text: { markdown: string }
+  links: { items: { label: string; url: string; icon?: LinkIcon; highlight?: boolean }[] }
+  offer: { title: string; description: string; code?: string; discount_label?: string; valid_until?: string | null; terms?: string; cta?: { label: string; url: string } | null }
+  event: { title: string; starts_at: string; ends_at?: string | null; venue?: string; address?: string; map_query?: string; description?: string; cta?: { label: string; url: string } | null }
+  wifi: { ssid: string; password?: string; security: 'WPA' | 'WEP' | 'nopass'; hidden?: boolean }
+  form: { title: string; description?: string; fields: FormField[]; submit_label: string; success_message: string }
 }
 
 export type SectionType = keyof SectionDataMap
@@ -395,9 +447,24 @@ export type SectionType = keyof SectionDataMap
  */
 export type Section = { [K in SectionType]: { id?: string; type: K } & SectionDataMap[K] }[SectionType]
 
+export type PageHeaderStyle = 'cover' | 'logo' | 'minimal' | 'banner'
+
 export interface ProfileTheme {
   accent: string
+  background?: string | null
+  surface?: string | null
+  text?: string | null
+  /** Font pair id (see public/page/fonts). */
+  font?: string | null
+  /** Page layout id (see public/page/layouts). */
+  layout?: string | null
+  header?: PageHeaderStyle | null
   cover_image_url?: string | null
+  /** Defaults to the business logo. */
+  logo_url?: string | null
+  corner_radius?: number | null
+  /** true = designed dark, false = light, absent = follow the viewer's system. */
+  dark?: boolean | null
 }
 
 export interface Profile {
@@ -421,6 +488,36 @@ export interface ProfileInput {
   employee_id?: UUID | null
   theme?: ProfileTheme
   sections?: Section[]
+  /** Part 6 §2 — create from a page template. */
+  template_id?: string
+  published?: boolean
+}
+
+/** Part 6 §2. */
+export interface PageTemplate {
+  id: string
+  scope: 'system' | 'business'
+  business_id: UUID | null
+  page_type: ProfileType
+  name: string
+  description: string
+  category: string
+  preview_image_url: string | null
+  theme: ProfileTheme
+  sections: Section[]
+  created_at: ISODateTime | null
+}
+
+/** Part 6 §4. */
+export interface FormResponse {
+  id: UUID
+  profile_id: UUID
+  section_id: string
+  answers: Record<string, unknown>
+  card_id: UUID | null
+  created_at: ISODateTime
+  /** Convenience fields some backends include. */
+  profile_title?: string | null
 }
 
 export interface PublicBusinessInfo {
@@ -523,9 +620,10 @@ export interface Analytics {
   by_device_type: { device_type: DeviceType; taps: number }[]
   by_country: { country: string; taps: number }[]
   by_hour: { hour: number; taps: number }[]
-  /** Taps by owner type (employee / customer / business / unassigned). */
   /** Tap counts in the range by holder type at tap time. */
   by_assignee_type?: { employee: number; customer: number; business: number; unassigned: number }
+  /** Part 6 §4 — form responses in the range and the average of rating answers (null when none). */
+  feedback?: { responses: number; avg_rating: number | null }
   last_activity: CardTap | null
 }
 

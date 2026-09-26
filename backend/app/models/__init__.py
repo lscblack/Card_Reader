@@ -18,6 +18,8 @@ from app.models.business import (
     CardTap,
     Customer,
     Employee,
+    FormResponse,
+    PageTemplate,
     Profile,
 )
 from app.models.communication import AppRelease, EmailCampaign, EmailLog, Notification, Promotion
@@ -38,7 +40,7 @@ __all__ = [
     "PersonalSession",
     "AppRelease", "EmailCampaign", "EmailLog", "Notification", "Promotion",
     "Business", "BusinessCategory", "BusinessInvitation", "BusinessMember", "BusinessSlugRedirect",
-    "Card", "CardHistory", "CardTap", "Customer", "Employee", "Profile",
+    "Card", "CardHistory", "CardTap", "Customer", "Employee", "FormResponse", "PageTemplate", "Profile",
     "PlatformSetting", "RequestLog", "SandboxEndpoint", "SandboxRequest", "EmailVerificationToken",
     "EVENT_STATUSES",
     "TERMINAL_STATUSES",

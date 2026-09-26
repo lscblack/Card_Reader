@@ -65,16 +65,35 @@ ACTION_TYPES: list[dict[str, Any]] = [
      "fields": [_f("platform", "select", True, "Platform", options=SOCIAL_PLATFORMS), _f("url", "url", True, "URL")]},
     {"type": "digital_menu", "label": "Digital menu", "result": "redirect",
      "description": "Opens a menu page (profile) or an external menu URL (one of).",
-     "fields": [_f("profile_id", "profile", False, "Menu page"), _f("url", "url", False, "URL")]},
+     "fields": [_f("profile_id", "profile", False, "Menu page", page_type="menu"), _f("url", "url", False, "URL")]},
     {"type": "product_info", "label": "Product information", "result": "redirect",
      "description": "Opens a product page (profile) or an external product URL (one of).",
-     "fields": [_f("profile_id", "profile", False, "Product page"), _f("url", "url", False, "URL")]},
+     "fields": [_f("profile_id", "profile", False, "Product page", page_type="product"),
+                _f("url", "url", False, "URL")]},
     {"type": "wifi", "label": "Wi-Fi access", "result": "page",
      "description": "Shows the network name, a copy-password button and a Wi-Fi QR code. The nexTap app "
-                    "can also write a native Wi-Fi record to the tag.",
+                    "can also write a native Wi-Fi record to the tag. Either the network details, or `profile_id` "
+                    "of a Wi-Fi page.",
      "fields": [_f("ssid", "string", True, "Network name (SSID)"), _f("password", "string", False, "Password"),
                 _f("security", "select", True, "Security", options=["WPA", "WEP", "nopass"]),
-                _f("hidden", "boolean", False, "Hidden network")]},
+                _f("hidden", "boolean", False, "Hidden network"),
+                _f("profile_id", "profile", False, "Wi-Fi page (instead of the details)", page_type="wifi")]},
+    # Part 6: built-in pages
+    {"type": "links_page", "label": "Links page", "result": "redirect",
+     "description": "Opens a link-in-bio page built in nexTap.",
+     "fields": [_f("profile_id", "profile", True, "Links page", page_type="links")]},
+    {"type": "offer_page", "label": "Offer / coupon", "result": "redirect",
+     "description": "Opens an offer page built in nexTap, or an external offer URL (one of).",
+     "fields": [_f("profile_id", "profile", False, "Offer page", page_type="offer"), _f("url", "url", False, "URL")]},
+    {"type": "event_page", "label": "Event", "result": "redirect",
+     "description": "Opens an event page (with Add to calendar), or an external event URL (one of).",
+     "fields": [_f("profile_id", "profile", False, "Event page", page_type="event"), _f("url", "url", False, "URL")]},
+    {"type": "feedback_form", "label": "Feedback form", "result": "redirect",
+     "description": "Opens a form page (feedback, contact or booking request); responses appear in the dashboard.",
+     "fields": [_f("profile_id", "profile", True, "Form page", page_type="form")]},
+    {"type": "gallery_page", "label": "Gallery", "result": "redirect",
+     "description": "Opens a photo gallery / portfolio page.",
+     "fields": [_f("profile_id", "profile", True, "Gallery page", page_type="gallery")]},
     {"type": "developer_webhook", "label": "Developer webhook", "result": "webhook",
      "description": "Sends a signed `card.tapped` event to one of the business's applications, then runs "
                     "`then` (or opens the business profile).",
@@ -82,6 +101,9 @@ ACTION_TYPES: list[dict[str, Any]] = [
                 _f("then", "action", False, "Then (optional follow-up action)")]},
 ]
 ACTION_TYPE_MAP = {t["type"]: t for t in ACTION_TYPES}
+# action type → (page type it opens, whether a plain url is accepted instead)
+PAGE_ACTIONS = {"links_page": ("links", False), "offer_page": ("offer", True), "event_page": ("event", True),
+                "feedback_form": ("form", False), "gallery_page": ("gallery", False)}
 
 
 class _Errors:
@@ -144,7 +166,7 @@ async def _validate(session: AsyncSession, business_id: uuid.UUID, action: Any, 
     out: dict[str, Any] = {}
     cfg = _Errors(f"{errors.prefix}.config")
 
-    async def owned(model: type, key: str) -> uuid.UUID | None:
+    async def owned(model: type, key: str, page_type: str | None = None) -> uuid.UUID | None:
         raw = config.get(key)
         if raw in (None, ""):
             return None
@@ -159,6 +181,11 @@ async def _validate(session: AsyncSession, business_id: uuid.UUID, action: Any, 
         if not (await session.execute(stmt)).first():
             cfg.add(key, "not found in this business")
             return None
+        if page_type is not None:
+            ptype = (await session.execute(select(model.type).where(model.id == ident))).scalar()
+            if ptype != page_type:
+                cfg.add(key, f"must be a {page_type} page")
+                return None
         return ident
 
     if type_ in ("website", "custom_url"):
@@ -231,6 +258,24 @@ async def _validate(session: AsyncSession, business_id: uuid.UUID, action: Any, 
             out["profile_id"] = str(pid)
         elif url:
             out["url"] = url
+    elif type_ in PAGE_ACTIONS:  # Part 6: built-in pages (+ url fallback where allowed)
+        page_type, url_ok = PAGE_ACTIONS[type_]
+        pid = await owned(Profile, "profile_id", page_type)
+        url = _valid_url(config.get("url")) if (url_ok and config.get("url")) else None
+        if url_ok and config.get("url") and not url:
+            cfg.add("url", "a valid https URL is required")
+        if not url_ok and config.get("url"):
+            cfg.add("url", "this action opens a page: use profile_id")
+        if not pid and not url and not cfg.items:
+            cfg.add("profile_id", f"pick a {page_type} page" + (" or give a url" if url_ok else ""))
+        if pid:
+            out["profile_id"] = str(pid)
+        elif url:
+            out["url"] = url
+    elif type_ == "wifi" and config.get("profile_id"):
+        pid = await owned(Profile, "profile_id", "wifi")
+        if pid:
+            out["profile_id"] = str(pid)
     elif type_ == "wifi":
         ssid = str(config.get("ssid") or "")
         security = str(config.get("security") or "WPA")
@@ -434,6 +479,15 @@ async def resolve(
     if type_ == "maps":
         query = cfg.get("query") or (f"{cfg.get('lat')},{cfg.get('lng')}" if cfg.get("lat") is not None else "")
         return Resolution(type_, "redirect", "https://www.google.com/maps/search/?" + urlencode({"api": 1, "query": query}),
+                          label)
+    if type_ in PAGE_ACTIONS:
+        prof = await _profile(session, business.id, cfg.get("profile_id"))
+        if prof is not None:
+            return Resolution(type_, "redirect", profile_url(business, prof), label)
+        return Resolution(type_, "redirect", cfg.get("url") or business_public_url(business), label)
+    if type_ == "wifi" and cfg.get("profile_id"):
+        prof = await _profile(session, business.id, cfg.get("profile_id"))
+        return Resolution(type_, "redirect", profile_url(business, prof) if prof else business_public_url(business),
                           label)
     if type_ == "wifi":
         url = f"{web}/w/{card.public_code}" if card is not None else None

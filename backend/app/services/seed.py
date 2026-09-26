@@ -57,6 +57,9 @@ async def seed(session: AsyncSession) -> None:
             index_elements=[CardTemplate.id], set_={k: stmt.excluded[k] for k in row if k != "id"}))
     await session.flush()
 
+    # Part 6: system page templates from app/data/page_templates.json (invalid ones logged and skipped).
+    await seed_page_templates(session)
+
     email = settings.DEFAULT_ADMIN_EMAIL.strip().lower()
     if email:
         existing = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
@@ -83,3 +86,35 @@ async def seed(session: AsyncSession) -> None:
         from app.services.demo import seed_demo
 
         await seed_demo(session)
+
+
+async def seed_page_templates(session: AsyncSession) -> int:
+    import uuid
+
+    from sqlalchemy import delete
+
+    from app.core.errors import AppError
+    from app.models import PageTemplate
+    from app.services import pages
+    from app.services.actions import validate_action
+
+    kept: list[str] = []
+    for order, t in enumerate(pages.load_system_templates()):
+        try:  # button actions must work for any business (no references to ids)
+            for i, section in enumerate(t["sections"]):
+                if section.get("type") == "buttons":
+                    for j, item in enumerate(section.get("items") or []):
+                        await validate_action(session, uuid.UUID(int=0), (item or {}).get("action"),
+                                              f"sections.{i}.items.{j}.action", allow_webhook=False)
+        except AppError as exc:
+            logger.error("Skipping invalid page template %s: %s", t["id"], exc.details or exc.message)
+            continue
+        row = {**t, "scope": "system", "business_id": None, "sort_order": order}
+        stmt = insert(PageTemplate).values(**row)
+        await session.execute(stmt.on_conflict_do_update(
+            index_elements=[PageTemplate.id], set_={k: stmt.excluded[k] for k in row if k != "id"},
+            where=PageTemplate.scope == "system"))
+        kept.append(t["id"])
+    await session.execute(delete(PageTemplate).where(PageTemplate.scope == "system", PageTemplate.id.not_in(kept)))
+    await session.flush()
+    return len(kept)

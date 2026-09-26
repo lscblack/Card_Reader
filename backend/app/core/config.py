@@ -119,6 +119,8 @@ class Settings(BaseSettings):
     RELEASES_ROOT: str = "./releases"
     # Part 5: card design v2 templates (relative paths are resolved from the backend directory).
     CARD_TEMPLATES_V2_PATH: str = "app/data/card_templates_v2.json"
+    # Part 6: system page templates (relative paths are resolved from the backend directory).
+    PAGE_TEMPLATES_PATH: str = "app/data/page_templates.json"
     MEDIA_MAX_UPLOAD_BYTES: int = 2 * 1024 * 1024
     SEED_DEMO_DATA: bool = False
     DEMO_PASSWORD: str = "DemoPassword123"

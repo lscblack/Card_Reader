@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -18,7 +19,10 @@ from app.core.error_catalog import as_public_list
 from app.core.errors import AppError, error_response
 from app.core.rate_limit import client_ip
 from app.models import Business, BusinessCategory, BusinessSlugRedirect, Card, Employee, Profile, SandboxEndpoint
+from pydantic import Field
+
 from app.schemas.business import CategoryOut
+from app.schemas.common import Schema
 from app.services import delivery, taps
 from app.services.actions import ACTION_TYPES, effective_action, resolve, vcard_for, wifi_qr_string
 from app.services.business import card_effective_status, media_url
@@ -173,6 +177,75 @@ async def public_profile_vcard(business_slug: str, profile_slug: str, session: S
     return _vcard(vcard_for(business, employee), profile.slug)
 
 
+# ── Part 6: forms & calendar ─────────────────────────────────────────────
+class FormSubmitIn(Schema):
+    answers: dict[str, Any] = Field(default_factory=dict)
+    website: str | None = Field(default=None, max_length=500, description="Honeypot — must be empty")
+    card: str | None = Field(default=None, max_length=16, description="public_code of the tapped card, if any")
+
+
+@router.post("/public/b/{business_slug}/{profile_slug}/forms/{section_id}", status_code=201,
+             summary="Submit a form on a public page",
+             description="Validated against the form definition; 5 submissions / 10 min per IP and page (429); the "
+                         "honeypot `website` must stay empty (otherwise 201 but nothing is stored).")
+async def submit_form(business_slug: str, profile_slug: str, section_id: str, body: FormSubmitIn,
+                      session: SessionDep, request: Request) -> dict[str, Any]:
+    from app.core.rate_limit import hit
+    from app.models import BusinessMember, FormResponse
+    from app.services import notifications, pages
+
+    set_actor(request, "public")
+    business = await _public_business(session, business_slug)
+    request.state.business_id = business.id
+    profile, _ = await _public_profile(session, business, profile_slug.lower())
+    form = pages.find_section(profile, section_id, "form")
+    if form is None:
+        raise AppError(404, "form_not_found", "This form doesn't exist on the page")
+    limit = await hit(f"form:{client_ip(request)}:{profile.id}", 5, 600)
+    if limit is not None and not limit.allowed:
+        raise AppError(429, "rate_limited", "Too many submissions, try again later", {"retry_after": limit.retry_after},
+                       headers={"Retry-After": str(limit.retry_after)})
+    if body.website:
+        return {"status": "received", "message": form.get("success_message")}
+    answers, rating = pages.validate_answers(form, body.answers)
+    if not answers:
+        raise AppError(422, "validation_error", "The form is empty", [{"field": "body.answers", "message": "empty"}])
+    card_id = None
+    if body.card:
+        card_id = (await session.execute(select(Card.id).where(
+            Card.public_code == body.card, Card.business_id == business.id, Card.deleted_at.is_(None)))).scalar()
+    session.add(FormResponse(business_id=business.id, profile_id=profile.id, section_id=section_id, answers=answers,
+                             rating=rating, card_id=card_id))
+    recipients = (await session.execute(select(BusinessMember.user_id).where(
+        BusinessMember.business_id == business.id, BusinessMember.status == "active",
+        BusinessMember.role.in_(("owner", "admin"))))).scalars().all()
+    notifications.notify(session, recipients, type_="business.form_response",
+                         title=f"New response: {form.get('title') or profile.title}"[:200],
+                         body=f"On the page “{profile.title}”" + (f" · rating {rating:g}/5" if rating else ""),
+                         link=f"/business/{business.id}/pages/{profile.id}/responses", severity="info")
+    await session.commit()
+    return {"status": "received", "message": form.get("success_message")}
+
+
+@router.get("/public/b/{business_slug}/{profile_slug}/events/{section_id}.ics", summary="Add an event to a calendar")
+async def event_calendar(business_slug: str, profile_slug: str, section_id: str, session: SessionDep,
+                         request: Request) -> Response:
+    from app.services import pages
+    from app.services.actions import business_public_url
+
+    set_actor(request, "public")
+    business = await _public_business(session, business_slug)
+    request.state.business_id = business.id
+    profile, _ = await _public_profile(session, business, profile_slug.lower())
+    event = pages.find_section(profile, section_id, "event")
+    if event is None:
+        raise AppError(404, "profile_unavailable", "This event doesn't exist on the page", {"reason": "not_found"})
+    text = pages.event_ics(event, uid=f"{profile.id}-{section_id}@nextap", organizer=business.name,
+                           url=business_public_url(business, profile.slug))
+    return Response(content=text, media_type="text/calendar; charset=utf-8", headers={
+        "Content-Disposition": f'attachment; filename="{section_id}.ics"', "Cache-Control": PUBLIC_CACHE})
+
+
 def _vcard(text: str, name: str) -> Response:
     return Response(
         content=text, media_type="text/vcard; charset=utf-8",
@@ -227,6 +300,13 @@ async def public_wifi(public_code: str, session: SessionDep, request: Request) -
     if action.get("type") != "wifi":
         raise _unavailable("not_wifi")
     cfg = action.get("config") or {}
+    if cfg.get("profile_id"):  # Part 6: the details live on a Wi-Fi page
+        page = await session.get(Profile, uuid.UUID(cfg["profile_id"]))
+        section = next((sec for sec in ((page.sections or []) if page and page.deleted_at is None else [])
+                        if isinstance(sec, dict) and sec.get("type") == "wifi"), None)
+        if page is None or not page.published or section is None:
+            raise _unavailable("not_wifi")
+        cfg = section
     return JSONResponse(content={
         "business": _business_block(business),
         "ssid": cfg.get("ssid"), "password": cfg.get("password"), "security": cfg.get("security", "WPA"),

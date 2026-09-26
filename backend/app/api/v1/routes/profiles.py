@@ -2,77 +2,60 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Response
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import func, select
 
 from app.api.deps import BusinessContext, ClientDep, SessionDep, business_permission
 from app.core.errors import AppError, not_found, validation_error
-from app.models import Profile
-from app.schemas.business import ProfileIn, ProfileOut, ProfileUpdateIn
-from app.services import audit
+from app.models import PageTemplate, Profile
+from app.schemas.business import (
+    PageTemplateUpdateIn,
+    PageType,
+    ProfileDuplicateIn,
+    ProfileIn,
+    ProfileOut,
+    ProfileUpdateIn,
+    SaveAsTemplateIn,
+)
+from app.services import audit, pages
 from app.services import business as biz
 from app.services.actions import validate_action
-from app.services.url_validation import unsafe_url_scheme
 from app.services.business_serializers import profile_out
 
 router = APIRouter(prefix="/businesses/{business_id}", tags=["Profiles"])
+public_router = APIRouter(tags=["Profiles"])
 
 View = Annotated[BusinessContext, Depends(business_permission("business.view"))]
 Manage = Annotated[BusinessContext, Depends(business_permission("profiles.manage"))]
 
-SECTION_TYPES = {"about", "contact", "hours", "social", "services", "products", "menu", "buttons", "gallery", "text"}
-HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
-
-
-_LINK_KEYS = {"url", "href", "link", "src", "image", "images", "image_url", "photo_url", "cover_image_url", "website"}
-
-
-def _check_links(value: Any, field: str, link: bool = False) -> None:
-    """Public pages render section links/images: reject javascript:/data:/vbscript: & other non-web schemes."""
-    if isinstance(value, dict):
-        for key, item in value.items():
-            _check_links(item, f"{field}.{key}", key in _LINK_KEYS or key.endswith("_url"))
-    elif isinstance(value, list):
-        for j, item in enumerate(value):
-            _check_links(item, f"{field}.{j}", link)
-    elif link and isinstance(value, str) and unsafe_url_scheme(value):
-        raise validation_error(field, "must be an http(s), mailto: or tel: URL")
-
-
-async def _validate_sections(session: SessionDep, business_id: uuid.UUID, sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+async def _validate_sections(session: SessionDep, business_id: uuid.UUID, sections: list[dict[str, Any]],
+                             prefix: str = "body.sections") -> list[dict[str, Any]]:
+    """Part 6 strict section validation (+ buttons' actions against this business); every section gets an `id`."""
     out = []
     for i, section in enumerate(sections):
-        if not isinstance(section, dict) or section.get("type") not in SECTION_TYPES:
-            raise validation_error(f"body.sections.{i}.type", f"one of: {', '.join(sorted(SECTION_TYPES))}")
-        _check_links({k: v for k, v in section.items() if k != "items" or section["type"] != "buttons"},
-                     f"body.sections.{i}")
+        section = pages.validate_section(section, f"{prefix}.{i}")
         if section["type"] == "buttons":
             items = section.get("items") or []
             if not isinstance(items, list) or len(items) > 20:
-                raise validation_error(f"body.sections.{i}.items", "up to 20 buttons")
+                raise validation_error(f"{prefix}.{i}.items", "up to 20 buttons")
             clean_items = []
             for j, item in enumerate(items):
                 if not isinstance(item, dict) or not str(item.get("label") or "").strip():
-                    raise validation_error(f"body.sections.{i}.items.{j}.label", "label is required")
+                    raise validation_error(f"{prefix}.{i}.items.{j}.label", "label is required")
                 action = await validate_action(session, business_id, item.get("action"),
-                                               f"body.sections.{i}.items.{j}.action", allow_webhook=False)
+                                               f"{prefix}.{i}.items.{j}.action", allow_webhook=False)
                 clean_items.append({"label": str(item["label"])[:80], "action": action})
             section = {**section, "items": clean_items}
         out.append(section)
-    return out
+    return pages.assign_section_ids(out)
 
 
 def _validate_theme(theme: dict[str, Any]) -> dict[str, Any]:
-    accent = theme.get("accent")
-    if accent is not None and not (isinstance(accent, str) and HEX_RE.match(accent)):
-        raise validation_error("body.theme.accent", "accent must be a hex colour like #b91c1c")
-    _check_links({"cover_image_url": theme.get("cover_image_url")}, "body.theme")
-    return {k: v for k, v in theme.items() if k in ("accent", "cover_image_url")}
+    return pages.validate_theme(theme)
 
 
 async def _slug(session: SessionDep, business_id: uuid.UUID, wanted: str, exclude: uuid.UUID | None = None) -> str:
@@ -102,17 +85,50 @@ async def list_profiles(ctx: View, session: SessionDep) -> list[ProfileOut]:
     return [profile_out(p, ctx.business) for p in rows]
 
 
-@router.post("/profiles", status_code=201, response_model=ProfileOut, summary="Create a custom/menu/product page")
+def _template_defaults(business: Any, theme: dict[str, Any]) -> dict[str, Any]:
+    """Business logo/accent unless the template sets them."""
+    out = dict(theme)
+    if not out.get("logo_url") and business.logo_path:
+        out["logo_url"] = biz.media_url(business.logo_path)
+    if not out.get("accent"):
+        accent = (business.settings or {}).get("accent")
+        out["accent"] = accent if isinstance(accent, str) and pages.HEX_RE.match(accent) else "#b91c1c"
+    return out
+
+
+async def _template_for(session: SessionDep, business_id: uuid.UUID, template_id: str) -> PageTemplate:
+    t = await session.get(PageTemplate, template_id)
+    if t is None or (t.scope == "business" and t.business_id != business_id):
+        raise AppError(404, "page_template_not_found", "Page template not found")
+    return t
+
+
+@router.post("/profiles", status_code=201, response_model=ProfileOut, summary="Create a page (optionally from a template)",
+             description="`template_id` (system or this business's template): sections/theme come from the template "
+                         "with `{{business.*}}` placeholders filled in and the business logo/accent applied; `sections`/"
+                         "`theme` in the body override them.")
 async def create_profile(body: ProfileIn, ctx: Manage, session: SessionDep, client: ClientDep) -> ProfileOut:
+    page_type = body.type or "custom"
+    theme, sections = body.theme or {}, body.sections or []
+    if body.template_id:
+        t = await _template_for(session, ctx.business.id, body.template_id)
+        if body.type is not None and body.type != t.page_type:
+            raise validation_error("body.type", f"the template is a {t.page_type} page")
+        page_type = t.page_type
+        values = pages.business_values(ctx.business)
+        theme = body.theme if body.theme is not None else _template_defaults(
+            ctx.business, pages.substitute(dict(t.theme or {}), values))
+        sections = body.sections if body.sections is not None else pages.substitute(
+            [dict(x) for x in (t.sections or [])], values)
     slug = (await _slug(session, ctx.business.id, body.slug) if body.slug
             else await biz.unique_child_slug(session, Profile, ctx.business.id, body.title))
-    p = Profile(business_id=ctx.business.id, type=body.type, slug=slug, title=body.title.strip(),
-                published=body.published, theme=_validate_theme(body.theme),
-                sections=await _validate_sections(session, ctx.business.id, body.sections))
+    p = Profile(business_id=ctx.business.id, type=page_type, slug=slug, title=body.title.strip(),
+                published=body.published, theme=_validate_theme(theme),
+                sections=await _validate_sections(session, ctx.business.id, sections))
     session.add(p)
     await session.flush()
     audit.record(session, action="profile.create", user_id=ctx.user.id, client=client, resource_type="profile",
-                 resource_id=p.id, metadata={"type": p.type, "slug": p.slug})
+                 resource_id=p.id, metadata={"type": p.type, "slug": p.slug, "template_id": body.template_id})
     await session.commit()
     await session.refresh(p)
     return profile_out(p, ctx.business)
@@ -177,3 +193,115 @@ async def publish(profile_id: uuid.UUID, ctx: Manage, session: SessionDep, clien
 @router.post("/profiles/{profile_id}/unpublish", response_model=ProfileOut, summary="Unpublish")
 async def unpublish(profile_id: uuid.UUID, ctx: Manage, session: SessionDep, client: ClientDep) -> ProfileOut:
     return await _publish(profile_id, ctx, session, client, False)
+
+
+# ── Part 6: duplicate, save-as-template, page templates ───────────────────
+@router.post("/profiles/{profile_id}/duplicate", status_code=201, response_model=ProfileOut,
+             summary="Duplicate a page (the copy is unpublished)")
+async def duplicate_profile(profile_id: uuid.UUID, ctx: Manage, session: SessionDep, client: ClientDep,
+                            body: ProfileDuplicateIn | None = None) -> ProfileOut:
+    src = await _get(session, ctx.business.id, profile_id)
+    if src.type in ("business", "employee"):
+        raise AppError(409, "conflict", "Business and employee profiles cannot be duplicated")
+    title = ((body.title if body else None) or f"{src.title} (copy)")[:160]
+    slug = (await _slug(session, ctx.business.id, body.slug) if body and body.slug
+            else await biz.unique_child_slug(session, Profile, ctx.business.id, title))
+    p = Profile(business_id=ctx.business.id, type=src.type, slug=slug, title=title.strip(), published=False,
+                theme=dict(src.theme or {}), sections=[dict(x) for x in (src.sections or [])])
+    session.add(p)
+    await session.flush()
+    audit.record(session, action="profile.duplicate", user_id=ctx.user.id, client=client, resource_type="profile",
+                 resource_id=p.id, metadata={"from": str(src.id)})
+    await session.commit()
+    await session.refresh(p)
+    return profile_out(p, ctx.business)
+
+
+@router.post("/profiles/{profile_id}/save-as-template", status_code=201,
+             summary="Save a page as one of this business's templates (max 50)")
+async def save_as_template(profile_id: uuid.UUID, body: SaveAsTemplateIn, ctx: Manage, session: SessionDep,
+                           client: ClientDep) -> dict[str, Any]:
+    src = await _get(session, ctx.business.id, profile_id)
+    if src.type not in pages.PAGE_TYPES:
+        raise validation_error("path.profile_id", "only built-in pages (not business/employee profiles) can be templates")
+    count = (await session.execute(select(func.count()).select_from(PageTemplate).where(
+        PageTemplate.business_id == ctx.business.id))).scalar_one()
+    if count >= pages.MAX_BUSINESS_TEMPLATES:
+        raise AppError(409, "page_template_limit", f"A business can keep at most {pages.MAX_BUSINESS_TEMPLATES} "
+                                                   "page templates", {"max": pages.MAX_BUSINESS_TEMPLATES})
+    t = PageTemplate(id=pages.new_business_template_id(), scope="business", business_id=ctx.business.id,
+                     page_type=src.type, name=body.name.strip(), description=(body.description or "").strip(),
+                     category=body.category, preview_image_url=(src.theme or {}).get("cover_image_url"),
+                     theme=dict(src.theme or {}), sections=[dict(x) for x in (src.sections or [])], sort_order=0)
+    session.add(t)
+    await session.flush()
+    audit.record(session, action="page_template.create", user_id=ctx.user.id, client=client,
+                 resource_type="page_template", resource_id=t.id, metadata={"from": str(src.id)})
+    await session.commit()
+    await session.refresh(t)
+    return pages.template_out(t)
+
+
+def _templates_query(page_type: str | None, business_id: uuid.UUID | None):  # type: ignore[no-untyped-def]
+    stmt = select(PageTemplate).where(
+        (PageTemplate.scope == "system") | (PageTemplate.business_id == business_id) if business_id
+        else PageTemplate.scope == "system")
+    if page_type:
+        stmt = stmt.where(PageTemplate.page_type == page_type)
+    return stmt.order_by(PageTemplate.scope.desc(), PageTemplate.sort_order, PageTemplate.name)
+
+
+@router.get("/page-templates", summary="System templates + this business's own")
+async def business_page_templates(ctx: View, session: SessionDep,
+                                  page_type: PageType | None = None) -> list[dict[str, Any]]:
+    rows = (await session.execute(_templates_query(page_type, ctx.business.id))).scalars()
+    return [pages.template_out(t) for t in rows]
+
+
+async def _own_template(session: SessionDep, business_id: uuid.UUID, template_id: str) -> PageTemplate:
+    t = await session.get(PageTemplate, template_id)
+    if t is None or t.scope != "business" or t.business_id != business_id:
+        raise AppError(404, "page_template_not_found", "Page template not found (system templates are read-only)")
+    return t
+
+
+@router.patch("/page-templates/{template_id}", summary="Edit one of this business's templates")
+async def update_page_template(template_id: str, body: PageTemplateUpdateIn, ctx: Manage, session: SessionDep,
+                               client: ClientDep) -> dict[str, Any]:
+    t = await _own_template(session, ctx.business.id, template_id)
+    data = body.model_dump(exclude_unset=True)
+    if body.name:
+        t.name = body.name.strip()
+    if "description" in data:
+        t.description = (body.description or "").strip()
+    if "category" in data:
+        t.category = body.category
+    if body.theme is not None:
+        t.theme = _validate_theme(body.theme)
+    if body.sections is not None:
+        t.sections = await _validate_sections(session, ctx.business.id, body.sections)
+    audit.record(session, action="page_template.update", user_id=ctx.user.id, client=client,
+                 resource_type="page_template", resource_id=t.id, metadata={"fields": sorted(data)})
+    await session.commit()
+    await session.refresh(t)
+    return pages.template_out(t)
+
+
+@router.delete("/page-templates/{template_id}", status_code=204, summary="Delete one of this business's templates")
+async def delete_page_template(template_id: str, ctx: Manage, session: SessionDep, client: ClientDep) -> Response:
+    t = await _own_template(session, ctx.business.id, template_id)
+    audit.record(session, action="page_template.delete", user_id=ctx.user.id, client=client,
+                 resource_type="page_template", resource_id=t.id)
+    await session.delete(t)
+    await session.commit()
+    return Response(status_code=204)
+
+
+@public_router.get("/page-templates", summary="System page templates (public)")
+async def public_page_templates(session: SessionDep, request: Request,
+                                page_type: PageType | None = None) -> list[dict[str, Any]]:
+    from app.services.request_logs import set_actor
+
+    set_actor(request, "public")
+    rows = (await session.execute(_templates_query(page_type, None))).scalars()
+    return [pages.template_out(t) for t in rows]

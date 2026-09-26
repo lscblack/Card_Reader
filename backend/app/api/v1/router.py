@@ -13,6 +13,7 @@ from app.api.v1.routes import (
     device_api,
     devices,
     events,
+    forms,
     health,
     live_notifications,
     releases,
@@ -28,9 +29,10 @@ from app.api.v1.routes import (
 
 api_router = APIRouter(prefix="/api/v1")
 for module in (health, auth, account, applications, api_keys, devices, events, admin, admin_console, admin_part3, pairing,
-               device_api, request_logs, sandbox, businesses, people, cards, profiles, team, public):
+               device_api, request_logs, sandbox, businesses, people, cards, profiles, forms, team, public):
     api_router.include_router(module.router)
 api_router.include_router(team.public_router)
+api_router.include_router(profiles.public_router)
 api_router.include_router(live_notifications.router)
 api_router.include_router(personal.router)
 api_router.include_router(personal.public_router)

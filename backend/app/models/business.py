@@ -9,6 +9,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -16,6 +17,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -182,7 +184,8 @@ class Customer(UUIDPk, Timestamps, Base):
 class Profile(UUIDPk, Timestamps, Base):
     __tablename__ = "profiles"
     __table_args__ = (
-        CheckConstraint("type IN ('business','employee','custom','menu','product')", name="type"),
+        CheckConstraint("type IN ('business','employee','custom','menu','product','links','offer','event','gallery',"
+                        "'form','wifi')", name="type"),
         Index("uq_profiles_business_slug", "business_id", "slug", unique=True,
               postgresql_where=text("deleted_at IS NULL")),
         Index("ix_profiles_employee", "employee_id"),
@@ -286,3 +289,47 @@ class CardTap(UUIDPk, CreatedAt, Base):
     browser: Mapped[str | None] = mapped_column(String(32))
     country: Mapped[str | None] = mapped_column(String(2))
     is_bot: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class PageTemplate(Base):
+    """Part 6: page templates — `system` (from app/data/page_templates.json) or a business's own."""
+
+    __tablename__ = "page_templates"
+    __table_args__ = (
+        CheckConstraint("scope IN ('system','business')", name="scope"),
+        CheckConstraint("(scope = 'system') = (business_id IS NULL)", name="scope_business"),
+        Index("ix_page_templates_business", "business_id", "page_type"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    scope: Mapped[str] = mapped_column(String(8), nullable=False)
+    business_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("businesses.id", ondelete="CASCADE"))
+    page_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    description: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    category: Mapped[str | None] = mapped_column(String(40))
+    preview_image_url: Mapped[str | None] = mapped_column(String(2048))
+    theme: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    sections: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(),
+                                                 onupdate=func.now())
+
+
+class FormResponse(UUIDPk, CreatedAt, Base):
+    """Part 6 §4: a public form submission on a business page."""
+
+    __tablename__ = "form_responses"
+    __table_args__ = (
+        Index("ix_form_responses_business_created", "business_id", "created_at"),
+        Index("ix_form_responses_profile", "profile_id", "created_at"),
+    )
+
+    business_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("businesses.id", ondelete="CASCADE"),
+                                                   nullable=False)
+    profile_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    section_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    answers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    rating: Mapped[float | None] = mapped_column(Float)  # mean of the response's rating fields
+    card_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("cards.id", ondelete="SET NULL"))

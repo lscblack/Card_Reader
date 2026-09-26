@@ -1,0 +1,2337 @@
+{
+ "version": 1,
+ "templates": [
+  {
+   "id": "menu_bistro_classic",
+   "page_type": "menu",
+   "name": "Bistro classic",
+   "description": "A warm, paper-like menu with dotted price leaders and serif headings — made for bistros and brasseries.",
+   "category": "Food & drink",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#9a3412",
+    "background": "#f6efe3",
+    "surface": "#fffaf1",
+    "text": "#2a2118",
+    "font": "elegant",
+    "layout": "menu-bistro",
+    "header": "logo",
+    "corner_radius": 6,
+    "dark": false
+   },
+   "sections": [
+    {
+     "id": "intro",
+     "type": "text",
+     "markdown": "Seasonal cooking, generous plates and a short list of wines we love. Ask your server about today’s specials."
+    },
+    {
+     "id": "menu",
+     "type": "menu",
+     "currency": "USD",
+     "show_images": false,
+     "categories": [
+      {
+       "name": "To start",
+       "items": [
+        {
+         "name": "French onion soup",
+         "price": 9,
+         "description": "Slow-cooked onions, beef broth, gruyère crouton"
+        },
+        {
+         "name": "Burrata & heirloom tomatoes",
+         "price": 12,
+         "description": "Basil oil, aged balsamic, grilled sourdough",
+         "badges": [
+          "vegetarian"
+         ]
+        },
+        {
+         "name": "Chicken liver pâté",
+         "price": 10,
+         "description": "Cornichons, onion jam, toasted brioche"
+        },
+        {
+         "name": "Escargots de Bourgogne",
+         "price": 13,
+         "description": "Garlic and parsley butter, half dozen",
+         "badges": [
+          "popular"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Mains",
+       "items": [
+        {
+         "name": "Steak frites",
+         "price": 26,
+         "description": "250 g sirloin, pepper sauce, hand-cut fries",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Duck confit",
+         "price": 24,
+         "description": "Crispy leg, lentils du Puy, orange jus"
+        },
+        {
+         "name": "Catch of the day",
+         "price": 23,
+         "description": "Beurre blanc, crushed potatoes, greens"
+        },
+        {
+         "name": "Wild mushroom risotto",
+         "price": 19,
+         "description": "Parmesan, thyme, truffle oil",
+         "badges": [
+          "vegetarian",
+          "gluten_free"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Desserts",
+       "items": [
+        {
+         "name": "Crème brûlée",
+         "price": 8,
+         "description": "Vanilla bean custard, caramelised sugar",
+         "badges": [
+          "gluten_free"
+         ]
+        },
+        {
+         "name": "Tarte Tatin",
+         "price": 9,
+         "description": "Caramelised apples, crème fraîche"
+        },
+        {
+         "name": "Cheese board",
+         "price": 14,
+         "description": "Three cheeses, honey, walnuts, crackers"
+        }
+       ]
+      },
+      {
+       "name": "Wine by the glass",
+       "items": [
+        {
+         "name": "House red",
+         "price": 7,
+         "description": "Côtes du Rhône",
+         "variants": [
+          {
+           "label": "Glass",
+           "price": 7
+          },
+          {
+           "label": "Carafe",
+           "price": 24
+          }
+         ]
+        },
+        {
+         "name": "House white",
+         "price": 7,
+         "description": "Sauvignon blanc",
+         "variants": [
+          {
+           "label": "Glass",
+           "price": 7
+          },
+          {
+           "label": "Carafe",
+           "price": 24
+          }
+         ]
+        },
+        {
+         "name": "Champagne",
+         "price": 14,
+         "description": "Brut, non-vintage"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "12:00",
+       "close": "22:30",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "12:00",
+       "close": "22:30",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "12:00",
+       "close": "22:30",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "12:00",
+       "close": "22:30",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "12:00",
+       "close": "22:30",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "12:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "12:00",
+       "close": "21:00",
+       "closed": false
+      }
+     ]
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  },
+  {
+   "id": "menu_cafe_chalkboard",
+   "page_type": "menu",
+   "name": "Café chalkboard",
+   "description": "A hand-lettered chalkboard look for coffee shops and bakeries, with sizes and prices at a glance.",
+   "category": "Food & drink",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#f2c14e",
+    "background": "#1d2922",
+    "surface": "#243229",
+    "text": "#f1eee4",
+    "font": "humanist",
+    "layout": "menu-chalkboard",
+    "header": "minimal",
+    "corner_radius": 10,
+    "dark": true
+   },
+   "sections": [
+    {
+     "id": "menu",
+     "type": "menu",
+     "currency": "USD",
+     "show_images": false,
+     "categories": [
+      {
+       "name": "Coffee",
+       "description": "Single-origin espresso, roasted locally every week.",
+       "items": [
+        {
+         "name": "Espresso",
+         "price": 2.5,
+         "variants": [
+          {
+           "label": "Single",
+           "price": 2.5
+          },
+          {
+           "label": "Double",
+           "price": 3.2
+          }
+         ]
+        },
+        {
+         "name": "Flat white",
+         "price": 3.8,
+         "description": "Velvety milk, double shot",
+         "badges": [
+          "popular"
+         ],
+         "variants": [
+          {
+           "label": "Regular",
+           "price": 3.8
+          },
+          {
+           "label": "Large",
+           "price": 4.5
+          }
+         ]
+        },
+        {
+         "name": "Cappuccino",
+         "price": 3.6,
+         "variants": [
+          {
+           "label": "Regular",
+           "price": 3.6
+          },
+          {
+           "label": "Large",
+           "price": 4.3
+          }
+         ]
+        },
+        {
+         "name": "Oat latte",
+         "price": 4.2,
+         "description": "Barista oat milk",
+         "badges": [
+          "vegan"
+         ],
+         "variants": [
+          {
+           "label": "Regular",
+           "price": 4.2
+          },
+          {
+           "label": "Large",
+           "price": 4.9
+          }
+         ]
+        },
+        {
+         "name": "Cold brew",
+         "price": 4.0,
+         "description": "Steeped 18 hours, served over ice",
+         "badges": [
+          "new"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Tea & more",
+       "items": [
+        {
+         "name": "Chai latte",
+         "price": 3.9,
+         "description": "House-spiced, lightly sweet",
+         "badges": [
+          "spicy"
+         ]
+        },
+        {
+         "name": "Matcha latte",
+         "price": 4.4,
+         "description": "Ceremonial grade",
+         "badges": [
+          "vegetarian"
+         ]
+        },
+        {
+         "name": "Hot chocolate",
+         "price": 3.5,
+         "description": "70% dark chocolate"
+        },
+        {
+         "name": "Loose-leaf tea",
+         "price": 3.0,
+         "description": "English breakfast, green, peppermint or rooibos"
+        }
+       ]
+      },
+      {
+       "name": "From the bakery",
+       "items": [
+        {
+         "name": "Butter croissant",
+         "price": 2.8,
+         "description": "Baked every morning",
+         "badges": [
+          "vegetarian"
+         ]
+        },
+        {
+         "name": "Cinnamon roll",
+         "price": 3.4,
+         "description": "Brown butter glaze",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Banana bread",
+         "price": 3.2,
+         "description": "Toasted, with salted butter"
+        },
+        {
+         "name": "Avocado toast",
+         "price": 7.5,
+         "description": "Sourdough, chilli flakes, lime",
+         "badges": [
+          "vegan",
+          "spicy"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "07:00",
+       "close": "17:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "07:00",
+       "close": "17:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "07:00",
+       "close": "17:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "07:00",
+       "close": "17:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "07:00",
+       "close": "17:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "08:00",
+       "close": "15:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "08:00",
+       "close": "13:00",
+       "closed": false
+      }
+     ]
+    },
+    {
+     "id": "about",
+     "type": "about",
+     "text": "Pull up a chair — free Wi-Fi, good music and refills on filter coffee."
+    }
+   ]
+  },
+  {
+   "id": "menu_modern_grid",
+   "page_type": "menu",
+   "name": "Modern grid",
+   "description": "A clean photo grid for dishes — add your own photos, or keep the neutral tiles.",
+   "category": "Food & drink",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#0f766e",
+    "background": "#f5f6f4",
+    "surface": "#ffffff",
+    "text": "#141715",
+    "font": "geometric",
+    "layout": "menu-grid",
+    "header": "cover",
+    "corner_radius": 16
+   },
+   "sections": [
+    {
+     "id": "menu",
+     "type": "menu",
+     "currency": "USD",
+     "show_images": true,
+     "categories": [
+      {
+       "name": "Bowls",
+       "items": [
+        {
+         "name": "Poke bowl",
+         "price": 14,
+         "description": "Salmon, sushi rice, edamame, mango, sesame",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Green goddess",
+         "price": 12,
+         "description": "Quinoa, avocado, kale, herb dressing",
+         "badges": [
+          "vegan",
+          "gluten_free"
+         ]
+        },
+        {
+         "name": "Korean chicken",
+         "price": 13,
+         "description": "Gochujang glaze, pickled veg, rice",
+         "badges": [
+          "spicy"
+         ]
+        },
+        {
+         "name": "Falafel bowl",
+         "price": 12,
+         "description": "Hummus, tabbouleh, tahini",
+         "badges": [
+          "vegan"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Burgers",
+       "items": [
+        {
+         "name": "Classic smash",
+         "price": 11,
+         "description": "Double patty, cheese, pickles, house sauce",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Crispy chicken",
+         "price": 11,
+         "description": "Buttermilk fried, slaw, hot honey",
+         "badges": [
+          "spicy"
+         ]
+        },
+        {
+         "name": "Garden burger",
+         "price": 10,
+         "description": "Beetroot & chickpea, vegan mayo",
+         "badges": [
+          "vegan",
+          "new"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Sides & drinks",
+       "items": [
+        {
+         "name": "Sweet potato fries",
+         "price": 4.5,
+         "badges": [
+          "vegan"
+         ]
+        },
+        {
+         "name": "Fresh lemonade",
+         "price": 3.5,
+         "description": "Mint or ginger",
+         "variants": [
+          {
+           "label": "Regular",
+           "price": 3.5
+          },
+          {
+           "label": "Large",
+           "price": 4.5
+          }
+         ]
+        },
+        {
+         "name": "Iced tea",
+         "price": 3,
+         "description": "Peach or lemon",
+         "badges": [
+          "sold_out"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "buttons",
+     "type": "links",
+     "items": [
+      {
+       "label": "Order online",
+       "url": "{{business.website}}",
+       "icon": "link",
+       "highlight": true
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "11:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "11:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "11:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "11:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "11:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "11:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "12:00",
+       "close": "21:00",
+       "closed": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "menu_fine_dining",
+   "page_type": "menu",
+   "name": "Fine dining",
+   "description": "A quiet, centred tasting menu in gold on black, with wine pairings as options.",
+   "category": "Food & drink",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#c9a86a",
+    "background": "#0e0d0b",
+    "surface": "#16140f",
+    "text": "#ece5d6",
+    "font": "serif",
+    "layout": "menu-fine",
+    "header": "logo",
+    "corner_radius": 0,
+    "dark": true
+   },
+   "sections": [
+    {
+     "id": "intro",
+     "type": "text",
+     "markdown": "*A seven-course journey through the season.*\n\nPlease let us know about any allergies before your meal begins."
+    },
+    {
+     "id": "menu",
+     "type": "menu",
+     "currency": "USD",
+     "show_images": false,
+     "categories": [
+      {
+       "name": "Tasting menu",
+       "description": "Served to the whole table",
+       "items": [
+        {
+         "name": "Amuse-bouche",
+         "description": "Chef’s welcome"
+        },
+        {
+         "name": "Scallop",
+         "description": "Cauliflower, brown butter, capers"
+        },
+        {
+         "name": "Beetroot",
+         "description": "Goat’s curd, hazelnut, aged vinegar",
+         "badges": [
+          "vegetarian"
+         ]
+        },
+        {
+         "name": "Turbot",
+         "description": "Champagne velouté, sea herbs"
+        },
+        {
+         "name": "Lamb",
+         "description": "Smoked aubergine, black garlic, jus"
+        },
+        {
+         "name": "Pre-dessert",
+         "description": "Yoghurt, citrus, olive oil"
+        },
+        {
+         "name": "Chocolate",
+         "description": "72% ganache, coffee, malt"
+        }
+       ]
+      },
+      {
+       "name": "The menu",
+       "items": [
+        {
+         "name": "Seven courses",
+         "price": 120,
+         "variants": [
+          {
+           "label": "Menu",
+           "price": 120
+          },
+          {
+           "label": "With wine pairing",
+           "price": 185
+          }
+         ]
+        },
+        {
+         "name": "Vegetarian menu",
+         "price": 105,
+         "badges": [
+          "vegetarian"
+         ],
+         "variants": [
+          {
+           "label": "Menu",
+           "price": 105
+          },
+          {
+           "label": "With wine pairing",
+           "price": 165
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "18:30",
+       "close": "23:00",
+       "closed": true
+      },
+      {
+       "day": "Tuesday",
+       "open": "18:30",
+       "close": "23:00",
+       "closed": true
+      },
+      {
+       "day": "Wednesday",
+       "open": "18:30",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "18:30",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "18:30",
+       "close": "23:30",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "18:00",
+       "close": "23:30",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "12:30",
+       "close": "16:00",
+       "closed": false
+      }
+     ]
+    },
+    {
+     "id": "reserve",
+     "type": "links",
+     "items": [
+      {
+       "label": "Reserve a table",
+       "url": "{{business.website}}",
+       "icon": "link",
+       "highlight": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "menu_bar_cocktails",
+   "page_type": "menu",
+   "name": "Bar & cocktails",
+   "description": "A late-night neon look for bars and lounges — signatures, beers and zero-proof drinks.",
+   "category": "Food & drink",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#e879f9",
+    "background": "#110d1c",
+    "surface": "#1b1530",
+    "text": "#f6f2ff",
+    "font": "display",
+    "layout": "menu-bar",
+    "header": "banner",
+    "corner_radius": 14,
+    "dark": true
+   },
+   "sections": [
+    {
+     "id": "happy",
+     "type": "text",
+     "markdown": "**Happy hour** every day 5–7 pm — two for one on house cocktails."
+    },
+    {
+     "id": "menu",
+     "type": "menu",
+     "currency": "USD",
+     "show_images": false,
+     "categories": [
+      {
+       "name": "Signatures",
+       "items": [
+        {
+         "name": "Midnight Negroni",
+         "price": 12,
+         "description": "Gin, bitter orange, vermouth, smoked rosemary",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Passion Spritz",
+         "price": 11,
+         "description": "Passion fruit, prosecco, soda"
+        },
+        {
+         "name": "Spicy Paloma",
+         "price": 12,
+         "description": "Tequila, grapefruit, jalapeño, salt",
+         "badges": [
+          "spicy"
+         ]
+        },
+        {
+         "name": "Espresso Martini",
+         "price": 12,
+         "description": "Vodka, fresh espresso, coffee liqueur",
+         "badges": [
+          "new"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Classics",
+       "items": [
+        {
+         "name": "Old Fashioned",
+         "price": 11,
+         "description": "Bourbon, demerara, bitters"
+        },
+        {
+         "name": "Margarita",
+         "price": 10,
+         "description": "Tequila, lime, triple sec"
+        },
+        {
+         "name": "Mojito",
+         "price": 10,
+         "description": "White rum, mint, lime, soda"
+        }
+       ]
+      },
+      {
+       "name": "Beer & wine",
+       "items": [
+        {
+         "name": "Draught lager",
+         "price": 6,
+         "variants": [
+          {
+           "label": "Half",
+           "price": 4
+          },
+          {
+           "label": "Pint",
+           "price": 6
+          }
+         ]
+        },
+        {
+         "name": "Craft IPA",
+         "price": 7,
+         "description": "Rotating local tap"
+        },
+        {
+         "name": "Wine",
+         "price": 8,
+         "description": "Red, white or rosé",
+         "variants": [
+          {
+           "label": "Glass",
+           "price": 8
+          },
+          {
+           "label": "Bottle",
+           "price": 32
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Zero proof",
+       "items": [
+        {
+         "name": "Garden Tonic",
+         "price": 7,
+         "description": "Cucumber, elderflower, tonic",
+         "badges": [
+          "vegan"
+         ]
+        },
+        {
+         "name": "Virgin Colada",
+         "price": 7,
+         "description": "Pineapple, coconut, lime",
+         "badges": [
+          "vegan"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "17:00",
+       "close": "01:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "17:00",
+       "close": "01:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "17:00",
+       "close": "01:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "17:00",
+       "close": "01:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "17:00",
+       "close": "01:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "17:00",
+       "close": "02:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "16:00",
+       "close": "00:00",
+       "closed": false
+      }
+     ]
+    },
+    {
+     "id": "note",
+     "type": "text",
+     "markdown": "Please drink responsibly. ID may be requested."
+    }
+   ]
+  },
+  {
+   "id": "menu_street_food",
+   "page_type": "menu",
+   "name": "Street food",
+   "description": "Loud, bold and hungry — big type, sticker badges and combo deals for food trucks and takeaways.",
+   "category": "Food & drink",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#ffc21a",
+    "background": "#fff8e1",
+    "surface": "#ffffff",
+    "text": "#161310",
+    "font": "condensed",
+    "layout": "menu-street",
+    "header": "banner",
+    "corner_radius": 12
+   },
+   "sections": [
+    {
+     "id": "menu",
+     "type": "menu",
+     "currency": "USD",
+     "show_images": false,
+     "categories": [
+      {
+       "name": "Combos",
+       "description": "Every combo comes with fries and a drink.",
+       "items": [
+        {
+         "name": "Combo #1 — Chicken wrap",
+         "price": 11,
+         "description": "Grilled chicken, garlic sauce, pickles",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Combo #2 — Beef burger",
+         "price": 12,
+         "description": "Double beef, cheddar, smoky sauce"
+        },
+        {
+         "name": "Combo #3 — Veggie box",
+         "price": 10,
+         "description": "Falafel, hummus, salad",
+         "badges": [
+          "vegan"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Wraps & rolls",
+       "items": [
+        {
+         "name": "Chicken shawarma",
+         "price": 7,
+         "description": "Garlic toum, pickles, fries inside",
+         "badges": [
+          "popular"
+         ]
+        },
+        {
+         "name": "Beef kebab roll",
+         "price": 8,
+         "description": "Onion, parsley, chilli sauce",
+         "badges": [
+          "spicy"
+         ]
+        },
+        {
+         "name": "Halloumi roll",
+         "price": 7,
+         "description": "Grilled halloumi, tomato, mint",
+         "badges": [
+          "vegetarian"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Loaded fries",
+       "items": [
+        {
+         "name": "Cheesy fries",
+         "price": 5,
+         "description": "Cheese sauce, crispy onions",
+         "badges": [
+          "vegetarian"
+         ]
+        },
+        {
+         "name": "Fire fries",
+         "price": 6,
+         "description": "Chilli, jalapeños, sriracha mayo",
+         "badges": [
+          "spicy",
+          "new"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Drinks",
+       "items": [
+        {
+         "name": "Soft drinks",
+         "price": 2,
+         "description": "Cola, orange, lemon"
+        },
+        {
+         "name": "Fresh juice",
+         "price": 3.5,
+         "description": "Mango, passion or pineapple"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "order",
+     "type": "links",
+     "items": [
+      {
+       "label": "Order for pickup",
+       "url": "{{business.website}}",
+       "icon": "link",
+       "highlight": true
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "11:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "11:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "11:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "11:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "11:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "11:00",
+       "close": "00:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "12:00",
+       "close": "22:00",
+       "closed": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "product_catalogue_grid",
+   "page_type": "product",
+   "name": "Catalogue grid",
+   "description": "A tidy product grid with prices, sale prices, stock status and a buy button.",
+   "category": "Retail",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#1d4ed8",
+    "background": "#f4f5f7",
+    "surface": "#ffffff",
+    "text": "#101828",
+    "font": "sans",
+    "layout": "catalogue-grid",
+    "header": "minimal",
+    "corner_radius": 14
+   },
+   "sections": [
+    {
+     "id": "intro",
+     "type": "text",
+     "markdown": "Our best sellers, in store and online. Ask the team for sizes and colours."
+    },
+    {
+     "id": "products",
+     "type": "products",
+     "items": [
+      {
+       "title": "Everyday tote",
+       "description": "Heavy canvas, inside pocket, fits a 15\" laptop.",
+       "price": 35,
+       "badge": "Best seller",
+       "in_stock": true,
+       "cta": {
+        "label": "Buy now",
+        "url": "{{business.website}}"
+       }
+      },
+      {
+       "title": "Ceramic mug",
+       "description": "Hand-glazed stoneware, 350 ml.",
+       "price": 18,
+       "compare_at_price": 24,
+       "badge": "Sale",
+       "in_stock": true,
+       "cta": {
+        "label": "Buy now",
+        "url": "{{business.website}}"
+       }
+      },
+      {
+       "title": "Linen notebook",
+       "description": "A5, 160 dotted pages, lay-flat binding.",
+       "price": 16,
+       "in_stock": true,
+       "cta": {
+        "label": "Buy now",
+        "url": "{{business.website}}"
+       }
+      },
+      {
+       "title": "Scented candle",
+       "description": "Cedar & fig, 40-hour burn.",
+       "price": 28,
+       "badge": "New",
+       "in_stock": true,
+       "cta": {
+        "label": "Buy now",
+        "url": "{{business.website}}"
+       }
+      },
+      {
+       "title": "Wool throw",
+       "description": "Soft merino blend, 130 × 170 cm.",
+       "price": 89,
+       "in_stock": false
+      },
+      {
+       "title": "Gift card",
+       "description": "Any amount, delivered by email.",
+       "price": 25,
+       "in_stock": true,
+       "cta": {
+        "label": "Send a gift",
+        "url": "{{business.website}}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  },
+  {
+   "id": "product_single",
+   "page_type": "product",
+   "name": "Single product",
+   "description": "One hero product with price, highlights and a clear buy button — great on packaging and shelf tags.",
+   "category": "Retail",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#b45309",
+    "background": "#faf7f2",
+    "surface": "#ffffff",
+    "text": "#1c1917",
+    "font": "elegant",
+    "layout": "product-single",
+    "header": "minimal",
+    "corner_radius": 18
+   },
+   "sections": [
+    {
+     "id": "product",
+     "type": "products",
+     "items": [
+      {
+       "title": "House Blend coffee beans",
+       "description": "A smooth, chocolatey medium roast from small farms in the highlands. Roasted every Tuesday and shipped within 48 hours.",
+       "price": 16,
+       "compare_at_price": 19,
+       "badge": "Freshly roasted",
+       "in_stock": true,
+       "cta": {
+        "label": "Buy now",
+        "url": "{{business.website}}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "highlights",
+     "type": "text",
+     "markdown": "**Why you’ll love it**\n\n- Notes of cocoa, caramel and red apple\n- 100% arabica, fully traceable\n- 250 g, whole bean or ground to order\n- Recyclable packaging"
+    },
+    {
+     "id": "brew",
+     "type": "services",
+     "items": [
+      {
+       "title": "Espresso",
+       "description": "18 g in, 36 g out, 28 seconds."
+      },
+      {
+       "title": "Filter",
+       "description": "60 g per litre, water just off the boil."
+      },
+      {
+       "title": "French press",
+       "description": "Coarse grind, steep 4 minutes."
+      }
+     ]
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  },
+  {
+   "id": "product_service_list",
+   "page_type": "product",
+   "name": "Service list",
+   "description": "A clear price list for salons, studios, repair shops and clinics, with durations and booking.",
+   "category": "Services",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#0d9488",
+    "background": "#f3f7f6",
+    "surface": "#ffffff",
+    "text": "#10201d",
+    "font": "humanist",
+    "layout": "service-list",
+    "header": "cover",
+    "corner_radius": 14
+   },
+   "sections": [
+    {
+     "id": "about",
+     "type": "about",
+     "text": "Friendly experts, honest prices. Walk-ins welcome — booking guarantees your slot."
+    },
+    {
+     "id": "hair",
+     "type": "services",
+     "items": [
+      {
+       "title": "Haircut & style",
+       "description": "Consultation, wash, cut and finish.",
+       "price": 35,
+       "duration": "45 min"
+      },
+      {
+       "title": "Beard trim",
+       "description": "Shape, line-up and hot towel.",
+       "price": 15,
+       "duration": "20 min"
+      },
+      {
+       "title": "Colour",
+       "description": "Full colour or root touch-up.",
+       "price": 60,
+       "duration": "90 min"
+      },
+      {
+       "title": "Blow-dry",
+       "description": "Wash and bouncy blow-dry.",
+       "price": 25,
+       "duration": "30 min"
+      },
+      {
+       "title": "Treatment",
+       "description": "Deep-conditioning mask.",
+       "price": 20,
+       "duration": "20 min"
+      }
+     ]
+    },
+    {
+     "id": "book",
+     "type": "links",
+     "items": [
+      {
+       "label": "Book an appointment",
+       "url": "{{business.website}}",
+       "icon": "link",
+       "highlight": true
+      }
+     ]
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "09:00",
+       "close": "19:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "09:00",
+       "close": "19:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "09:00",
+       "close": "19:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "09:00",
+       "close": "19:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "09:00",
+       "close": "19:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "09:00",
+       "close": "17:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "09:00",
+       "close": "17:00",
+       "closed": true
+      }
+     ]
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  },
+  {
+   "id": "links_hub",
+   "page_type": "links",
+   "name": "Link hub",
+   "description": "All your important links on one tidy page — the classic link-in-bio.",
+   "category": "Social",
+   "preview_image_url": null,
+   "theme": {
+    "background": "#f3f4f6",
+    "surface": "#ffffff",
+    "text": "#111827",
+    "font": "sans",
+    "layout": "link-hub",
+    "header": "logo",
+    "corner_radius": 14
+   },
+   "sections": [
+    {
+     "id": "bio",
+     "type": "text",
+     "markdown": "Everything {{business.name}} in one place."
+    },
+    {
+     "id": "links",
+     "type": "links",
+     "items": [
+      {
+       "label": "Visit our website",
+       "url": "{{business.website}}",
+       "icon": "link",
+       "highlight": true
+      },
+      {
+       "label": "Instagram",
+       "url": "https://instagram.com/",
+       "icon": "instagram"
+      },
+      {
+       "label": "Facebook",
+       "url": "https://facebook.com/",
+       "icon": "facebook"
+      },
+      {
+       "label": "TikTok",
+       "url": "https://tiktok.com/",
+       "icon": "tiktok"
+      },
+      {
+       "label": "Leave us a review",
+       "url": "https://www.google.com/maps",
+       "icon": "map"
+      }
+     ]
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  },
+  {
+   "id": "links_creator",
+   "page_type": "links",
+   "name": "Creator",
+   "description": "A bold dark link page for creators, artists and personal brands.",
+   "category": "Social",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#a3e635",
+    "background": "#0b0c0f",
+    "surface": "#15171c",
+    "text": "#f4f5f7",
+    "font": "display",
+    "layout": "link-creator",
+    "header": "logo",
+    "corner_radius": 22,
+    "dark": true
+   },
+   "sections": [
+    {
+     "id": "bio",
+     "type": "text",
+     "markdown": "Making things for the internet. New drop every Friday."
+    },
+    {
+     "id": "links",
+     "type": "links",
+     "items": [
+      {
+       "label": "Watch the latest video",
+       "url": "https://youtube.com/",
+       "icon": "youtube",
+       "highlight": true
+      },
+      {
+       "label": "Shop the merch",
+       "url": "{{business.website}}",
+       "icon": "link"
+      },
+      {
+       "label": "Instagram",
+       "url": "https://instagram.com/",
+       "icon": "instagram"
+      },
+      {
+       "label": "TikTok",
+       "url": "https://tiktok.com/",
+       "icon": "tiktok"
+      },
+      {
+       "label": "X",
+       "url": "https://x.com/",
+       "icon": "x"
+      },
+      {
+       "label": "Work with me",
+       "url": "mailto:hello@example.com",
+       "icon": "email"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "offer_coupon",
+   "page_type": "offer",
+   "name": "Coupon",
+   "description": "A tear-off style coupon with a code to copy, expiry date and terms.",
+   "category": "Promotions",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#ea580c",
+    "background": "#fff4ea",
+    "surface": "#ffffff",
+    "text": "#1f1510",
+    "font": "display",
+    "layout": "offer-coupon",
+    "header": "minimal",
+    "corner_radius": 18
+   },
+   "sections": [
+    {
+     "id": "offer",
+     "type": "offer",
+     "title": "20% off your next visit",
+     "discount_label": "20% OFF",
+     "description": "Thanks for stopping by! Show this code at the counter or use it online.",
+     "code": "WELCOME20",
+     "valid_until": "2026-12-31",
+     "terms": "One use per customer. Not valid with other offers. Cannot be exchanged for cash.",
+     "cta": {
+      "label": "Shop now",
+      "url": "{{business.website}}"
+     }
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  },
+  {
+   "id": "offer_flash_sale",
+   "page_type": "offer",
+   "name": "Flash sale",
+   "description": "High-energy countdown sale with a code and a few featured deals.",
+   "category": "Promotions",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#facc15",
+    "background": "#0a0a0a",
+    "surface": "#161616",
+    "text": "#fafafa",
+    "font": "condensed",
+    "layout": "offer-flash",
+    "header": "banner",
+    "corner_radius": 10,
+    "dark": true
+   },
+   "sections": [
+    {
+     "id": "offer",
+     "type": "offer",
+     "title": "Weekend flash sale",
+     "discount_label": "UP TO 50% OFF",
+     "description": "48 hours only. Everything marked in store — online too with the code below.",
+     "code": "FLASH50",
+     "valid_until": "2026-11-30T23:59:00Z",
+     "terms": "While stocks last. Discount applied at checkout.",
+     "cta": {
+      "label": "Shop the sale",
+      "url": "{{business.website}}"
+     }
+    },
+    {
+     "id": "deals",
+     "type": "products",
+     "items": [
+      {
+       "title": "Wireless earbuds",
+       "price": 39,
+       "compare_at_price": 79,
+       "badge": "-50%",
+       "in_stock": true
+      },
+      {
+       "title": "Smart watch",
+       "price": 99,
+       "compare_at_price": 149,
+       "badge": "-33%",
+       "in_stock": true
+      },
+      {
+       "title": "Bluetooth speaker",
+       "price": 45,
+       "compare_at_price": 65,
+       "badge": "-30%",
+       "in_stock": true
+      },
+      {
+       "title": "Phone case",
+       "price": 9,
+       "compare_at_price": 15,
+       "badge": "-40%",
+       "in_stock": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "event_invite",
+   "page_type": "event",
+   "name": "Event invite",
+   "description": "An elegant invitation with date, venue, map, “Add to calendar” and an RSVP form.",
+   "category": "Events",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#be185d",
+    "background": "#fbf7f4",
+    "surface": "#ffffff",
+    "text": "#221a1d",
+    "font": "serif",
+    "layout": "event-invite",
+    "header": "cover",
+    "corner_radius": 16
+   },
+   "sections": [
+    {
+     "id": "event",
+     "type": "event",
+     "title": "An evening at {{business.name}}",
+     "starts_at": "2026-11-14T18:30:00Z",
+     "ends_at": "2026-11-14T22:00:00Z",
+     "venue": "{{business.name}}",
+     "address": "{{business.address}}",
+     "map_query": "{{business.address}}",
+     "description": "Join us for drinks, live music and a first taste of our winter menu. Dress code: smart casual."
+    },
+    {
+     "id": "programme",
+     "type": "text",
+     "markdown": "**Programme**\n\n- 18:30 — Welcome drinks\n- 19:15 — Live acoustic set\n- 20:00 — Tasting of the new menu\n- 22:00 — Close"
+    },
+    {
+     "id": "rsvp",
+     "type": "form",
+     "title": "RSVP",
+     "description": "Let us know if you can make it.",
+     "fields": [
+      {
+       "id": "name",
+       "label": "Your name",
+       "type": "text",
+       "required": true
+      },
+      {
+       "id": "email",
+       "label": "Email",
+       "type": "email",
+       "required": true
+      },
+      {
+       "id": "attending",
+       "label": "Will you attend?",
+       "type": "select",
+       "required": true,
+       "options": [
+        "Yes, I’ll be there",
+        "Sorry, I can’t make it"
+       ]
+      },
+      {
+       "id": "guests",
+       "label": "Number of guests",
+       "type": "select",
+       "required": false,
+       "options": [
+        "Just me",
+        "+1",
+        "+2",
+        "+3"
+       ]
+      },
+      {
+       "id": "notes",
+       "label": "Dietary requirements",
+       "type": "textarea",
+       "required": false
+      }
+     ],
+     "submit_label": "Send RSVP",
+     "success_message": "Thank you! We’ve saved your place."
+    }
+   ]
+  },
+  {
+   "id": "event_workshop",
+   "page_type": "event",
+   "name": "Workshop",
+   "description": "A structured page for classes, workshops and meetups: agenda, what to bring and registration.",
+   "category": "Events",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#2563eb",
+    "background": "#f5f7fb",
+    "surface": "#ffffff",
+    "text": "#0f172a",
+    "font": "geometric",
+    "layout": "event-workshop",
+    "header": "minimal",
+    "corner_radius": 12
+   },
+   "sections": [
+    {
+     "id": "event",
+     "type": "event",
+     "title": "Hands-on workshop: Latte art basics",
+     "starts_at": "2026-11-21T09:30:00Z",
+     "ends_at": "2026-11-21T12:30:00Z",
+     "venue": "{{business.name}}",
+     "address": "{{business.address}}",
+     "map_query": "{{business.address}}",
+     "description": "A small-group, beginner-friendly session. You’ll learn milk texturing and pour three classic patterns."
+    },
+    {
+     "id": "agenda",
+     "type": "services",
+     "items": [
+      {
+       "title": "Espresso fundamentals",
+       "description": "Dose, grind and extraction.",
+       "duration": "30 min"
+      },
+      {
+       "title": "Steaming milk",
+       "description": "Microfoam for silky drinks.",
+       "duration": "45 min"
+      },
+      {
+       "title": "Pouring patterns",
+       "description": "Heart, tulip and rosetta.",
+       "duration": "75 min"
+      },
+      {
+       "title": "Q&A and tasting",
+       "description": "Coffee on us.",
+       "duration": "30 min"
+      }
+     ]
+    },
+    {
+     "id": "bring",
+     "type": "text",
+     "markdown": "**Good to know**\n\n- All equipment provided\n- Max 8 participants\n- Price includes coffee and pastries"
+    },
+    {
+     "id": "register",
+     "type": "form",
+     "title": "Register",
+     "description": "Reserve your spot — we’ll confirm by email.",
+     "fields": [
+      {
+       "id": "name",
+       "label": "Full name",
+       "type": "text",
+       "required": true
+      },
+      {
+       "id": "email",
+       "label": "Email",
+       "type": "email",
+       "required": true
+      },
+      {
+       "id": "phone",
+       "label": "Phone",
+       "type": "phone",
+       "required": false
+      },
+      {
+       "id": "level",
+       "label": "Experience",
+       "type": "select",
+       "required": false,
+       "options": [
+        "Complete beginner",
+        "Some experience",
+        "Working barista"
+       ]
+      }
+     ],
+     "submit_label": "Register",
+     "success_message": "You’re in! Check your inbox for the details."
+    }
+   ]
+  },
+  {
+   "id": "wifi_guest",
+   "page_type": "wifi",
+   "name": "Guest Wi-Fi",
+   "description": "Network name, one-tap copy password and a scan-to-join QR code for guests.",
+   "category": "Hospitality",
+   "preview_image_url": null,
+   "theme": {
+    "font": "sans",
+    "layout": "wifi-guest",
+    "header": "logo",
+    "corner_radius": 18
+   },
+   "sections": [
+    {
+     "id": "wifi",
+     "type": "wifi",
+     "title": "Free guest Wi-Fi",
+     "ssid": "Guest-WiFi",
+     "password": "welcome2026",
+     "security": "WPA",
+     "hidden": false
+    },
+    {
+     "id": "rules",
+     "type": "text",
+     "markdown": "Enjoy your stay! Please keep video calls quiet and be kind to other guests."
+    },
+    {
+     "id": "links",
+     "type": "links",
+     "items": [
+      {
+       "label": "Visit our website",
+       "url": "{{business.website}}",
+       "icon": "link"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gallery_portfolio",
+   "page_type": "gallery",
+   "name": "Portfolio",
+   "description": "A minimal white-wall portfolio with a full-screen lightbox. Upload your own photos.",
+   "category": "Creative",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#111111",
+    "background": "#ffffff",
+    "surface": "#ffffff",
+    "text": "#111111",
+    "font": "elegant",
+    "layout": "gallery-portfolio",
+    "header": "minimal",
+    "corner_radius": 4
+   },
+   "sections": [
+    {
+     "id": "intro",
+     "type": "text",
+     "markdown": "Selected work — interiors, products and portraits. Available for commissions."
+    },
+    {
+     "id": "gallery",
+     "type": "gallery",
+     "images": []
+    },
+    {
+     "id": "services",
+     "type": "services",
+     "items": [
+      {
+       "title": "Portrait session",
+       "description": "1 hour, 15 edited photos."
+      },
+      {
+       "title": "Product shoot",
+       "description": "Per product, white or styled background."
+      },
+      {
+       "title": "Interiors",
+       "description": "Half or full day."
+      }
+     ]
+    },
+    {
+     "id": "links",
+     "type": "links",
+     "items": [
+      {
+       "label": "Enquire about a project",
+       "url": "mailto:hello@example.com",
+       "icon": "email",
+       "highlight": true
+      },
+      {
+       "label": "Instagram",
+       "url": "https://instagram.com/",
+       "icon": "instagram"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form_feedback",
+   "page_type": "form",
+   "name": "Feedback & rating",
+   "description": "Quick star ratings and comments — perfect on table tags and receipts.",
+   "category": "Feedback",
+   "preview_image_url": null,
+   "theme": {
+    "background": "#f6f6f3",
+    "surface": "#ffffff",
+    "text": "#18181b",
+    "font": "humanist",
+    "layout": "form-feedback",
+    "header": "logo",
+    "corner_radius": 18
+   },
+   "sections": [
+    {
+     "id": "feedback",
+     "type": "form",
+     "title": "How was your visit?",
+     "description": "It takes 20 seconds and helps us get better every day.",
+     "fields": [
+      {
+       "id": "overall",
+       "label": "Overall experience",
+       "type": "rating",
+       "required": true
+      },
+      {
+       "id": "service",
+       "label": "Service",
+       "type": "rating",
+       "required": false
+      },
+      {
+       "id": "quality",
+       "label": "Quality",
+       "type": "rating",
+       "required": false
+      },
+      {
+       "id": "comments",
+       "label": "Anything we could do better?",
+       "type": "textarea",
+       "required": false,
+       "placeholder": "Tell us what you loved, or what went wrong…"
+      },
+      {
+       "id": "email",
+       "label": "Email (if you’d like a reply)",
+       "type": "email",
+       "required": false
+      },
+      {
+       "id": "consent",
+       "label": "You may contact me about my feedback",
+       "type": "checkbox",
+       "required": false
+      }
+     ],
+     "submit_label": "Send feedback",
+     "success_message": "Thank you — we read every message."
+    }
+   ]
+  },
+  {
+   "id": "form_contact",
+   "page_type": "form",
+   "name": "Contact request",
+   "description": "A simple contact form with topic, message and your contact details alongside.",
+   "category": "Feedback",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#334155",
+    "background": "#f5f6f8",
+    "surface": "#ffffff",
+    "text": "#0f172a",
+    "font": "sans",
+    "layout": "form-contact",
+    "header": "minimal",
+    "corner_radius": 12
+   },
+   "sections": [
+    {
+     "id": "contact-form",
+     "type": "form",
+     "title": "Get in touch",
+     "description": "Send us a message and we’ll get back to you within one working day.",
+     "fields": [
+      {
+       "id": "name",
+       "label": "Name",
+       "type": "text",
+       "required": true
+      },
+      {
+       "id": "email",
+       "label": "Email",
+       "type": "email",
+       "required": true
+      },
+      {
+       "id": "phone",
+       "label": "Phone",
+       "type": "phone",
+       "required": false
+      },
+      {
+       "id": "topic",
+       "label": "Topic",
+       "type": "select",
+       "required": true,
+       "options": [
+        "General question",
+        "Quote request",
+        "Order support",
+        "Partnership"
+       ]
+      },
+      {
+       "id": "message",
+       "label": "Message",
+       "type": "textarea",
+       "required": true
+      }
+     ],
+     "submit_label": "Send message",
+     "success_message": "Message sent — we’ll be in touch soon."
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "08:00",
+       "close": "18:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "08:00",
+       "close": "18:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "08:00",
+       "close": "18:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "08:00",
+       "close": "18:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "08:00",
+       "close": "18:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "09:00",
+       "close": "16:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "09:00",
+       "close": "17:00",
+       "closed": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "form_booking",
+   "page_type": "form",
+   "name": "Booking request",
+   "description": "Collect table or appointment requests with preferred time, party size and notes.",
+   "category": "Hospitality",
+   "preview_image_url": null,
+   "theme": {
+    "accent": "#0f766e",
+    "background": "#f4f7f5",
+    "surface": "#ffffff",
+    "text": "#122019",
+    "font": "elegant",
+    "layout": "form-booking",
+    "header": "cover",
+    "corner_radius": 16
+   },
+   "sections": [
+    {
+     "id": "booking",
+     "type": "form",
+     "title": "Request a booking",
+     "description": "We’ll confirm by phone or email as soon as possible.",
+     "fields": [
+      {
+       "id": "name",
+       "label": "Name",
+       "type": "text",
+       "required": true
+      },
+      {
+       "id": "phone",
+       "label": "Phone",
+       "type": "phone",
+       "required": true
+      },
+      {
+       "id": "email",
+       "label": "Email",
+       "type": "email",
+       "required": false
+      },
+      {
+       "id": "when",
+       "label": "Preferred date & time",
+       "type": "text",
+       "required": true,
+       "placeholder": "e.g. Friday 14 Nov, 7:30 pm"
+      },
+      {
+       "id": "party",
+       "label": "Party size",
+       "type": "select",
+       "required": true,
+       "options": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7–10",
+        "More than 10"
+       ]
+      },
+      {
+       "id": "notes",
+       "label": "Notes",
+       "type": "textarea",
+       "required": false,
+       "placeholder": "Occasion, allergies, accessibility…"
+      }
+     ],
+     "submit_label": "Request booking",
+     "success_message": "Request received — we’ll confirm shortly."
+    },
+    {
+     "id": "hours",
+     "type": "hours",
+     "rows": [
+      {
+       "day": "Monday",
+       "open": "10:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Tuesday",
+       "open": "10:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Wednesday",
+       "open": "10:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Thursday",
+       "open": "10:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Friday",
+       "open": "10:00",
+       "close": "22:00",
+       "closed": false
+      },
+      {
+       "day": "Saturday",
+       "open": "10:00",
+       "close": "23:00",
+       "closed": false
+      },
+      {
+       "day": "Sunday",
+       "open": "10:00",
+       "close": "20:00",
+       "closed": false
+      }
+     ]
+    },
+    {
+     "id": "contact",
+     "type": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}",
+     "address": "{{business.address}}"
+    }
+   ]
+  }
+ ]
+}

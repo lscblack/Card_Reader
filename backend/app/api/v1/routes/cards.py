@@ -444,6 +444,10 @@ async def analytics(ctx: Analytics, session: SessionDep,
         select(CardTap.assignee_type, func.count())
         .where(*conds, or_(CardTap.card_id.is_not(None), CardTap.assignee_type.is_not(None)))
         .group_by(CardTap.assignee_type))).all()}
+    from app.models import FormResponse
+
+    fb = (await session.execute(select(func.count(), func.avg(FormResponse.rating)).where(
+        FormResponse.business_id == ctx.business.id, FormResponse.created_at >= since))).one()
     last = (await session.execute(select(CardTap).where(*base).order_by(CardTap.created_at.desc()).limit(1))).scalar_one_or_none()
     return {
         "range": range,
@@ -458,6 +462,7 @@ async def analytics(ctx: Analytics, session: SessionDep,
         "by_country": await _breakdown(session, CardTap.country, conds, "country"),
         "by_hour": [{"hour": h, "taps": int(by_hour_rows.get(h, 0) or by_hour_rows.get(float(h), 0))} for h in range_(24)],
         "last_activity": tap_out(last).model_dump(mode="json") if last else None,
+        "feedback": {"responses": int(fb[0]), "avg_rating": round(float(fb[1]), 2) if fb[1] is not None else None},
     }
 
 

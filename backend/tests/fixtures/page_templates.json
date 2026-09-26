@@ -1,0 +1,126 @@
+{
+ "templates": [
+  {
+   "id": "fx_menu",
+   "page_type": "menu",
+   "name": "Fixture Bistro",
+   "description": "Menu",
+   "category": "restaurant",
+   "theme": {
+    "layout": "bistro",
+    "header": "cover",
+    "dark": false
+   },
+   "sections": [
+    {
+     "type": "about",
+     "id": "intro",
+     "text": "Welcome to {{business.name}}"
+    },
+    {
+     "type": "menu",
+     "id": "menu",
+     "currency": "RWF",
+     "show_images": true,
+     "categories": [
+      {
+       "name": "Starters",
+       "items": [
+        {
+         "name": "Soup",
+         "price": 3500,
+         "badges": [
+          "vegetarian"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "contact",
+     "id": "contact",
+     "phone": "{{business.phone}}",
+     "email": "{{business.email}}",
+     "website": "{{business.website}}"
+    }
+   ]
+  },
+  {
+   "id": "fx_links",
+   "page_type": "links",
+   "name": "Fixture Link hub",
+   "category": "links",
+   "theme": {
+    "accent": "#0F766E",
+    "header": "logo"
+   },
+   "sections": [
+    {
+     "type": "links",
+     "id": "links",
+     "items": [
+      {
+       "label": "Website",
+       "url": "{{business.website}}",
+       "icon": "link",
+       "highlight": true
+      },
+      {
+       "label": "Email us",
+       "url": "mailto:{{business.email}}",
+       "icon": "email"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fx_feedback",
+   "page_type": "form",
+   "name": "Fixture Feedback",
+   "category": "forms",
+   "theme": {},
+   "sections": [
+    {
+     "type": "form",
+     "id": "feedback",
+     "title": "How did we do at {{business.name}}?",
+     "fields": [
+      {
+       "id": "rating",
+       "label": "Rating",
+       "type": "rating",
+       "required": true
+      },
+      {
+       "id": "comment",
+       "label": "Comment",
+       "type": "textarea",
+       "required": false
+      }
+     ],
+     "submit_label": "Send",
+     "success_message": "Thanks!"
+    }
+   ]
+  },
+  {
+   "id": "fx_bad_url",
+   "page_type": "links",
+   "name": "Hostile",
+   "theme": {},
+   "sections": [
+    {
+     "type": "links",
+     "items": [
+      {
+       "label": "x",
+       "url": "javascript:alert(1)"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
