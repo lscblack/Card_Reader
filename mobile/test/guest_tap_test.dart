@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:nfc_terminal/services/card_resolver.dart';
 import 'package:nfc_terminal/app.dart';
 import 'package:nfc_terminal/core/config.dart';
 import 'package:nfc_terminal/core/secure_store.dart';
@@ -82,7 +83,7 @@ void main() {
   });
 
   group('guest flow (not a terminal)', () {
-    Future<(FakeGuestTap, List<Uri>)> open(WidgetTester tester) async {
+    Future<(FakeGuestTap, List<Uri>)> open(WidgetTester tester, {CardResolver? resolver}) async {
       final repo = InMemoryEventRepository();
       final app = AppState(
         credentials: CredentialStore(MemorySecureStore()),
@@ -98,6 +99,7 @@ void main() {
         repository: repo,
         nfc: FakeNfcService(),
         guestTap: guest,
+        cardResolver: resolver ?? (_) async => null,
         linkOpener: (u) async {
           opened.add(u);
           return true;
@@ -129,6 +131,27 @@ void main() {
       expect(find.text('This card isn\'t set up yet'), findsOneWidget);
       expect(find.textContaining('04:A1:B2:C3:D4'), findsOneWidget);
       expect(opened, isEmpty);
+    });
+
+    testWidgets('registered card without a link on the chip: looked up by chip ID and opened (no sign-in)', (tester) async {
+      final asked = <String>[];
+      final (guest, opened) = await open(tester, resolver: (uid) async {
+        asked.add(uid);
+        return '$base/t/Ol4a8ErXE9';
+      });
+      guest.onTag!(const GuestTag(uid: '8C530107'));
+      await frames(tester);
+      expect(asked, ['8C530107']);
+      expect(opened.single.toString(), '$base/t/Ol4a8ErXE9');
+      expect(find.byKey(const Key('guestNotSetUp')), findsNothing);
+    });
+
+    testWidgets('chip ID lookup answering a foreign host still asks before opening', (tester) async {
+      final (guest, opened) = await open(tester, resolver: (_) async => 'https://evil.example/t/Ol4a8ErXE9');
+      guest.onTag!(const GuestTag(uid: '8C530107'));
+      await frames(tester);
+      expect(opened, isEmpty);
+      expect(find.byKey(const Key('guestOpen')), findsOneWidget);
     });
 
     testWidgets('other hosts and other links are shown with an Open button, never auto-opened', (tester) async {

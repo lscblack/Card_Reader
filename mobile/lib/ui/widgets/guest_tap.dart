@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/tap_links.dart';
 import '../../data/models/business.dart' show isOpenableActionUrl;
 import '../../data/models/card_read.dart';
+import '../../services/card_resolver.dart';
 import '../../services/guest_tap.dart';
 import '../personal/share_ripple.dart';
 import '../theme.dart';
@@ -25,9 +26,12 @@ Future<bool> openExternally(Uri uri) async {
 
 /// App-wide guest-tap wiring (provided by `NfcTerminalApp`).
 class GuestTapConfig {
-  const GuestTapConfig({required this.reader, this.opener = openExternally, required this.knownServers});
+  const GuestTapConfig({required this.reader, this.opener = openExternally, required this.knownServers, this.resolver});
   final GuestTapReader reader;
   final LinkOpener opener;
+
+  /// Finds a registered card's tap link by chip ID when the chip itself carries no link.
+  final CardResolver? resolver;
 
   /// Servers whose tap links open without asking (configured servers + build default).
   final Iterable<String?> Function() knownServers;
@@ -136,7 +140,7 @@ class _GuestTapScopeState extends State<GuestTapScope> {
     _lastAt = now;
     _sheetOpen = true;
     try {
-      await showGuestTag(context, tag, knownServers: c.knownServers(), opener: c.opener);
+      await showGuestTag(context, tag, knownServers: c.knownServers(), opener: c.opener, resolver: c.resolver);
     } finally {
       _sheetOpen = false;
       _lastAt = DateTime.now();
@@ -149,21 +153,34 @@ class _GuestTapScopeState extends State<GuestTapScope> {
 
 /// Guest tap result sheet: opens nexTap links on known servers right away, asks for other hosts
 /// and other links, and explains cards that aren't set up yet.
-Future<void> showGuestTag(BuildContext context, GuestTag tag, {required Iterable<String?> knownServers, LinkOpener opener = openExternally}) {
+Future<void> showGuestTag(BuildContext context, GuestTag tag,
+    {required Iterable<String?> knownServers, LinkOpener opener = openExternally, CardResolver? resolver}) {
   unawaited(HapticFeedback.mediumImpact());
+  final link = pickTapLink(tag.uris, knownServers);
+  // No link on the chip: the card may still be registered (linked but not programmed) — ask the server.
+  Future<TapLink?> Function()? lookup;
+  if (link == null && resolver != null) {
+    lookup = () async {
+      final url = await resolver(tag.uid);
+      return url == null ? null : pickTapLink([url], knownServers);
+    };
+  }
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (_) => GuestTagSheet(tag: tag, link: pickTapLink(tag.uris, knownServers), opener: opener),
+    builder: (_) => GuestTagSheet(tag: tag, link: link, opener: opener, lookup: lookup),
   );
 }
 
 class GuestTagSheet extends StatefulWidget {
-  const GuestTagSheet({super.key, required this.tag, required this.link, required this.opener});
+  const GuestTagSheet({super.key, required this.tag, required this.link, required this.opener, this.lookup});
   final GuestTag tag;
   final TapLink? link;
   final LinkOpener opener;
+
+  /// Resolves the card by chip ID when [link] is null (registered card without a written tap link).
+  final Future<TapLink?> Function()? lookup;
 
   @override
   State<GuestTagSheet> createState() => _GuestTagSheetState();
@@ -172,16 +189,34 @@ class GuestTagSheet extends StatefulWidget {
 class _GuestTagSheetState extends State<GuestTagSheet> {
   bool _opening = false;
   bool _failed = false;
+  late TapLink? _link = widget.link;
+  late bool _looking = widget.link == null && widget.lookup != null;
 
   @override
   void initState() {
     super.initState();
-    final l = widget.link;
+    final l = _link;
     if (l != null && l.autoOpen) WidgetsBinding.instance.addPostFrameCallback((_) => _open());
+    if (_looking) unawaited(_lookup());
+  }
+
+  Future<void> _lookup() async {
+    TapLink? found;
+    try {
+      found = await widget.lookup!();
+    } catch (_) {
+      found = null;
+    }
+    if (!mounted) return;
+    setState(() {
+      _link = found;
+      _looking = false;
+    });
+    if (found != null && found.autoOpen) await _open();
   }
 
   Future<void> _open() async {
-    final l = widget.link;
+    final l = _link;
     if (l == null || _opening) return;
     setState(() {
       _opening = true;
@@ -203,10 +238,18 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final l = widget.link;
+    final l = _link;
     final uid = 'Card ID ${CardUtils.formatUid(widget.tag.uid)}';
     final List<Widget> body;
-    if (l == null) {
+    if (_looking) {
+      body = [
+        const SizedBox(height: 56, width: 56, child: CircularProgressIndicator()),
+        const SizedBox(height: 12),
+        Text('Looking up this card…', key: const Key('guestLookup'), style: t.titleLarge, textAlign: TextAlign.center),
+        const SizedBox(height: 8),
+        SelectableText(uid, textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontFamily: 'monospace')),
+      ];
+    } else if (l == null) {
       body = [
         Icon(Icons.info_outline, size: 48, color: scheme.onSurfaceVariant),
         const SizedBox(height: 12),
@@ -281,7 +324,7 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
     );
   }
 
-  String get _hostLabel => widget.link?.host ?? '';
+  String get _hostLabel => _link?.host ?? '';
 }
 
 /// Welcome/setup hint: "Tap a card" (guest reading is on).

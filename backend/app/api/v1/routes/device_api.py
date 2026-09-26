@@ -434,6 +434,7 @@ class DeviceCardIn(Schema):
     name: str | None = Field(default=None, max_length=120)
     kind: Literal["card", "tag"] = "card"
     assign_to_business: bool = False  # register it as a company card (assignee = the business)
+    note: str | None = Field(default=None, max_length=500)  # kept in the card's history
 
 
 class ProgrammedIn(Schema):
@@ -458,7 +459,8 @@ async def device_register_card(body: DeviceCardIn, device: CurrentDevice, sessio
     except IntegrityError:
         await session.rollback()
         raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID") from None
-    history(session, card, "created", device_id=device.id, name=card.name, via="device")
+    note = (body.note or "").strip() or None
+    history(session, card, "created", device_id=device.id, name=card.name, via="device", note=note)
     if body.assign_to_business:
         history(session, card, "assigned", device_id=device.id, assignee_type="business", assignee_id=business.id)
     audit.record(session, action="card.create", user_id=None, client=client, resource_type="card",

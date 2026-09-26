@@ -206,6 +206,9 @@ CATALOG_LIST: list[ErrorDef] = [
     _E("employee_number_taken", "NFC-6019", 409, "api", "Employee number already used",
        "Employee numbers are unique within a business (they are used as badge ID and barcode).",
        "Pick another employee number."),
+    _E("card_not_registered", "NFC-6020", 404, "api", "Card not registered",
+       "No nexTap business has registered a card with this chip ID (or several have, so it is ambiguous).",
+       "Register the card with a business phone (Register cards), or program its tap link onto the chip."),
     # ── NFC-7xxx plans / billing / limits ──────────────────────────────
     _E("plan_limit_reached", "NFC-7001", 402, "api", "Plan limit reached",
        "The plan's limit for this resource was reached (see details.limit).", "Upgrade the plan or free capacity."),

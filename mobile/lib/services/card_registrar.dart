@@ -202,7 +202,10 @@ class CardRegistrar extends ChangeNotifier {
       );
     } on ApiException catch (e) {
       if (e.code == 'card_uid_exists') {
-        final existing = await _lookupName(uid);
+        // The server names the existing card in the 409 details; older servers don't, so fall back to a lookup.
+        final details = e.details;
+        final named = details is Map && details['name'] is String ? details['name'] as String : null;
+        final existing = named ?? await _lookupName(uid);
         _known[uid] = existing ?? '';
         alreadyName = existing;
         pendingUid = null;

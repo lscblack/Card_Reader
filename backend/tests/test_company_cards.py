@@ -108,3 +108,47 @@ async def test_db_check_allows_only_one_assignee(client: AsyncClient) -> None:
         with pytest.raises(IntegrityError, match="single_assignee"):
             await s.execute(update(Card).where(Card.id == uuid.UUID(card["id"])).values(assigned_to_business=True))
             await s.commit()
+
+
+async def test_device_registration_keeps_note_and_names_existing_card(client: AsyncClient) -> None:
+    owner = await register_business(client)
+    base = f"/api/v1/businesses/{owner['business_id']}"
+    dev = await pair_business_device(client, owner)
+    r = await client.post("/api/v1/device/business/cards", headers=dev["headers"],
+                          json={"uid": "04112233", "name": "Front desk", "note": "Blue lanyard"})
+    assert r.status_code == 201, r.text
+    card = r.json()
+    hist = (await client.get(f"{base}/cards/{card['id']}/history", headers=owner["headers"])).json()
+    created = next(h for h in hist if h["type"] == "created")
+    assert created["data"]["note"] == "Blue lanyard"
+
+    # Tapping the same chip again tells the phone which card it already is.
+    r = await client.post("/api/v1/device/business/cards", headers=dev["headers"], json={"uid": "04:11:22:33"})
+    assert r.status_code == 409
+    err = r.json()["error"]
+    assert err["code"] == "card_uid_exists"
+    assert err["details"] == {"card_id": card["id"], "name": "Front desk", "kind": "card"}
+
+
+async def test_public_resolve_by_chip_id_opens_registered_cards(client: AsyncClient) -> None:
+    owner = await register_business(client)
+    dev = await pair_business_device(client, owner)
+    card = (await client.post("/api/v1/device/business/cards", headers=dev["headers"],
+                              json={"uid": "8C530107", "name": "Information", "assign_to_business": True})).json()
+    # No sign-in: any phone can turn a registered chip ID into the card's public tap link.
+    r = await client.get("/api/v1/public/cards/resolve", params={"uid": "8C:53:01:07"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"tap_url": card["tap_url"], "kind": "card"}
+    assert r.headers["cache-control"] == "no-store"
+
+    r = await client.get("/api/v1/public/cards/resolve", params={"uid": "DEADBEEF"})
+    assert r.status_code == 404 and r.json()["error"]["code"] == "card_not_registered"
+    r = await client.get("/api/v1/public/cards/resolve", params={"uid": "zz"})
+    assert r.status_code == 422
+
+    # The same chip registered by two businesses is ambiguous → never guess.
+    other = await register_business(client, name="Other Co")
+    dev2 = await pair_business_device(client, other)
+    await client.post("/api/v1/device/business/cards", headers=dev2["headers"], json={"uid": "8C530107"})
+    r = await client.get("/api/v1/public/cards/resolve", params={"uid": "8C530107"})
+    assert r.status_code == 404

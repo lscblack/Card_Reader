@@ -52,11 +52,14 @@ async def ensure_uid_free(session: SessionDep, business_id: uuid.UUID, uid: str 
                           exclude: uuid.UUID | None = None) -> None:
     if uid is None:
         return
-    stmt = select(Card.id).where(Card.business_id == business_id, Card.uid == uid, Card.deleted_at.is_(None))
+    stmt = select(Card.id, Card.name, Card.kind).where(Card.business_id == business_id, Card.uid == uid,
+                                                       Card.deleted_at.is_(None))
     if exclude:
         stmt = stmt.where(Card.id != exclude)
-    if (await session.execute(stmt)).first():
-        raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID")
+    if existing := (await session.execute(stmt)).first():
+        # Same business only, so naming the existing card leaks nothing ("Already registered as <name>").
+        raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID",
+                       {"card_id": str(existing.id), "name": existing.name, "kind": existing.kind})
 
 
 async def unique_public_code(session: SessionDep) -> str:

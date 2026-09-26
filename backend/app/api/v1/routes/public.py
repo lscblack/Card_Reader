@@ -180,6 +180,29 @@ def _vcard(text: str, name: str) -> Response:
     )
 
 
+@router.get("/public/cards/resolve", summary="Find a registered card's tap link by chip ID (public)",
+            description="Lets the nexTap app open a registered card that has no tap link written to its chip yet, "
+                        "without signing in. Returns only the public tap link (the same URL printed in the card's "
+                        "QR code). 404 `card_not_registered` when no business — or more than one — registered "
+                        "this chip ID. Rate limited per IP like all public endpoints.")
+async def public_resolve_card(uid: str, session: SessionDep, request: Request) -> JSONResponse:
+    from app.api.v1.routes.cards import normalize_uid
+    from app.services.business import tap_url
+
+    set_actor(request, "public")
+    normalized = normalize_uid(uid, "query.uid")
+    rows = (await session.execute(
+        select(Card.public_code, Card.kind)
+        .join(Business, Business.id == Card.business_id)
+        .where(Card.uid == normalized, Card.deleted_at.is_(None), Business.deleted_at.is_(None))
+        .limit(2)
+    )).all()
+    if len(rows) != 1:  # unknown, or registered by several businesses (never guess between them)
+        raise AppError(404, "card_not_registered", "This card isn't registered with nexTap")
+    code, kind = rows[0]
+    return JSONResponse({"tap_url": tap_url(code), "kind": kind}, headers={"Cache-Control": "no-store"})
+
+
 @router.get("/public/w/{public_code}", summary="Wi-Fi details for a tag (public Wi-Fi page data)",
             description="Used by the web page `/w/{public_code}`. 404 `profile_unavailable` unless the tag's "
                         "action is `wifi` and the tag/business are available.")

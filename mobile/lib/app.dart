@@ -7,6 +7,7 @@ import 'core/config.dart';
 import 'core/links.dart';
 import 'core/pairing.dart';
 import 'data/event_repository.dart';
+import 'services/card_resolver.dart';
 import 'services/app_state.dart';
 import 'services/deep_links.dart';
 import 'services/digital_card_scanner.dart';
@@ -32,11 +33,15 @@ class NfcTerminalApp extends StatefulWidget {
     this.scanner,
     this.guestTap,
     this.linkOpener,
+    this.cardResolver,
   });
 
   /// Guest tap reading (not a registered terminal): a tapped nexTap card opens its link.
   final GuestTapReader? guestTap;
   final LinkOpener? linkOpener;
+
+  /// Chip-ID lookup for guest taps (tests inject a fake).
+  final CardResolver? cardResolver;
 
   final AppState appState;
   final EventRepository repository;
@@ -62,6 +67,8 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     reader: widget.guestTap ?? AndroidGuestTapReader(),
     opener: widget.linkOpener ?? openExternally,
     knownServers: () => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl],
+    resolver: widget.cardResolver ??
+        httpCardResolver(() => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl]),
   );
 
   @override

@@ -125,6 +125,20 @@ void main() {
       await r.stop();
     });
 
+    test('already registered: the name from the 409 details wins (no lookup needed)', () async {
+      final r = registrar();
+      await r.start();
+      api.cards = const []; // a lookup would find nothing
+      api.registerError = const ApiException(
+          statusCode: 409, code: 'card_uid_exists', message: 'exists', ref: 'NFC-6004',
+          details: {'card_id': 'c7', 'name': 'Front desk', 'kind': 'card'});
+      await r.onTap(tap('04AA0011'));
+      expect(await r.submit(name: 'Card 1', kind: 'card', assignToBusiness: true), isNull);
+      expect(r.phase, RegisterPhase.already);
+      expect(r.alreadyName, 'Front desk');
+      await r.stop();
+    });
+
     test('optional write: the tap link is written to the same card and reported as programmed', () async {
       final writer = FakeNfcWriter((_) async => '04AA0001');
       final r = registrar(writer: writer)..writeLink = true;
