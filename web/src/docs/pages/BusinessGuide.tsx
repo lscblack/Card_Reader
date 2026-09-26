@@ -80,6 +80,7 @@ export default function BusinessGuide() {
           [<C key="t">share_contact</C>, <C key="c">{'{ employee_id? }'}</C>, 'Downloads a vCard (assignee or business)'],
           [<C key="t">whatsapp</C>, <C key="c">{'{ phone, message? }'}</C>, <>Opens <C>wa.me</C> chat, optional pre-filled message</>],
           [<C key="t">phone_call</C>, <C key="c">{'{ phone }'}</C>, 'Page with a call button (browsers block direct tel: redirects)'],
+          [<C key="t">ussd</C>, <C key="c">{'{ code, button_label?, more_codes? }'}</C>, 'Page that opens the dialer with the USSD code (e.g. *182*8*1*123#). Extra “Name = code” lines let the customer choose; iPhones get a copy button'],
           [<C key="t">email</C>, <C key="c">{'{ to, subject?, body? }'}</C>, 'Opens a mailto: link'],
           [<C key="t">maps</C>, <C key="c">{'{ query? | lat, lng }'}</C>, 'Opens Google Maps'],
           [<C key="t">social</C>, <C key="c">{'{ platform, url }'}</C>, 'Redirect to the social profile'],

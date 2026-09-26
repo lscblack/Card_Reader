@@ -49,6 +49,8 @@ export function actionHref(a: Action, businessSlug: string): string | null {
       return s('phone') ? waLink(s('phone')!, s('message') ?? undefined) : null
     case 'phone_call':
       return s('phone') ? `tel:${s('phone')}` : null
+    case 'ussd':
+      return s('code') ? `tel:${s('code')!.replace(/#/g, '%23')}` : null
     case 'email': {
       const qs = [s('subject') && `subject=${encodeURIComponent(s('subject')!)}`, s('body') && `body=${encodeURIComponent(s('body')!)}`].filter(Boolean).join('&')
       return s('to') ? `mailto:${s('to')}${qs ? `?${qs}` : ''}` : null

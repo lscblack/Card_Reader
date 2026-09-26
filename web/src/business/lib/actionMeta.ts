@@ -8,6 +8,7 @@ import {
   Contact,
   FileText,
   Globe,
+  Hash,
   Link,
   Mail,
   MapPin,
@@ -32,6 +33,7 @@ export const ACTION_ICONS: Record<string, LucideIcon> = {
   share_contact: Contact,
   whatsapp: MessageCircle,
   phone_call: Phone,
+  ussd: Hash,
   email: Mail,
   maps: MapPin,
   social: AtSign,
@@ -58,6 +60,7 @@ export const CUSTOMER_SEES: Record<string, string> = {
   share_contact: 'Their phone offers to save the contact to their address book.',
   whatsapp: 'WhatsApp opens a chat with this number, with your message pre-filled.',
   phone_call: 'A page with a big “Call” button opens (phones don’t allow calling directly from a link).',
+  ussd: 'A page opens their dialer with the code ready (Android dials in one tap; iPhone users get a copy button). With several codes, they choose which one.',
   email: 'Their mail app opens a new email with the address (and subject/body) filled in.',
   maps: 'Google Maps opens at the location, ready for directions.',
   social: 'Your social profile opens (in the app, if installed).',
@@ -93,6 +96,8 @@ export function actionDetail(a: Action | null | undefined): string | null {
     case 'whatsapp':
     case 'phone_call':
       return s('phone')
+    case 'ussd':
+      return s('code') ? `${s('code')}${s('more_codes') ? ` + ${s('more_codes')!.split('\n').length} more` : ''}` : null
     case 'email':
       return s('to')
     case 'maps':

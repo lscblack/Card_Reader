@@ -210,6 +210,7 @@ unique_visitors, last_tap_at, created_at }`
 | `share_contact` | `{ employee_id? }` | serves `text/vcard` (assignee or business) |
 | `whatsapp` | `{ phone (E.164), message? }` | 302 `https://wa.me/…?text=` |
 | `phone_call` | `{ phone }` | page with a call button → `tel:` (browsers block direct tel redirects in some cases) |
+| `ussd` | `{ code, button_label?, more_codes? }` | page with a dial button per code → `tel:` with `#` escaped as `%23`; `more_codes` = up to 5 lines of `Name = *123#` the customer chooses from; iOS gets a copy button (it blocks USSD in links) |
 | `email` | `{ to, subject?, body? }` | page/302 `mailto:` |
 | `maps` | `{ query?, lat?, lng? }` (one of) | 302 Google Maps URL |
 | `social` | `{ platform, url }` | 302 url |

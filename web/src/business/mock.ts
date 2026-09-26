@@ -147,6 +147,7 @@ const actionTypes: ActionTypeDef[] = [
   { type: 'share_contact', label: 'Share contact', description: 'Downloads a contact card (vCard) the customer can save.', fields: [{ name: 'employee_id', type: 'employee', required: false, label: 'Employee', help: 'Empty = card holder, or the business contact for tags.' }] },
   { type: 'whatsapp', label: 'WhatsApp', description: 'Opens a WhatsApp chat with an optional pre-filled message.', fields: [{ name: 'phone', type: 'phone', required: true, label: 'WhatsApp number' }, { name: 'message', type: 'text', required: false, label: 'Pre-filled message' }] },
   { type: 'phone_call', label: 'Phone call', description: 'Shows a page with a big call button.', fields: [{ name: 'phone', type: 'phone', required: true, label: 'Phone number' }] },
+  { type: 'ussd', label: 'Dial USSD code', description: 'Opens the dialer with a USSD code (mobile money, balance, menus). Add more codes to let the customer choose.', fields: [{ name: 'code', type: 'string', required: true, label: 'USSD code', placeholder: '*182*8*1*123#' }, { name: 'button_label', type: 'string', required: false, label: 'Button label', placeholder: 'e.g. Pay with MoMo' }, { name: 'more_codes', type: 'text', required: false, label: 'More codes to choose from', placeholder: 'Airtel Money = *500#', help: 'Optional. One per line as “Name = code”; the customer picks which one to dial.' }] },
   { type: 'email', label: 'Email', description: 'Opens a new email in the customer’s mail app.', fields: [{ name: 'to', type: 'email', required: true, label: 'To' }, { name: 'subject', type: 'string', required: false, label: 'Subject' }, { name: 'body', type: 'text', required: false, label: 'Body' }] },
   { type: 'maps', label: 'Maps / directions', description: 'Opens Google Maps at an address or coordinates.', fields: [{ name: 'query', type: 'string', required: false, label: 'Address or place', one_of: 'location' }, { name: 'lat', type: 'number', required: false, label: 'Latitude', one_of: 'location' }, { name: 'lng', type: 'number', required: false, label: 'Longitude', one_of: 'location' }] },
   { type: 'social', label: 'Social profile', description: 'Redirects to a social network profile.', fields: [{ name: 'platform', type: 'select', required: true, label: 'Platform', options: ['instagram', 'facebook', 'linkedin', 'x', 'tiktok', 'youtube'] }, { name: 'url', type: 'url', required: true, label: 'Profile URL' }] },
@@ -709,7 +710,7 @@ function addTap(db: Db, card: Card | null, at: number, source: CardTap['source']
         ? 'vcard'
         : action === 'developer_webhook'
           ? 'webhook'
-          : ['wifi', 'phone_call'].includes(action)
+          : ['wifi', 'phone_call', 'ussd'].includes(action)
             ? 'page'
             : 'redirected'
   const device_type: DeviceType = source === 'reader' ? 'android' : pick<DeviceType>(['ios', 'ios', 'ios', 'android', 'android', 'desktop', 'other'])
@@ -926,6 +927,8 @@ function preview(db: Db, action: Action, cardId?: string): { resolved_url: strin
       return { resolved_url: `https://wa.me/${str(c.phone).replace(/\D/g, '')}${c.message ? `?text=${encodeURIComponent(str(c.message))}` : ''}`, kind: 'redirect' }
     case 'phone_call':
       return { resolved_url: `tel:${str(c.phone)}`, kind: 'page' }
+    case 'ussd':
+      return { resolved_url: `tel:${str(c.code).replace(/#/g, '%23')}`, kind: 'page' }
     case 'email': {
       const qs = [c.subject && `subject=${encodeURIComponent(str(c.subject))}`, c.body && `body=${encodeURIComponent(str(c.body))}`].filter(Boolean).join('&')
       return { resolved_url: `mailto:${str(c.to)}${qs ? `?${qs}` : ''}`, kind: 'page' }

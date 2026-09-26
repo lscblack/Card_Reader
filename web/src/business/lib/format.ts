@@ -48,6 +48,7 @@ export const ACTION_LABELS: Record<string, string> = {
   share_contact: 'Share contact',
   whatsapp: 'WhatsApp',
   phone_call: 'Phone call',
+  ussd: 'USSD code',
   email: 'Email',
   maps: 'Maps / directions',
   social: 'Social profile',

@@ -21,6 +21,9 @@ from app.services.business import business_public_url
 E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
 PHONE_RE = re.compile(r"^\+?[0-9][0-9 ()\-.]{4,24}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# USSD / short codes: starts with * or #, digits and * in between, usually ends with # (e.g. *182*8*1*123#).
+USSD_RE = re.compile(r"^[*#][0-9*#]{1,40}$")
+MAX_USSD_OPTIONS = 6
 SOCIAL_PLATFORMS = ["instagram", "facebook", "x", "linkedin", "tiktok", "youtube", "github", "snapchat",
                     "pinterest", "telegram", "whatsapp", "website", "other"]
 
@@ -53,6 +56,14 @@ ACTION_TYPES: list[dict[str, Any]] = [
     {"type": "phone_call", "label": "Phone call", "result": "page",
      "description": "Shows a page with a call button (browsers may block direct tel: redirects).",
      "fields": [_f("phone", "phone", True, "Phone")]},
+    {"type": "ussd", "label": "Dial USSD code", "result": "page",
+     "description": "Opens the phone dialer with a USSD code filled in (mobile money, balance, menus). Android dials "
+                    "straight away; iPhones get a copy button. Add more codes to let the customer choose.",
+     "fields": [_f("code", "string", True, "USSD code", placeholder="*182*8*1*123#"),
+                _f("button_label", "string", False, "Button label", placeholder="e.g. Pay with MoMo"),
+                _f("more_codes", "text", False, "More codes to choose from",
+                   placeholder="Airtel Money = *500#\nCheck balance = *182*6*1#",
+                   help="Optional. One per line as “Name = code”; the customer picks which one to dial.")]},
     {"type": "email", "label": "Send email", "result": "page",
      "description": "Opens the visitor's email app with a pre-filled message.",
      "fields": [_f("to", "email", True, "To"), _f("subject", "string"), _f("body", "text")]},
@@ -216,6 +227,24 @@ async def _validate(session: AsyncSession, business_id: uuid.UUID, action: Any, 
         if not PHONE_RE.match(phone):
             cfg.add("phone", "a valid phone number is required")
         out["phone"] = phone
+    elif type_ == "ussd":
+        code = _clean_ussd(config.get("code"))
+        if not USSD_RE.match(code):
+            cfg.add("code", "a USSD code like *182*8*1*123# (digits, * and #)")
+        out["code"] = code
+        if config.get("button_label"):
+            out["button_label"] = str(config["button_label"]).strip()[:40]
+        extra = str(config.get("more_codes") or "").strip()
+        if extra:
+            lines = [ln for ln in extra.splitlines() if ln.strip()]
+            if len(lines) > MAX_USSD_OPTIONS - 1:
+                cfg.add("more_codes", f"at most {MAX_USSD_OPTIONS - 1} extra codes")
+            for ln in lines:
+                name, _, value = ln.rpartition("=")
+                if not USSD_RE.match(_clean_ussd(value)) or not name.strip():
+                    cfg.add("more_codes", f"“{ln.strip()[:60]}” should look like “Name = *123#”")
+                    break
+            out["more_codes"] = "\n".join(ln.strip() for ln in lines)[:1000]
     elif type_ == "email":
         to = str(config.get("to") or "").strip()
         if not EMAIL_RE.match(to):
@@ -407,6 +436,56 @@ def vcard_for(business: Business, employee: Employee | None = None) -> str:
     return "\r\n".join(lines) + "\r\n"
 
 
+def _clean_ussd(value: Any) -> str:
+    return re.sub(r"[\s-]", "", str(value or ""))
+
+
+def ussd_options(cfg: dict[str, Any]) -> list[tuple[str, str]]:
+    """[(label, code)]: the main code first, then the "Name = code" lines."""
+    opts = [(cfg.get("button_label") or "Dial", _clean_ussd(cfg.get("code")))]
+    for ln in str(cfg.get("more_codes") or "").splitlines():
+        name, _, value = ln.rpartition("=")
+        if name.strip() and USSD_RE.match(_clean_ussd(value)):
+            opts.append((name.strip(), _clean_ussd(value)))
+    return [o for o in opts if o[1]][:MAX_USSD_OPTIONS]
+
+
+def ussd_href(code: str) -> str:
+    # "#" must be escaped or the dialer sees a URL fragment and drops it.
+    return "tel:" + code.replace("#", "%23")
+
+
+def _ussd_page(business: Business, options: list[tuple[str, str]]) -> str:
+    name = html.escape(business.name)
+    single = len(options) == 1
+    buttons = "".join(
+        f"<div class=o><a class=b href='{html.escape(ussd_href(code))}'>{html.escape(label)}</a>"
+        f"<button type=button class=k data-c='{html.escape(code)}'><span>{html.escape(code)}</span> · Copy</button></div>"
+        for label, code in options
+    )
+    # Android opens the dialer from a tel: link; iOS refuses USSD characters in links, so offer copy + a hint.
+    script = (
+        "<script>document.querySelectorAll('.k').forEach(function(b){b.onclick=function(){var c=b.dataset.c;"
+        "(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(function(){b.lastChild.textContent=' · Copied'},"
+        "function(){prompt('Copy this code',c)})}});"
+        + (f"if(/Android/i.test(navigator.userAgent))location.href={json.dumps(ussd_href(options[0][1]))};" if single else "")
+        + "if(/iPhone|iPad|iPod/i.test(navigator.userAgent))document.getElementById('ios').hidden=false;</script>"
+    )
+    return (
+        "<!doctype html><html lang=en><head><meta charset=utf-8>"
+        "<meta name=viewport content='width=device-width,initial-scale=1'>"
+        f"<title>Dial · {name}</title><style>body{{font-family:system-ui,sans-serif;background:#0f0a0a;color:#fff;"
+        "display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}"
+        ".c{text-align:center;padding:24px;width:100%;max-width:380px}.o{margin-top:18px}"
+        ".b{display:block;padding:15px 24px;border-radius:999px;background:#b91c1c;color:#fff;text-decoration:none;font-size:18px;font-weight:600}"
+        ".k{margin-top:8px;background:none;border:0;color:#d4d4d8;font-size:15px;cursor:pointer}.k span{font-family:ui-monospace,monospace;color:#fff}"
+        "p{color:#d4d4d8}#ios{font-size:14px;color:#a1a1aa;margin-top:22px}</style></head>"
+        f"<body><div class=c><h1>{name}</h1><p>{'Tap to dial' if single else 'Choose what to dial'}</p>{buttons}"
+        "<p id=ios hidden>On iPhone, copy the code, open the Phone app and paste it in the keypad.</p></div>"
+        f"{script}</body></html>"
+    )
+
+
 def _call_page(business: Business, phone: str) -> str:
     tel = "tel:" + re.sub(r"[^0-9+]", "", phone)
     return _button_page(business, phone, tel, "Call now")
@@ -468,6 +547,10 @@ async def resolve(
         phone = cfg.get("phone") or ""
         return Resolution(type_, "page", "tel:" + re.sub(r"[^0-9+]", "", phone), label,
                           page_html=_call_page(business, phone))
+    if type_ == "ussd":
+        options = ussd_options(cfg)
+        return Resolution(type_, "page", ussd_href(options[0][1]) if options else None, label,
+                          page_html=_ussd_page(business, options))
     if type_ == "email":
         params = {k: cfg[k] for k in ("subject", "body") if cfg.get(k)}
         url = "mailto:" + quote(cfg.get("to") or "", safe="@")

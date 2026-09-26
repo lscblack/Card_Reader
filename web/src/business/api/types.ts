@@ -206,6 +206,7 @@ export type ActionTypeCode =
   | 'share_contact'
   | 'whatsapp'
   | 'phone_call'
+  | 'ussd'
   | 'email'
   | 'maps'
   | 'social'

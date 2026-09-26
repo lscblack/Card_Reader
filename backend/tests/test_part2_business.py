@@ -326,6 +326,18 @@ async def test_tap_resolution_every_action_type(client: AsyncClient, redis) -> N
     card = await _card_with_action(client, owner, {"type": "phone_call", "config": {"phone": "+250 788 000 111"}})
     r = await _tap(client, card)
     assert r.status_code == 200 and "text/html" in r.headers["content-type"] and "tel:+250788000111" in r.text
+    # ussd → page with a dial button per code ("#" escaped so the dialer keeps it)
+    card = await _card_with_action(client, owner, {"type": "ussd", "config": {
+        "code": "*182*8*1*123#", "button_label": "Pay with MoMo", "more_codes": "Airtel Money = *500#"}})
+    r = await _tap(client, card)
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert "tel:*182*8*1*123%23" in r.text and "tel:*500%23" in r.text and "Pay with MoMo" in r.text
+    bad = await client.post(f"{base}/cards", headers=owner["headers"],
+                            json={"name": "Bad", "action": {"type": "ussd", "config": {"code": "182 hello"}}})
+    assert bad.status_code == 422 and "code" in bad.text
+    bad = await client.post(f"{base}/cards", headers=owner["headers"],
+                            json={"name": "Bad", "action": {"type": "ussd", "config": {"code": "*182#", "more_codes": "no code here"}}})
+    assert bad.status_code == 422 and "more_codes" in bad.text
     # email → page that opens the mail app
     card = await _card_with_action(client, owner, {"type": "email", "config": {"to": "hi@acme.example.com",
                                                                                "subject": "Hello"}})
@@ -372,7 +384,7 @@ async def test_tap_resolution_every_action_type(client: AsyncClient, redis) -> N
                           headers=owner["headers"])
     assert r.json() == {"resolved_url": "https://wa.me/15551234567", "kind": "redirect"}
     types = {t["type"] for t in (await client.get("/api/v1/actions/types")).json()}
-    assert {"website", "wifi", "developer_webhook", "share_contact", "phone_call"} <= types
+    assert {"website", "wifi", "developer_webhook", "share_contact", "phone_call", "ussd"} <= types
 
     # unknown code → neutral page
     r = await client.get("/t/doesnotexist", headers={"User-Agent": BROWSER_UA})
