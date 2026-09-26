@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { SectionDataMap } from '@/business/api/types'
-import { safeImageUrl } from '@/lib/url'
 import { usePage } from '../ctx'
+import { imgSrc } from '../format'
 import { Placeholder, Sec } from '../ui'
 
 function Lightbox({ images, captions, index, onClose, onIndex }: { images: string[]; captions?: string[]; index: number; onClose: () => void; onIndex: (i: number) => void }) {
@@ -67,7 +67,7 @@ function Lightbox({ images, captions, index, onClose, onIndex }: { images: strin
 export function GallerySection({ d, title }: { d: SectionDataMap['gallery']; title?: string | null }) {
   const { preview } = usePage()
   const [open, setOpen] = useState<number | null>(null)
-  const images = (d.images ?? []).map((u) => safeImageUrl(u)).filter((u): u is string => !!u)
+  const images = (d.images ?? []).map((u) => imgSrc(u)).filter((u): u is string => !!u)
   if (!images.length) {
     if (!preview) return null
     return (

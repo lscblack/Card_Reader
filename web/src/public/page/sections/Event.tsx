@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowUpRight, CalendarPlus, Clock, MapPin, Navigation } from 'lucide-react'
 import type { SectionDataMap } from '@/business/api/types'
 import { safeHref } from '@/lib/url'
+import { API_BASE_URL, API_PREFIX } from '@/api/client'
 import { mapsLink } from '../../sectionUtils'
 import { usePage } from '../ctx'
 import { fmtDate, fmtTime, icsDataUrl, parseWhen } from '../format'
@@ -28,13 +29,17 @@ function MapBox({ query }: { query: string }) {
 }
 
 export function EventSection({ d, sectionId }: { d: SectionDataMap['event']; sectionId: string }) {
-  const { pageUrl, layout } = usePage()
+  const { pageUrl, layout, preview, businessSlug, profileSlug } = usePage()
   const [now] = useState(() => Date.now())
   const start = parseWhen(d.starts_at)
   const end = parseWhen(d.ends_at ?? null)
   if (!start || !d.title) return null
   const ended = (end ?? start).getTime() < now
-  const ics = icsDataUrl(d, pageUrl)
+  // Real pages use the server's .ics (best for iOS/Android calendars); previews and mocks build it locally.
+  const ics =
+    !preview && profileSlug && import.meta.env.VITE_USE_MOCKS !== 'true'
+      ? `${API_BASE_URL}${API_PREFIX}/public/b/${encodeURIComponent(businessSlug)}/${encodeURIComponent(profileSlug)}/events/${encodeURIComponent(sectionId)}.ics`
+      : icsDataUrl(d, pageUrl)
   const where = d.map_query || d.address || d.venue
   const cta = safeHref(d.cta?.url)
   const sameDay = end && end.toDateString() === start.toDateString()

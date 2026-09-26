@@ -6,7 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import func, select
 
 from app.api.deps import BusinessContext, ClientDep, SessionDep, business_permission
@@ -21,7 +22,7 @@ from app.schemas.business import (
     ProfileUpdateIn,
     SaveAsTemplateIn,
 )
-from app.services import audit, pages
+from app.services import audit, media, pages
 from app.services import business as biz
 from app.services.actions import validate_action
 from app.services.business_serializers import profile_out
@@ -31,6 +32,15 @@ public_router = APIRouter(tags=["Profiles"])
 
 View = Annotated[BusinessContext, Depends(business_permission("business.view"))]
 Manage = Annotated[BusinessContext, Depends(business_permission("profiles.manage"))]
+
+@router.post("/media", status_code=201, summary="Upload a page image (PNG/JPEG/WebP ≤ 2 MB, re-encoded) → /media URL")
+async def upload_page_image(ctx: Manage, file: UploadFile = File(...)) -> dict[str, str]:
+    limit = media.settings.MEDIA_MAX_UPLOAD_BYTES
+    data = await file.read(limit + 1)
+    rel = await run_in_threadpool(media.save_resized, data, f"businesses/{ctx.business.id}/pages", "img",
+                                  (1600, 1600), False, max_bytes=limit)
+    return {"url": f"/media/{rel}"}
+
 
 async def _validate_sections(session: SessionDep, business_id: uuid.UUID, sections: list[dict[str, Any]],
                              prefix: str = "body.sections") -> list[dict[str, Any]]:

@@ -104,31 +104,59 @@ export default function BusinessGuide() {
         <TapFlowDiagram />
       </Figure>
 
-      <H2 id="profiles">Profiles</H2>
+      <H2 id="profiles">Pages & templates</H2>
       <P>
-        Profiles are public pages at <C>/b/{'{business_slug}'}</C> and <C>/b/{'{business_slug}'}/{'{profile_slug}'}</C>. Types:{' '}
-        <C>business</C> (one per business), <C>employee</C> (generated per employee), and any number of <C>custom</C>, <C>menu</C> and{' '}
-        <C>product</C> profiles. Each has an accent colour, optional cover image and a list of sections:
+        Pages (the API calls them <C>profiles</C>) are public pages at <C>/b/{'{business_slug}'}</C> and{' '}
+        <C>/b/{'{business_slug}'}/{'{page_slug}'}</C>, built right in the dashboard — no website needed. Types: <C>business</C> (one per
+        business), <C>employee</C> (generated per employee), and any number of <C>menu</C>, <C>product</C>, <C>links</C>, <C>offer</C>,{' '}
+        <C>event</C>, <C>form</C>, <C>gallery</C>, <C>wifi</C> and <C>custom</C> pages.
       </P>
+      <UL>
+        <li>
+          <B>New page</B> opens a gallery of 20+ professional templates per type (Bistro classic, Café chalkboard, Link hub, Coupon, Event
+          invite, Feedback & rating…). Previews use your name and logo; <C>{'{{business.name}}'}</C>-style placeholders are filled in when the
+          page is created.
+        </li>
+        <li>
+          <B>Design</B>: layout, accent and page colours, font pair, header style (cover, logo, minimal, banner), corner radius, cover and
+          logo, and light/dark (Auto follows each visitor’s phone; visitors can switch with the toggle on the page).
+        </li>
+        <li>
+          <B>Duplicate</B> a page, or <B>Save as template</B> to reuse it — e.g. the same menu for every branch. Manage them under Pages → My
+          templates (up to 50).
+        </li>
+        <li>
+          Point any card or tag at a page with the matching action (<C>digital_menu</C>, <C>product_info</C>, <C>links_page</C>,{' '}
+          <C>offer_page</C>, <C>event_page</C>, <C>feedback_form</C>, <C>gallery_page</C>, <C>wifi</C>) — the action editor can create
+          the page from a template on the spot.
+        </li>
+      </UL>
       <Table
         head={['Section', 'Content']}
         rows={[
-          [<C key="s">about</C>, 'Text'],
+          [<C key="s">menu</C>, 'Categories with items, prices (with a currency), badges (vegan, spicy, sold out…), sizes and photos; sticky category bar and search'],
+          [<C key="s">products</C>, 'Photo, price, sale price, badge, stock status and a buy button'],
+          [<C key="s">links</C>, 'Link-in-bio buttons with icons; highlight one'],
+          [<C key="s">offer</C>, 'Discount, code to copy, expiry date (shows “Expired” after) and terms'],
+          [<C key="s">event</C>, 'Date/time, venue, map, “Add to calendar” (.ics) and a button'],
+          [<C key="s">wifi</C>, 'Network name, copy password and a camera-scannable QR code'],
+          [<C key="s">form</C>, 'Up to 12 fields: text, long text, email, phone, star rating, choice, checkbox'],
+          [<span key="s"><C>about</C> / <C>text</C></span>, 'Text (simple Markdown)'],
           [<C key="s">contact</C>, 'Phone, email, website, address'],
-          [<C key="s">hours</C>, 'Opening hours per day'],
+          [<C key="s">hours</C>, 'Opening hours with “Open now”'],
           [<C key="s">social</C>, 'Social links'],
-          [<C key="s">services</C>, 'Title, description, optional price'],
-          [<C key="s">products</C>, 'Title, description, price, image, link'],
-          [<C key="s">menu</C>, 'Categories with items, prices and tags'],
+          [<C key="s">services</C>, 'Title, description, price and duration'],
           [<C key="s">buttons</C>, 'Buttons that run any action'],
-          [<C key="s">gallery</C>, 'Images'],
-          [<C key="s">text</C>, 'Markdown'],
+          [<C key="s">gallery</C>, 'Photos with a full-screen viewer'],
         ]}
       />
       <P>
-        Publish or unpublish any time; updating a profile never requires reprogramming a card. Every profile also offers a vCard download.
-        Unpublished, inactive, suspended or unverified profiles show a neutral page. Changing your slug keeps the old one redirecting for
-        90 days.
+        <B>Forms</B>: answers are validated, spam-protected and rate limited, and land in <B>Form responses</B> (filter by page, view,
+        delete, export CSV); owners and admins get a notification. Star ratings feed the <B>Feedback</B> card in Analytics.
+      </P>
+      <P>
+        Publish or unpublish any time; updating a page never requires reprogramming a card. Unpublished, inactive, suspended or unverified
+        pages show a neutral page. Changing your slug keeps the old one redirecting for 90 days.
       </P>
 
       <Figure shot="profile" narrow caption="A published business profile on a customer’s phone." />

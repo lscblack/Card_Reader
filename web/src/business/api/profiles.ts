@@ -1,4 +1,5 @@
 import { api } from '@/api/client'
+import { uploadFile } from './upload'
 import type { FormResponse, PageTemplate, Paginated, Profile, ProfileInput, ProfileType } from './types'
 
 const p = (bid: string) => `/businesses/${bid}/profiles`
@@ -28,4 +29,9 @@ export const formResponsesApi = {
   list: (bid: string, q: { profile_id?: string; page?: number; page_size?: number }) => api.get<Paginated<FormResponse>>(`/businesses/${bid}/form-responses`, q),
   remove: (bid: string, rid: string) => api.delete(`/businesses/${bid}/form-responses/${rid}`),
   exportCsv: (bid: string, profile_id?: string) => api.get<string>(`/businesses/${bid}/form-responses/export.csv`, profile_id ? { profile_id } : undefined),
+}
+
+/** Images for pages (menu items, products, gallery, cover/logo): PNG/JPEG/WebP ≤ 2 MB → a `/media/…` URL. */
+export const pageMediaApi = {
+  upload: (bid: string, file: File) => uploadFile<{ url: string }>(`/businesses/${bid}/media`, file),
 }

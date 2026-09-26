@@ -1422,6 +1422,7 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
 
   // ---- profiles ----
   if (at('GET', '/profiles')) return ok(paginate(db.profiles.filter((p) => !q?.type || p.type === q.type), q, 100))
+  if (at('POST', '/media')) return ok({ url: str(body.file_url) || 'https://picsum.invalid/placeholder.png' }, 201)
   // ---- page templates (Part 6 §2) ----
   if (at('GET', '/page-templates')) return ok([...SYSTEM_PAGE_TEMPLATES, ...db.pageTemplates].filter((t) => !q?.page_type || t.page_type === q.page_type))
   if (seg[2] === 'page-templates' && seg[3]) {

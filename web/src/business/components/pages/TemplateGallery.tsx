@@ -32,24 +32,22 @@ export function TemplateThumb({ template, height = 250, dark }: { template: Page
 }
 
 function Card({ selected, onClick, children, label }: { selected: boolean; onClick: () => void; children: ReactNode; label: string }) {
+  // The live thumbnail contains buttons of its own (inert), so the click target is an overlay button, not a wrapper.
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      aria-label={label}
+    <div
       className={cn(
         'group relative flex w-[204px] shrink-0 flex-col gap-2 rounded-xl border p-2 text-left transition-[border-color,box-shadow]',
         selected ? 'border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]' : 'border-border hover:border-border-strong hover:shadow-sm',
       )}
     >
       {children}
+      <button type="button" onClick={onClick} aria-pressed={selected} aria-label={label} className="absolute inset-0 z-10 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" />
       {selected && (
-        <span className="absolute top-3.5 right-3.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent-solid text-accent-fg shadow">
+        <span className="absolute top-3.5 right-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-accent-solid text-accent-fg shadow">
           <Check className="h-3.5 w-3.5" />
         </span>
       )}
-    </button>
+    </div>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Eye, EyeOff, Info, RefreshCw, Sparkles } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, Info, LayoutTemplate, RefreshCw, Sparkles } from 'lucide-react'
 import { Field, Input, Select, Switch, Textarea } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -9,13 +9,14 @@ import { cn } from '@/lib/cn'
 import type { Action, ActionField, ActionPreview, ActionTypeDef, ProfileType } from '../api/types'
 import { actionsApi } from '../api/cards'
 import { useBusiness } from '../hooks/context'
-import { useActionTypes } from '../hooks/queries'
+import { useActionTypes, useProfiles } from '../hooks/queries'
 import { fieldErrorsOf, formatError } from '../lib/errors'
 import { CUSTOMER_SEES, actionDetail, previewKindLabel } from '../lib/actionMeta'
 import { actionLabel, isE164, normalizePhone } from '../lib/format'
 import { BizAppSelect, EmployeeSelect, ProfileSelect } from './Pickers'
 import { BizErrorState } from './BizError'
 import { ActionIcon } from './bits'
+import { NewPageModal } from './pages/NewPageModal'
 
 function optionOf(o: string | { value: string; label: string }) {
   return typeof o === 'string' ? { value: o, label: o.charAt(0).toUpperCase() + o.slice(1) } : o
@@ -66,7 +67,40 @@ function PasswordInput({ id, value, onChange }: { id: string; value: string; onC
 }
 
 /** Profile types a `profile` field may point at, when the backend doesn't say. */
-const PROFILE_TYPES_BY_ACTION: Record<string, ProfileType[]> = { digital_menu: ['menu'], product_info: ['product'], profile: ['custom', 'menu', 'product'] }
+const PROFILE_TYPES_BY_ACTION: Record<string, ProfileType[]> = {
+  digital_menu: ['menu'],
+  product_info: ['product'],
+  links_page: ['links'],
+  offer_page: ['offer'],
+  event_page: ['event'],
+  feedback_form: ['form'],
+  gallery_page: ['gallery'],
+  wifi: ['wifi'],
+  profile: ['custom', 'menu', 'product', 'links', 'offer', 'event', 'gallery', 'form', 'wifi'],
+}
+/** Part 6 §3 — the page type a page-backed action's `profile_id` must point at (when the backend doesn't say). */
+const PAGE_TYPE_BY_ACTION: Record<string, ProfileType> = { digital_menu: 'menu', product_info: 'product', links_page: 'links', offer_page: 'offer', event_page: 'event', feedback_form: 'form', gallery_page: 'gallery', wifi: 'wifi' }
+
+/** "Pick a page" + "Create from a template" (opens the gallery, creates the page and selects it). */
+function PagePicker({ id, value, onChange, types, pageType }: { id: string; value: string; onChange: (v: string | null) => void; types: ProfileType[] | null; pageType: ProfileType }) {
+  const { business } = useBusiness()
+  const pages = useProfiles(business.id)
+  const [creating, setCreating] = useState(false)
+  const selected = pages.data?.find((p) => p.id === value)
+  const none = !pages.isLoading && !(pages.data ?? []).some((p) => !types?.length || types.includes(p.type))
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <ProfileSelect id={id} value={value} onChange={(v) => onChange(v || null)} types={types} emptyLabel={none ? 'No pages of this type yet' : 'Pick a page…'} className="min-w-0 flex-1" />
+        <Button size="sm" className="h-9 shrink-0" leftIcon={<LayoutTemplate className="h-3.5 w-3.5" />} onClick={() => setCreating(true)}>
+          Create from a template
+        </Button>
+      </div>
+      {selected && !selected.published && <p className="text-xs text-amber-600 dark:text-amber-400">“{selected.title}” is a draft — publish it so taps can open it.</p>}
+      {creating && <NewPageModal open pageType={pageType} onClose={() => setCreating(false)} onCreated={(p) => onChange(p.id)} />}
+    </div>
+  )
+}
 
 /**
  * Normalises backend field types to widgets: `string` → single-line, `text` → multi-line, `number`
@@ -150,8 +184,14 @@ function FieldControl({
                 ))}
               </Select>
             )
-          case 'profile':
-            return <ProfileSelect id={p.id} value={sv} onChange={(v) => onChange(v || null)} types={field.profile_types} />
+          case 'profile': {
+            const pageType = rawField.page_type ?? PAGE_TYPE_BY_ACTION[actionType] ?? null
+            return pageType ? (
+              <PagePicker id={p.id} value={sv} onChange={onChange} types={field.profile_types} pageType={pageType} />
+            ) : (
+              <ProfileSelect id={p.id} value={sv} onChange={(v) => onChange(v || null)} types={field.profile_types} />
+            )
+          }
           case 'employee':
             return <EmployeeSelect id={p.id} value={sv} onChange={(v) => onChange(v || null)} emptyLabel="Card holder (default)" />
           case 'application':

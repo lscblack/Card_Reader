@@ -1,4 +1,12 @@
 import type { Price } from '@/business/api/types'
+import { API_BASE_URL } from '@/api/client'
+import { safeImageUrl } from '@/lib/url'
+
+/** Safe image src for page content; `/media/…` uploads are served by the API origin. */
+export function imgSrc(v: string | null | undefined): string | null {
+  if (typeof v === 'string' && v.startsWith('/media/')) return safeImageUrl(`${API_BASE_URL}${v}`)
+  return safeImageUrl(v)
+}
 
 /** Formats a price: numbers with the section currency (ISO code or symbol), strings as written. */
 export function formatPrice(price: Price | null | undefined, currency?: string | null): string | null {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { Activity, Globe, MousePointerClick, Nfc, Radio, Users } from 'lucide-react'
+import { Activity, Globe, MousePointerClick, Nfc, Radio, Star, Users } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Spinner'
@@ -152,8 +152,32 @@ export default function AnalyticsPage() {
                 )}
               </CardBody>
             </Card>
+            {a?.feedback && (
+              <Card>
+                <CardHeader title="Feedback" description="Form responses in this period and the average star rating." />
+                <CardBody>
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <p className="text-4xl font-bold tracking-tight tabular-nums">{a.feedback.avg_rating != null ? a.feedback.avg_rating.toFixed(1) : '—'}</p>
+                      <p className="mt-1 flex items-center gap-0.5" aria-label={a.feedback.avg_rating != null ? `${a.feedback.avg_rating.toFixed(1)} out of 5` : 'No ratings yet'}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star key={n} className={cn('h-4 w-4', a.feedback!.avg_rating != null && n <= Math.round(a.feedback!.avg_rating) ? 'fill-amber-400 text-amber-400' : 'text-border-strong')} aria-hidden="true" />
+                        ))}
+                      </p>
+                    </div>
+                    <div className="min-w-0 border-l border-border pl-6">
+                      <p className="text-2xl font-semibold tabular-nums">{num(a.feedback.responses)}</p>
+                      <p className="text-[13px] text-muted">response{a.feedback.responses === 1 ? '' : 's'}</p>
+                      <Link to={`${base}/responses`} className="mt-1 inline-block text-[13px] font-medium text-accent hover:underline">
+                        View responses
+                      </Link>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
             {(!a || a.by_assignee_type) && (
-              <Card className="lg:col-span-2">
+              <Card className={a?.feedback ? '' : 'lg:col-span-2'}>
                 <CardHeader title="By owner type" description="Taps on company cards vs cards held by employees or customers." />
                 <CardBody>
                   {!a ? (

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Flame, Leaf, Search, Sparkles, Sprout, Star, WheatOff, XCircle } from 'lucide-react'
 import type { MenuBadge, MenuItem, SectionDataMap } from '@/business/api/types'
-import { safeImageUrl } from '@/lib/url'
 import { usePage } from '../ctx'
-import { formatPrice } from '../format'
+import { formatPrice, imgSrc } from '../format'
 import { Placeholder, Sec } from '../ui'
 
 const BADGES: Record<MenuBadge, { label: string; icon: typeof Leaf; color: string }> = {
@@ -58,7 +57,7 @@ function Item({ it, style, currency, showImages }: { it: MenuItem; style: string
   const sold = it.badges?.includes('sold_out')
   const price = it.variants?.length ? null : formatPrice(it.price, currency)
   const fromPrice = it.variants?.length ? formatPrice(it.variants[0].price, currency) : null
-  const img = showImages ? safeImageUrl(it.image_url) : null
+  const img = showImages ? imgSrc(it.image_url) : null
   if (style === 'grid') {
     return (
       <article className={`pg-card${sold ? ' pg-soldout' : ''}`}>

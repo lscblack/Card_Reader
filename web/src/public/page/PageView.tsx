@@ -2,9 +2,9 @@ import { useMemo, type ReactNode } from 'react'
 import { BadgeCheck, Check, Moon, Share2, Sun } from 'lucide-react'
 import type { Profile, PublicBusinessInfo, Section } from '@/business/api/types'
 import { cn } from '@/lib/cn'
-import { safeImageUrl } from '@/lib/url'
 import { PoweredBy } from '@/components/PoweredBy'
 import { sectionData } from '../sectionUtils'
+import { imgSrc } from './format'
 import { PageCtx, type PageCtxValue } from './ctx'
 import { useCopy } from './hooks'
 import { layoutOf, pageVars, palette, usePageFonts, usePageScheme } from './theme'
@@ -28,7 +28,7 @@ function Logo({ src, name }: { src: string | null; name: string }) {
   return <span className="pg-logo">{src ? <img src={src} alt={`${name} logo`} /> : initials(name)}</span>
 }
 
-function Controls({ dark, onToggle, onDarkBg, title, preview }: { dark: boolean; onToggle: () => void; onDarkBg: boolean; title: string; preview: boolean }) {
+function Controls({ dark, onToggle, onDarkBg, title }: { dark: boolean; onToggle: () => void; onDarkBg: boolean; title: string }) {
   const [copied, copy] = useCopy()
   const cls = cn('pg-ctrl', onDarkBg && 'pg-ctrl-dark')
   async function share() {
@@ -45,12 +45,10 @@ function Controls({ dark, onToggle, onDarkBg, title, preview }: { dark: boolean;
       <button type="button" className={cls} onClick={onToggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>
         {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
-      {!preview && (
-        <button type="button" className={cls} onClick={share} aria-label={copied ? 'Link copied' : 'Share this page'}>
-          {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-          <span>{copied ? 'Copied' : 'Share'}</span>
-        </button>
-      )}
+      <button type="button" className={cls} onClick={share} aria-label={copied ? 'Link copied' : 'Share this page'}>
+        {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+        <span>{copied ? 'Copied' : 'Share'}</span>
+      </button>
     </div>
   )
 }
@@ -118,8 +116,8 @@ export function PageView({
   const pal = useMemo(() => palette(theme, dark, business.accent), [theme, dark, business.accent])
   usePageFonts(theme?.font, layout.decor)
   const header = theme?.header ?? layout.header
-  const logo = safeImageUrl(theme?.logo_url) ?? safeImageUrl(business.logo_url)
-  const cover = safeImageUrl(theme?.cover_image_url)
+  const logo = imgSrc(theme?.logo_url) ?? imgSrc(business.logo_url)
+  const cover = imgSrc(theme?.cover_image_url)
   const title = profile.title || business.name
   const sub = title.trim().toLowerCase() !== business.name.trim().toLowerCase() ? business.name : business.category
   const ctx: PageCtxValue = {
@@ -138,7 +136,8 @@ export function PageView({
       {verified}
     </p>
   )
-  const controls = (onDarkBg: boolean) => <Controls dark={dark} onToggle={toggle} onDarkBg={onDarkBg} title={title} preview={preview} />
+  // Previews force the scheme from outside (editor toggle / gallery), so the page's own controls are hidden there.
+  const controls = (onDarkBg: boolean) => (preview ? null : <Controls dark={dark} onToggle={toggle} onDarkBg={onDarkBg} title={title} />)
 
   return (
     <PageCtx.Provider value={ctx}>

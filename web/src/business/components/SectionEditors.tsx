@@ -6,7 +6,8 @@ import type { Action, HoursRow, Section, SectionDataMap, SectionType } from '../
 import { defaultHours } from '../lib/sections'
 import { sectionData } from '@/public/sectionUtils'
 import { ActionConfigurator } from './ActionConfigurator'
-import { SocialLinksEditor, TagsInput } from './inputs'
+import { SocialLinksEditor } from './inputs'
+import { EventEditor, FormBuilder, GalleryEditor, LinksEditor, MenuEditor, OfferEditor, ProductsEditor, ServicesEditor, WifiEditor } from './pages/PageSectionEditors'
 
 /** Reorderable list of items with add/remove. */
 function ListEditor<T>({
@@ -113,83 +114,22 @@ export function SectionEditor({ section, onChange }: { section: Section; onChang
       const d = sectionData(section)
       return <SocialLinksEditor value={d.links ?? []} onChange={(links) => set<'social'>({ links })} />
     }
-    case 'services': {
-      const d = sectionData(section)
-      return (
-        <ListEditor
-          items={d.items ?? []}
-          onChange={(items) => set<'services'>({ items })}
-          newItem={() => ({ title: '', description: '', price: '' })}
-          addLabel="Add service"
-          itemLabel={(it, i) => it.title || `Service ${i + 1}`}
-          render={(it, up) => (
-            <>
-              <Input aria-label="Title" placeholder="Title" value={it.title} onChange={(e) => up({ title: e.target.value })} />
-              <Input aria-label="Price" placeholder="Price (optional)" value={it.price ?? ''} onChange={(e) => up({ price: e.target.value })} />
-              <Textarea aria-label="Description" placeholder="Description" rows={2} value={it.description} onChange={(e) => up({ description: e.target.value })} className="sm:col-span-2" />
-            </>
-          )}
-        />
-      )
-    }
-    case 'products': {
-      const d = sectionData(section)
-      return (
-        <ListEditor
-          items={d.items ?? []}
-          onChange={(items) => set<'products'>({ items })}
-          newItem={() => ({ title: '', description: '', price: '', image_url: '', url: '' })}
-          addLabel="Add product"
-          itemLabel={(it, i) => it.title || `Product ${i + 1}`}
-          render={(it, up) => (
-            <>
-              <Input aria-label="Title" placeholder="Title" value={it.title} onChange={(e) => up({ title: e.target.value })} />
-              <Input aria-label="Price" placeholder="Price (optional)" value={it.price ?? ''} onChange={(e) => up({ price: e.target.value })} />
-              <Input aria-label="Image URL" type="url" placeholder="Image URL (optional)" value={it.image_url ?? ''} onChange={(e) => up({ image_url: e.target.value })} />
-              <Input aria-label="Link" type="url" placeholder="Link (optional)" value={it.url ?? ''} onChange={(e) => up({ url: e.target.value })} />
-              <Textarea aria-label="Description" placeholder="Description" rows={2} value={it.description} onChange={(e) => up({ description: e.target.value })} className="sm:col-span-2" />
-            </>
-          )}
-        />
-      )
-    }
-    case 'menu': {
-      const d = sectionData(section)
-      type Cat = SectionDataMap['menu']['categories'][number]
-      return (
-        <ListEditor<Cat>
-          items={d.categories ?? []}
-          onChange={(categories) => set<'menu'>({ categories })}
-          newItem={() => ({ name: '', items: [{ name: '', description: '', price: '', tags: [] }] })}
-          addLabel="Add category"
-          itemLabel={(c, i) => c.name || `Category ${i + 1}`}
-          render={(cat, up) => (
-            <>
-              <Input aria-label="Category name" placeholder="Category name (e.g. Coffee)" value={cat.name} onChange={(e) => up({ name: e.target.value })} className="sm:col-span-2" />
-              <div className="sm:col-span-2">
-                <ListEditor
-                  items={cat.items}
-                  onChange={(items) => up({ items })}
-                  newItem={() => ({ name: '', description: '', price: '', tags: [] })}
-                  addLabel="Add item"
-                  itemLabel={(it, i) => it.name || `Item ${i + 1}`}
-                  render={(it, upItem) => (
-                    <>
-                      <Input aria-label="Item name" placeholder="Name" value={it.name} onChange={(e) => upItem({ name: e.target.value })} />
-                      <Input aria-label="Item price" placeholder="Price" value={it.price} onChange={(e) => upItem({ price: e.target.value })} />
-                      <Input aria-label="Item description" placeholder="Description" value={it.description} onChange={(e) => upItem({ description: e.target.value })} className="sm:col-span-2" />
-                      <div className="sm:col-span-2">
-                        <TagsInput value={it.tags ?? []} onChange={(tags) => upItem({ tags })} placeholder="Tags: vegan, spicy…" />
-                      </div>
-                    </>
-                  )}
-                />
-              </div>
-            </>
-          )}
-        />
-      )
-    }
+    case 'services':
+      return <ServicesEditor d={sectionData(section)} onChange={(d) => set<'services'>(d)} />
+    case 'products':
+      return <ProductsEditor d={sectionData(section)} onChange={(d) => set<'products'>(d)} />
+    case 'menu':
+      return <MenuEditor d={sectionData(section)} onChange={(d) => set<'menu'>(d)} />
+    case 'links':
+      return <LinksEditor d={sectionData(section)} onChange={(d) => set<'links'>(d)} />
+    case 'offer':
+      return <OfferEditor d={sectionData(section)} onChange={(d) => set<'offer'>(d)} />
+    case 'event':
+      return <EventEditor d={sectionData(section)} onChange={(d) => set<'event'>(d)} />
+    case 'wifi':
+      return <WifiEditor d={sectionData(section)} onChange={(d) => set<'wifi'>(d)} />
+    case 'form':
+      return <FormBuilder d={sectionData(section)} onChange={(d) => set<'form'>(d)} />
     case 'buttons': {
       const d = sectionData(section)
       type Btn = { label: string; action: Action }
@@ -211,19 +151,8 @@ export function SectionEditor({ section, onChange }: { section: Section; onChang
         />
       )
     }
-    case 'gallery': {
-      const d = sectionData(section)
-      return (
-        <ListEditor<{ url: string }>
-          items={(d.images ?? []).map((url) => ({ url }))}
-          onChange={(xs) => set<'gallery'>({ images: xs.map((x) => x.url) })}
-          newItem={() => ({ url: '' })}
-          addLabel="Add image"
-          itemLabel={(_, i) => `Image ${i + 1}`}
-          render={(x, up) => <Input aria-label="Image URL" type="url" placeholder="https://…/photo.jpg" value={x.url} onChange={(e) => up({ url: e.target.value })} className="sm:col-span-2" />}
-        />
-      )
-    }
+    case 'gallery':
+      return <GalleryEditor d={sectionData(section)} onChange={(d) => set<'gallery'>(d)} />
     default:
       return null
   }

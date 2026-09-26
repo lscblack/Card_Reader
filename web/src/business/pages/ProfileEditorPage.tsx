@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router'
-import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ExternalLink, Eye, EyeOff, Plus, Save, Trash2, Undo2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { ArrowLeft, BookmarkPlus, ChevronDown, Copy, ExternalLink, Eye, EyeOff, Inbox, Moon, Plus, Save, Sun, Trash2, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +13,8 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { cn } from '@/lib/cn'
 import { relativeTime } from '@/lib/format'
 import { ProfileView } from '@/public/ProfileView'
+import { PageView } from '@/public/page/PageView'
+import { Menu } from '@/components/ui/Menu'
 import { DEFAULT_ACCENT, safeAccent } from '@/public/sectionUtils'
 import type { Profile, ProfileTheme, Section, SectionType } from '../api/types'
 import { profilesApi } from '../api/profiles'
@@ -25,6 +27,10 @@ import { SECTION_DEFAULTS, SECTION_META, SECTION_TYPES } from '../lib/sections'
 import { PageSkeleton } from '../components/bits'
 import { BizErrorState, FormError } from '../components/BizError'
 import { SectionEditor } from '../components/SectionEditors'
+import { DragHandle, SortableList } from '../components/pages/Sortable'
+import { ThemePanel } from '../components/pages/ThemePanel'
+import { SaveTemplateModal } from '../components/pages/NewPageModal'
+import { TYPE_LABEL, hasForm } from '../lib/pages'
 import { UrlQrPanel } from '../components/inputs'
 
 const SWATCHES = ['#b91c1c', '#dc2626', '#ea580c', '#d97706', '#15803d', '#0d9488', '#0369a1', '#1d4ed8', '#334155', '#111827']
@@ -40,7 +46,7 @@ let keySeq = 1
 const toDraft = (p: Profile): Draft => ({
   title: p.title,
   slug: p.slug,
-  theme: { accent: safeAccent(p.theme?.accent), cover_image_url: p.theme?.cover_image_url ?? '' },
+  theme: { ...(p.theme ?? {}), accent: safeAccent(p.theme?.accent), cover_image_url: p.theme?.cover_image_url ?? '' },
   items: p.sections.map((section) => ({ key: `s${keySeq++}`, section })),
 })
 
@@ -73,27 +79,24 @@ function AccentPicker({ value, onChange }: { value: string; onChange: (v: string
 
 function SectionCard({
   item,
-  index,
-  count,
   onChange,
-  onMove,
   onRemove,
   disabled,
+  handle,
 }: {
   item: { key: string; section: Section }
-  index: number
-  count: number
   onChange: (s: Section) => void
-  onMove: (d: number) => void
   onRemove: () => void
   disabled: boolean
+  handle: Record<string, unknown>
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const meta = SECTION_META[item.section.type]
   const Icon = meta?.icon
   return (
     <Card>
       <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
+        {!disabled && <DragHandle handle={handle} label={`Drag to reorder ${meta?.label ?? 'section'}`} />}
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           {Icon && (
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted">
@@ -108,12 +111,6 @@ function SectionCard({
         </button>
         {!disabled && (
           <span className="flex shrink-0 items-center">
-            <Button size="icon-sm" variant="ghost" aria-label="Move section up" disabled={index === 0} onClick={() => onMove(-1)}>
-              <ArrowUp className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="icon-sm" variant="ghost" aria-label="Move section down" disabled={index === count - 1} onClick={() => onMove(1)}>
-              <ArrowDown className="h-3.5 w-3.5" />
-            </Button>
             <Button size="icon-sm" variant="ghost" aria-label="Remove section" onClick={onRemove}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -129,13 +126,26 @@ function SectionCard({
   )
 }
 
-function AddSection({ onAdd }: { onAdd: (t: SectionType) => void }) {
+const SUGGESTED: Partial<Record<string, SectionType[]>> = {
+  menu: ['menu', 'hours', 'text'],
+  product: ['products', 'services', 'text'],
+  links: ['links', 'social', 'text'],
+  offer: ['offer', 'products', 'text'],
+  event: ['event', 'form', 'text'],
+  form: ['form', 'contact', 'hours'],
+  gallery: ['gallery', 'services', 'links'],
+  wifi: ['wifi', 'text', 'links'],
+}
+
+function AddSection({ onAdd, pageType }: { onAdd: (t: SectionType) => void; pageType: string }) {
+  const first = SUGGESTED[pageType] ?? []
+  const order = [...first, ...SECTION_TYPES.filter((t) => !first.includes(t))]
   const [open, setOpen] = useState(false)
   return (
     <div className="rounded-xl border border-dashed border-border-strong p-3">
       {open ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {SECTION_TYPES.map((t) => {
+          {order.map((t) => {
             const m = SECTION_META[t]
             return (
               <button
@@ -175,11 +185,12 @@ export default function ProfileEditorPage() {
   const { profileId } = useParams()
   const { business, base } = useBusiness()
   const { data: profile, error, isLoading, refetch } = useProfile(business.id, profileId)
-  useDocumentTitle(profile ? `Edit ${profile.title}` : 'Profile')
+  useDocumentTitle(profile ? `Edit ${profile.title}` : 'Page')
   const [pane, setPane] = useState<'edit' | 'preview'>('edit')
+  const [savingTpl, setSavingTpl] = useState(false)
   const back = (
     <Link to={`${base}/profiles`} className="mb-3 inline-flex items-center gap-1 text-[13px] text-muted hover:text-fg">
-      <ArrowLeft className="h-3.5 w-3.5" /> Profiles
+      <ArrowLeft className="h-3.5 w-3.5" /> Pages
     </Link>
   )
   if (error)
@@ -202,12 +213,13 @@ export default function ProfileEditorPage() {
   return (
     <>
       {back}
-      <Editor key={`${profile.id}:${profile.updated_at}`} profile={profile} pane={pane} setPane={setPane} />
+      <Editor key={`${profile.id}:${profile.updated_at}`} profile={profile} pane={pane} setPane={setPane} onSaveTemplate={() => setSavingTpl(true)} />
+      {savingTpl && <SaveTemplateModal profile={profile} onClose={() => setSavingTpl(false)} />}
     </>
   )
 }
 
-function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | 'preview'; setPane: (p: 'edit' | 'preview') => void }) {
+function Editor({ profile, pane, setPane, onSaveTemplate }: { profile: Profile; pane: 'edit' | 'preview'; setPane: (p: 'edit' | 'preview') => void; onSaveTemplate: () => void }) {
   const { business } = useBusiness()
   const profileId = profile.id
   const can = useCan()
@@ -215,15 +227,20 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
   const onError = useErrorToast()
   const categories = useCategories()
   const [draft, setDraft] = useState<Draft>(() => toDraft(profile))
+  const [previewDark, setPreviewDark] = useState<boolean | null>(null)
+  const navigate = useNavigate()
+  const { base } = useBusiness()
   const manage = can('profiles.manage')
+  const isPage = profile.type !== 'business' && profile.type !== 'employee'
   const save = useBizMutation(business.id, (d: Draft) =>
     profilesApi.update(business.id, profileId, {
       title: d.title.trim(),
       ...(profile.type !== 'business' && d.slug !== profile.slug ? { slug: d.slug } : {}),
-      theme: { accent: d.theme.accent, cover_image_url: d.theme.cover_image_url || null },
+      theme: cleanTheme(d.theme),
       sections: d.items.map((i) => i.section),
     }),
   )
+  const dup = useBizMutation(business.id, () => profilesApi.duplicate(business.id, profileId))
   const publish = useBizMutation(business.id, (pub: boolean) => (pub ? profilesApi.publish(business.id, profileId) : profilesApi.unpublish(business.id, profileId)))
   const errs = fieldErrorsOf(save.error)
 
@@ -233,7 +250,16 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
   const setItems = (items: Draft['items']) => setDraft({ ...draft, items })
   const categoryLabel = categories.data?.find((c) => c.code === business.category)?.label ?? business.category
 
-  const preview = (
+  const previewProfile = { type: profile.type, title: draft.title || 'Untitled', theme: { ...draft.theme, cover_image_url: draft.theme.cover_image_url || null }, sections: draft.items.map((i) => i.section) }
+  const preview = isPage ? (
+    <PageView
+      preview
+      business={{ name: business.name, slug: business.slug, logo_url: business.logo_url, verified: business.verified, category: categoryLabel }}
+      profile={previewProfile}
+      profileSlug={draft.slug}
+      scheme={previewDark == null ? (draft.theme.dark ? 'dark' : 'light') : previewDark ? 'dark' : 'light'}
+    />
+  ) : (
     <ProfileView
       preview
       business={{ name: business.name, slug: business.slug, logo_url: business.logo_url, verified: business.verified, category: categoryLabel }}
@@ -257,9 +283,7 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
         title={
           <span className="flex flex-wrap items-center gap-2.5">
             <span className="min-w-0 break-words">{profile.title}</span>
-            <Badge tone={profile.type === 'business' ? 'accent' : 'neutral'} className="capitalize">
-              {profile.type}
-            </Badge>
+            <Badge tone={profile.type === 'business' ? 'accent' : 'neutral'}>{TYPE_LABEL[profile.type] ?? profile.type}</Badge>
             <Badge tone={profile.published ? 'success' : 'neutral'} dot>
               {profile.published ? 'Published' : 'Draft'}
             </Badge>
@@ -272,6 +296,44 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
             <a href={profile.public_url} target="_blank" rel="noreferrer">
               <Button leftIcon={<ExternalLink className="h-4 w-4" />}>View</Button>
             </a>
+            {hasForm(profile.sections) && (
+              <Link to={`${base}/responses?profile_id=${profile.id}`}>
+                <Button leftIcon={<Inbox className="h-4 w-4" />}>Responses</Button>
+              </Link>
+            )}
+            {manage && isPage && (
+              <Menu
+                label="More page actions"
+                items={[
+                  {
+                    label: 'Duplicate',
+                    icon: <Copy className="h-4 w-4 text-subtle" />,
+                    onSelect: async () => {
+                      try {
+                        if (dirty) await save.mutateAsync(draft)
+                        const copy = await dup.mutateAsync(undefined)
+                        toast.success(`Duplicated as “${copy.title}” (draft).`)
+                        navigate(`${base}/profiles/${copy.id}`)
+                      } catch (e) {
+                        onError(e)
+                      }
+                    },
+                  },
+                  {
+                    label: 'Save as template',
+                    icon: <BookmarkPlus className="h-4 w-4 text-subtle" />,
+                    onSelect: async () => {
+                      try {
+                        if (dirty) await save.mutateAsync(draft)
+                        onSaveTemplate()
+                      } catch (e) {
+                        onError(e)
+                      }
+                    },
+                  },
+                ]}
+              />
+            )}
             {manage && (
               <>
                 <Button
@@ -341,6 +403,8 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
                     )}
                   </Field>
                 </div>
+                {!isPage && (
+                <>
                 <Field label="Accent colour" hint="Used for buttons and highlights. Defaults to the platform red.">
                   {() => <AccentPicker value={draft.theme.accent} onChange={(accent) => setDraft({ ...draft, theme: { ...draft.theme, accent } })} />}
                 </Field>
@@ -355,9 +419,22 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
                     />
                   )}
                 </Field>
+                </>
+                )}
               </fieldset>
             </CardBody>
           </Card>
+
+          {isPage && (
+            <Card>
+              <CardHeader title="Design" description="Layout, colours, fonts, header and light/dark — templates set these for you." />
+              <CardBody>
+                <fieldset disabled={!manage}>
+                  <ThemePanel theme={draft.theme} onChange={(theme) => setDraft({ ...draft, theme })} pageType={profile.type} businessLogo={business.logo_url} />
+                </fieldset>
+              </CardBody>
+            </Card>
+          )}
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <h2 className="text-[15px] font-semibold">Sections</h2>
@@ -367,25 +444,20 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
               </Button>
             )}
           </div>
-          {draft.items.map((it, i) => (
-            <SectionCard
-              key={it.key}
-              item={it}
-              index={i}
-              count={draft.items.length}
-              disabled={!manage}
-              onChange={(section) => setItems(draft.items.map((x) => (x.key === it.key ? { ...x, section } : x)))}
-              onMove={(d) => {
-                const next = [...draft.items]
-                const [x] = next.splice(i, 1)
-                next.splice(i + d, 0, x)
-                setItems(next)
-              }}
-              onRemove={() => setItems(draft.items.filter((x) => x.key !== it.key))}
-            />
-          ))}
+          <SortableList items={draft.items} onReorder={setItems} className="space-y-4" idPrefix="sec">
+            {(it, _i, h) => (
+              <SectionCard
+                key={it.key}
+                item={it}
+                handle={h.handle}
+                disabled={!manage}
+                onChange={(section) => setItems(draft.items.map((x) => (x.key === it.key ? { ...x, section } : x)))}
+                onRemove={() => setItems(draft.items.filter((x) => x.key !== it.key))}
+              />
+            )}
+          </SortableList>
           {draft.items.length === 0 && <p className="rounded-xl border border-border bg-surface p-6 text-center text-[13px] text-muted">No sections yet — add one below.</p>}
-          {manage && <AddSection onAdd={(t) => setItems([...draft.items, { key: `s${keySeq++}`, section: { type: t, ...SECTION_DEFAULTS[t]() } as Section }])} />}
+          {manage && <AddSection pageType={profile.type} onAdd={(t) => setItems([...draft.items, { key: `s${keySeq++}`, section: { type: t, ...SECTION_DEFAULTS[t]() } as Section }])} />}
 
           <Card>
             <CardHeader title="Share this page" description={profile.published ? 'Live now.' : 'Publish it to make this link work.'} />
@@ -397,7 +469,20 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
 
         <div className={cn('min-w-0', pane === 'edit' && 'hidden lg:block')}>
           <div className="lg:sticky lg:top-20">
-            <p className="mb-2 text-center text-xs font-medium text-subtle">Live preview · what customers see</p>
+            <div className="mb-2 flex items-center justify-center gap-2">
+              <p className="text-xs font-medium text-subtle">Live preview · what customers see</p>
+              {isPage && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={(previewDark ?? !!draft.theme.dark) ? 'Preview in light mode' : 'Preview in dark mode'}
+                  title="Preview light / dark"
+                  onClick={() => setPreviewDark(!(previewDark ?? !!draft.theme.dark))}
+                >
+                  {(previewDark ?? !!draft.theme.dark) ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+            </div>
             <PhoneFrame>{preview}</PhoneFrame>
           </div>
         </div>
@@ -406,8 +491,20 @@ function Editor({ profile, pane, setPane }: { profile: Profile; pane: 'edit' | '
   )
 }
 
+const THEME_KEYS = ['accent', 'background', 'surface', 'text', 'font', 'layout', 'header', 'cover_image_url', 'logo_url', 'corner_radius', 'dark'] as const
+
+/** Only known theme keys, without empty values (the API rejects unknown keys). */
+function cleanTheme(t: ProfileTheme): ProfileTheme {
+  const out: Record<string, unknown> = {}
+  for (const k of THEME_KEYS) {
+    const v = t[k]
+    if (v !== undefined && v !== null && v !== '') out[k] = v
+  }
+  return out as unknown as ProfileTheme
+}
+
 function comparable(d: Draft) {
-  return { title: d.title, slug: d.slug, theme: { accent: d.theme.accent, cover_image_url: d.theme.cover_image_url || '' }, sections: d.items.map((i) => i.section) }
+  return { title: d.title, slug: d.slug, theme: cleanTheme(d.theme), sections: d.items.map((i) => i.section) }
 }
 
 function toDraftComparable(p: Profile) {

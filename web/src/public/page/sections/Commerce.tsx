@@ -1,8 +1,8 @@
 import { ArrowUpRight, Clock } from 'lucide-react'
 import type { Price, ProductItem, SectionDataMap } from '@/business/api/types'
-import { safeHref, safeImageUrl } from '@/lib/url'
+import { safeHref } from '@/lib/url'
 import { usePage } from '../ctx'
-import { formatPrice } from '../format'
+import { formatPrice, imgSrc } from '../format'
 import { Placeholder, Prose, Sec } from '../ui'
 
 const initial = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, '').charAt(0).toUpperCase() || '•'
@@ -33,7 +33,7 @@ function Cta({ it, className = 'pg-btn pg-prod-cta' }: { it: ProductItem; classN
 const title = (it: ProductItem & { name?: string }) => it.title || it.name || ''
 
 function GridCard({ it, currency }: { it: ProductItem; currency?: string }) {
-  const img = safeImageUrl(it.image_url)
+  const img = imgSrc(it.image_url)
   return (
     <article className="pg-card pg-prod" style={{ position: 'relative' }}>
       {img ? <img className="pg-card-img" src={img} alt="" loading="lazy" /> : <Placeholder label={initial(title(it))} />}
@@ -55,7 +55,7 @@ export function ProductsSection({ d }: { d: SectionDataMap['products'] & { title
   if (!items.length) return null
   if (layout.products === 'single') {
     const [hero, ...rest] = items
-    const img = safeImageUrl(hero.image_url)
+    const img = imgSrc(hero.image_url)
     const save = num(hero.compare_at_price) && num(hero.price) && num(hero.compare_at_price)! > num(hero.price)! ? Math.round((1 - num(hero.price)! / num(hero.compare_at_price)!) * 100) : null
     return (
       <>
@@ -92,7 +92,7 @@ export function ProductsSection({ d }: { d: SectionDataMap['products'] & { title
       <Sec title={d.title ?? 'Products'}>
         <div className="pg-plist">
           {items.map((it, i) => {
-            const img = safeImageUrl(it.image_url)
+            const img = imgSrc(it.image_url)
             return (
               <div key={i} className="pg-pl">
                 {img ? <img className="pg-pl-img" src={img} alt="" loading="lazy" /> : <Placeholder label={initial(title(it))} />}

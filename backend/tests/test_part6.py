@@ -353,6 +353,30 @@ async def test_event_ics(client: AsyncClient) -> None:
     assert (await client.get(f"/api/v1/public/b/{owner['slug']}/{page['slug']}/events/nope.ics")).status_code == 404
 
 
+def test_ics_naive_times_stay_local() -> None:
+    body = pages.event_ics({"title": "Gig", "starts_at": "2030-01-02T18:30:00", "ends_at": "2030-01-02T21:00:00"},
+                           uid="u", url="https://x.example", organizer="Org")
+    assert "DTSTART:20300102T183000\r\n" in body and "DTEND:20300102T210000\r\n" in body
+
+
+async def test_page_image_upload(client: AsyncClient) -> None:
+    from PIL import Image
+
+    owner = await register_business(client)
+    buf = io.BytesIO()
+    Image.new("RGB", (40, 30), (200, 30, 30)).save(buf, format="PNG")
+    url = f"/api/v1/businesses/{owner['business_id']}/media"
+    r = await client.post(url, files={"file": ("a.png", buf.getvalue(), "image/png")}, headers=owner["headers"])
+    assert r.status_code == 201, r.text
+    image = r.json()["url"]
+    assert image.startswith(f"/media/businesses/{owner['business_id']}/pages/") and image.endswith(".webp")
+    page = await _create(client, owner, type="gallery", sections=[{"type": "gallery", "images": [image]}])
+    assert page.status_code == 201, page.text
+    bad = await client.post(url, files={"file": ("a.txt", b"hello", "text/plain")}, headers=owner["headers"])
+    assert bad.status_code == 422
+    assert (await client.post(url, files={"file": ("a.png", buf.getvalue(), "image/png")})).status_code == 401
+
+
 def test_answer_validation_unit() -> None:
     form = {"fields": [{"id": "e", "label": "E", "type": "email", "required": True},
                        {"id": "p", "label": "P", "type": "phone"}, {"id": "c", "label": "C", "type": "checkbox"},

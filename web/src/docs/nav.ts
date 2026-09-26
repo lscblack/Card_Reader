@@ -176,11 +176,11 @@ export const docPages: DocPage[] = [
     slug: 'business-guide',
     title: 'Business guide',
     group: 'Businesses',
-    description: 'Cards vs tags, tap actions, profiles, employees, team roles, analytics and programming.',
+    description: 'Cards vs tags, tap actions, pages & templates, forms, employees, team roles, analytics and programming.',
     headings: [
       { id: 'cards-vs-tags', title: 'Cards vs tags' },
       { id: 'actions', title: 'Tap actions' },
-      { id: 'profiles', title: 'Profiles' },
+      { id: 'profiles', title: 'Pages & templates' },
       { id: 'employees', title: 'Employees & customers' },
       { id: 'roles', title: 'Team roles & permissions' },
       { id: 'analytics', title: 'Analytics' },

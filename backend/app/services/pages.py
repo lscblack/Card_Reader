@@ -549,16 +549,22 @@ def _fold(line: str) -> str:
     return "\r\n ".join(parts)
 
 
+def _ics_time(value: str) -> str:
+    """UTC (`…Z`) for times with an offset; a floating local time for naive ones (the event's wall clock)."""
+    if len(value) == 10:
+        return f"{value.replace('-', '')}T000000"
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return _as_utc(value).strftime("%Y%m%dT%H%M%SZ") if dt.tzinfo else dt.strftime("%Y%m%dT%H%M%S")
+
+
 def event_ics(event: dict[str, Any], *, uid: str, url: str, organizer: str) -> str:
     fmt = "%Y%m%dT%H%M%SZ"
-    start = _as_utc(event["starts_at"])
-    end = _as_utc(event["ends_at"]) if event.get("ends_at") else None
     location = ", ".join(x for x in (event.get("venue"), event.get("address")) if x)
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Nexventures//nexTap//EN", "CALSCALE:GREGORIAN",
              "METHOD:PUBLISH", "BEGIN:VEVENT", f"UID:{uid}", f"DTSTAMP:{datetime.now(UTC).strftime(fmt)}",
-             f"DTSTART:{start.strftime(fmt)}"]
-    if end:
-        lines.append(f"DTEND:{end.strftime(fmt)}")
+             f"DTSTART:{_ics_time(event['starts_at'])}"]
+    if event.get("ends_at"):
+        lines.append(f"DTEND:{_ics_time(event['ends_at'])}")
     lines.append(f"SUMMARY:{_ics_text(event.get('title'))}")
     if location:
         lines.append(f"LOCATION:{_ics_text(location)}")
