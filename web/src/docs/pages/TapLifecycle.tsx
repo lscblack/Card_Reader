@@ -12,8 +12,8 @@ export default function TapLifecycle() {
       <Table
         head={['Who taps', 'What reads the card', 'What happens']}
         rows={[
-          ['A developer’s reader', 'NFC Terminal registered to a developer application', <>A signed <C>card.detected</C> webhook reaches your endpoint</>],
-          ['A business’s reader', 'NFC Terminal registered to a business', 'The card is looked up and the result shown on the phone (and optionally sent to a webhook)'],
+          ['A developer’s reader', 'nexTap registered to a developer application', <>A signed <C>card.detected</C> webhook reaches your endpoint</>],
+          ['A business’s reader', 'nexTap registered to a business', 'The card is looked up and the result shown on the phone (and optionally sent to a webhook)'],
           ['A customer', 'Any phone’s built-in NFC (no app)', <>The card’s link <C>/t/{'{code}'}</C> opens and its action runs</>],
         ]}
       />
@@ -87,7 +87,7 @@ export default function TapLifecycle() {
 
       <H2 id="background">When the app is closed</H2>
       <P>
-        Android only delivers NFC tags to apps while the screen is <B>on and unlocked</B>. With NFC Terminal closed or in the background, a tap
+        Android only delivers NFC tags to apps while the screen is <B>on and unlocked</B>. With nexTap closed or in the background, a tap
         opens the app, runs the same read → deliver pipeline, shows a notification in the “Card reads” channel and returns you to the previous
         app (it waits up to about 8 s; failed deliveries stay queued).
       </P>

@@ -1,4 +1,4 @@
-"""Minimal webhook receiver that verifies NFC Platform signatures (relay + direct modes).
+"""Minimal webhook receiver that verifies nexTap signatures (relay + direct modes).
 
     pip install fastapi uvicorn
     NFC_WEBHOOK_SECRET=whsec_... uvicorn receiver_fastapi:app --port 9000

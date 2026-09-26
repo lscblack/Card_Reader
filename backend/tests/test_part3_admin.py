@@ -29,7 +29,7 @@ async def test_branding_defaults_etag_and_fonts(client: AsyncClient) -> None:
     r = await client.get("/api/v1/meta/branding")
     b = r.json()
     assert r.status_code == 200 and r.headers["cache-control"] == "public, max-age=60" and r.headers["etag"]
-    assert b["product_name"] == "NFC Platform" and b["logo_url"] is None
+    assert b["product_name"] == "nexTap" and b["logo_url"] is None
     assert b["theme"] == {"accent_light": "#B91C1C", "accent_dark": "#E5484D", "default_mode": "dark"}
     assert b["fonts"] == {"heading": "Inter", "body": "Inter", "mono": "JetBrains Mono"}
     r2 = await client.get("/api/v1/meta/branding", headers={"If-None-Match": r.headers["etag"]})

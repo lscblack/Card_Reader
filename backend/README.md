@@ -1,4 +1,4 @@
-# NFC Platform — Backend API
+# nexTap — Backend API
 
 FastAPI service for the NFC SaaS platform: **NFC detection → Card ID → Secure delivery.**
 Developers sign up, create applications, get an API key, register Android phones as NFC readers,

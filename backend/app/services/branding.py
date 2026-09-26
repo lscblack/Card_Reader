@@ -56,7 +56,7 @@ FONTS: list[dict[str, Any]] = [
 FONT_MAP = {f["family"]: f for f in FONTS}
 
 DEFAULTS: dict[str, Any] = {
-    "product_name": "NFC Platform",
+    "product_name": "nexTap",
     "tagline": "NFC detection → Card ID → Secure delivery.",
     "logo_path": None,
     "logo_dark_path": None,

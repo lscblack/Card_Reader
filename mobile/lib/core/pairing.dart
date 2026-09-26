@@ -27,7 +27,7 @@ class PairingPayload {
   static PairingPayload parse(String raw, {bool? allowLan}) {
     final uri = Uri.tryParse(raw.trim());
     if (uri == null || uri.scheme.toLowerCase() != 'nfcterminal' || uri.host.toLowerCase() != 'pair') {
-      throw const PairingFormatException('This is not an NFC Terminal pairing QR code.');
+      throw const PairingFormatException('This is not an nexTap pairing QR code.');
     }
     final q = uri.queryParameters;
     if (q['v'] != '1') {

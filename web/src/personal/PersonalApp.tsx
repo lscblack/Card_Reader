@@ -1,36 +1,47 @@
-import { lazy, Suspense, type ReactNode } from 'react'
-import { Route, Routes } from 'react-router'
-import { Spinner } from '@/components/ui/Spinner'
-import { PersonalLayout } from './layout/PersonalLayout'
+import { lazy, Suspense, type ReactNode } from "react";
+import { Route, Routes } from "react-router";
+import { Spinner } from "@/components/ui/Spinner";
+import { RequireArea } from "@/auth/guards";
+import { PersonalLayout } from "./layout/PersonalLayout";
 
-const OverviewPage = lazy(() => import('./pages/OverviewPage'))
-const CardsPage = lazy(() => import('./pages/CardsPage'))
-const CardEditorPage = lazy(() => import('./pages/CardEditorPage'))
-const ContactsPage = lazy(() => import('./pages/ContactsPage'))
-const ActivityPage = lazy(() => import('./pages/ActivityPage'))
-const SharePage = lazy(() => import('./pages/SharePage'))
-const InvitesPage = lazy(() => import('./pages/InvitesPage'))
-const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
-const SettingsPage = lazy(() => import('./pages/SettingsPage'))
-const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const OverviewPage = lazy(() => import("./pages/OverviewPage"));
+const CardsPage = lazy(() => import("./pages/CardsPage"));
+const CardEditorPage = lazy(() => import("./pages/CardEditorPage"));
+const ContactsPage = lazy(() => import("./pages/ContactsPage"));
+const ActivityPage = lazy(() => import("./pages/ActivityPage"));
+const SharePage = lazy(() => import("./pages/SharePage"));
+const InvitesPage = lazy(() => import("./pages/InvitesPage"));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 const page = (el: ReactNode) => (
   <Suspense
     fallback={
-      <div className="flex justify-center py-24 text-subtle" role="status" aria-label="Loading">
+      <div
+        className="flex justify-center py-24 text-subtle"
+        role="status"
+        aria-label="Loading"
+      >
         <Spinner />
       </div>
     }
   >
     {el}
   </Suspense>
-)
+);
 
 /** Personal dashboard (`/me/*`). */
 export default function PersonalApp() {
   return (
     <Routes>
-      <Route element={<PersonalLayout />}>
+      <Route
+        element={
+          <RequireArea area="me">
+            <PersonalLayout />
+          </RequireArea>
+        }
+      >
         <Route index element={page(<OverviewPage />)} />
         <Route path="cards" element={page(<CardsPage />)} />
         <Route path="cards/:cardId" element={page(<CardEditorPage />)} />
@@ -44,5 +55,5 @@ export default function PersonalApp() {
         <Route path="*" element={page(<NotFoundPage />)} />
       </Route>
     </Routes>
-  )
+  );
 }

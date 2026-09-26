@@ -108,7 +108,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   children: [
                     Icon(Icons.contactless_outlined, size: 56, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(height: 12),
-                    Text('NFC Terminal', style: t.headlineMedium, textAlign: TextAlign.center),
+                    Text('nexTap', style: t.headlineMedium, textAlign: TextAlign.center),
                     const SizedBox(height: 4),
                     Text(
                       'Connect this phone to your application: scan the pairing QR code from the dashboard, '

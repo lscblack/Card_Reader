@@ -1,7 +1,7 @@
-# NFC Platform — API Contract (source of truth)
+# nexTap — API Contract (source of truth)
 
 This file is the shared contract between `backend/` (FastAPI), `web/` (React dashboard) and
-`mobile/` (Flutter NFC terminal). Any change here must be mirrored in all three.
+`mobile/` (Flutter nexTap app). Any change here must be mirrored in all three.
 
 Product principle: **NFC detection → Card ID → Secure delivery.** The platform never interprets
 what a card ID means. A UID is an *identifier*, not proof of identity: every event carries
@@ -90,7 +90,7 @@ Headers:
 
 | Header | Value |
 |---|---|
-| `User-Agent` | `NFCPlatform-Webhook/1.0` (relay) or `NFCPlatform-Terminal/1.0` (direct) |
+| `User-Agent` | `nexTap-Webhook/1.0` (relay) or `nexTap-Terminal/1.0` (direct) |
 | `X-NFC-Event-Id` | event UUID (use for idempotency — retries reuse it) |
 | `X-NFC-Timestamp` | unix seconds (string) |
 | `X-NFC-Nonce` | 32 hex chars, random per attempt |

@@ -248,7 +248,7 @@ export default function AdminReleasesPage() {
 
   return (
     <>
-      <PageHeader title="App releases" description="Build, publish and distribute the NFC Terminal Android app. The published stable release is what customers download." />
+      <PageHeader title="App releases" description="Build, publish and distribute the nexTap Android app. The published stable release is what customers download." />
       <div className="space-y-6">
         <BuildForm />
         <Card>

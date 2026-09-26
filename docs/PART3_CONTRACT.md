@@ -9,7 +9,7 @@ every change additive/backward compatible.
 `Branding` = `{ product_name, tagline, logo_url|null, logo_dark_url|null, favicon_url|null,
 fonts: { heading, body, mono }, theme: { accent_light: hex, accent_dark: hex, default_mode: "dark"|"light"|"system" },
 support_email, company_address|null, social_links: [{platform, url}], updated_at }`
-Defaults: product "NFC Platform", accent_light `#B91C1C`, accent_dark `#E5484D`, default_mode `dark`,
+Defaults: product "nexTap", accent_light `#B91C1C`, accent_dark `#E5484D`, default_mode `dark`,
 fonts Inter / Inter / JetBrains Mono.
 
 - `GET /meta/branding` (public, cached ≤ 60 s, ETag) → `Branding`.
@@ -121,7 +121,7 @@ log_excerpt (last 200 lines), started_at, finished_at, created_by, created_at, d
 - Public: `GET /meta/app-release` → latest published stable release `{ version_name, build_number, file_size, sha256,
   published_at, download_url, min_android: "7.0" }` or `404 no_release`. `GET /downloads/android/latest` (and
   `/downloads/android/{id}`) → the APK (`application/vnd.android.package-archive`, `Content-Disposition` filename
-  `nfc-terminal-<version>.apk`), counted in `downloads`.
+  `nextap-<version>.apk`), counted in `downloads`.
 - Admin: `POST /admin/app-releases` `{ version_name?, build_number? (default auto-increment), build_type, channel, api_base_url?
   (default PUBLIC_API_URL; must be http(s)), notes?, publish_on_success: bool }` → `202 AppRelease` (queued).
   `GET /admin/app-releases`, `GET /admin/app-releases/{id}` (incl. full log if requested `?log=full`),

@@ -9,7 +9,7 @@ import { SectionHeading } from './Reveal'
 const faqs: { q: string; a: ReactNode }[] = [
   {
     q: 'Do I need special reader hardware?',
-    a: 'No. Any Android phone with NFC (Android 7.0 or newer) runs the free NFC Terminal app and becomes a reader. iPhones can still tap business cards and tags as customers — they just open the tap link in the browser.',
+    a: 'No. Any Android phone with NFC (Android 7.0 or newer) runs the free nexTap app and becomes a reader. iPhones can still tap business cards and tags as customers — they just open the tap link in the browser.',
   },
   {
     q: 'Can the phone read cards in the background?',

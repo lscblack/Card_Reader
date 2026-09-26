@@ -52,7 +52,7 @@ export function HeroVisual() {
           <rect x="36" y="52" width="110" height="236" rx="14" fill="var(--bg)" />
           <rect x="72" y="42" width="38" height="5" rx="2.5" fill="var(--border-strong)" />
           <text x="91" y="78" textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--muted)">
-            NFC Terminal
+            nexTap
           </text>
           {/* status ring */}
           <circle cx="91" cy="140" r="34" fill="none" stroke="var(--border)" strokeWidth="6" />

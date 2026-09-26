@@ -65,7 +65,7 @@ function DevicesTab({ app }: { app: Application }) {
       ) : isLoading ? (
         <SkeletonRows rows={3} />
       ) : !data?.length ? (
-        <EmptyState icon={Smartphone} title="No devices yet" description="Pair an Android phone running NFC Terminal by scanning a QR code." />
+        <EmptyState icon={Smartphone} title="No devices yet" description="Pair an Android phone running nexTap by scanning a QR code." />
       ) : (
         <DevicesTable devices={data} showApp={false} />
       )}

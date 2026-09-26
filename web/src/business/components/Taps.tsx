@@ -103,7 +103,7 @@ export function TapDetailDrawer({ tap, onClose }: { tap: CardTap | null; onClose
             </div>
             {tap.result === 'unknown_card' && (
               <p className="rounded-lg border border-border bg-surface-2 p-3 text-[13px] text-muted">
-                A reader scanned a card that isn’t registered in this business. Register it from the NFC Terminal app (if your devices are
+                A reader scanned a card that isn’t registered in this business. Register it from the nexTap app (if your devices are
                 allowed to) or create it under NFC Cards.
               </p>
             )}
@@ -129,7 +129,7 @@ export function TapDetailDrawer({ tap, onClose }: { tap: CardTap | null; onClose
                 {tap.assignee && <Badge className="ml-2">{tap.assignee.type}</Badge>}
               </DetailRow>
               <DetailRow label="Action">{tap.action_type ? actionLabel(tap.action_type) : '—'}</DetailRow>
-              <DetailRow label="Source">{tap.source === 'reader' ? 'NFC Terminal (business device)' : 'Customer phone (web link)'}</DetailRow>
+              <DetailRow label="Source">{tap.source === 'reader' ? 'nexTap (business device)' : 'Customer phone (web link)'}</DetailRow>
               {tap.source === 'reader' && <DetailRow label="Device">{tap.device_name ?? '—'}</DetailRow>}
               <DetailRow label="Device type">{tap.device_type ? DEVICE_TYPE_LABEL[tap.device_type] : '—'}</DetailRow>
               {tap.browser && <DetailRow label="Browser">{tap.browser}</DetailRow>}

@@ -72,7 +72,7 @@ export default function DeviceApi() {
 
       <H2 id="overview">Overview</H2>
       <P>
-        These endpoints are what the NFC Terminal app uses. You only need them to build your own reader client. Base URL: <C>{API_V1}</C>
+        These endpoints are what the nexTap app uses. You only need them to build your own reader client. Base URL: <C>{API_V1}</C>
       </P>
       <Table
         head={['Endpoint', 'Auth', 'Purpose']}

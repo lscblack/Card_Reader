@@ -19,7 +19,7 @@ class WelcomeScreen extends StatelessWidget {
           children: [
             Icon(Icons.contactless_outlined, size: 56, color: scheme.primary),
             const SizedBox(height: 12),
-            Text('NFC Terminal', style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+            Text('nexTap', style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center),
             const SizedBox(height: 6),
             Text('How do you want to use this phone? You can set up both.', style: t.bodyMedium, textAlign: TextAlign.center),
             const SizedBox(height: 28),

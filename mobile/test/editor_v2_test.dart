@@ -56,6 +56,21 @@ void main() {
       expect(suggestPalette(const []), isNull);
     });
 
+    testWidgets('design panel shows several contrast warnings without duplicate keys', (tester) async {
+      // Regression: every warning row used Key('contrastWarning') → "Duplicate keys found" crash.
+      final card = v2Card('diagonal_crimson', design: {'text': '#EEEEEE', 'accent': '#FAFAFA'});
+      expect(contrastWarnings(card.design), hasLength(2));
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: DesignV2Panel(card: card, presets: DesignPresets.fallback, onChanged: (_) {}),
+        ),
+      ));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('contrastWarning-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('contrastWarning-1')), findsOneWidget);
+    });
+
     test('contrast warnings and surprise me', () {
       final bad = v2Card('diagonal_crimson').design.copyWith(text: '#EEEEEE', accent: '#FAFAFA');
       expect(contrastWarnings(bad), hasLength(2));

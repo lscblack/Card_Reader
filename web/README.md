@@ -1,7 +1,7 @@
-# NFC Platform — Web Dashboard
+# nexTap — Web Dashboard
 
 React dashboard for the NFC SaaS platform: developers create applications, get API keys, register
-Android phones (via the Flutter NFC Terminal app) as card readers, configure the endpoint that receives
+Android phones (via the Flutter nexTap app) as card readers, configure the endpoint that receives
 HMAC-signed card events, and inspect events, deliveries and usage.
 
 The API it talks to is specified in [`../docs/API_CONTRACT.md`](../docs/API_CONTRACT.md) — the single

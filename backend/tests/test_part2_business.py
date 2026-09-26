@@ -266,14 +266,9 @@ async def test_card_rules(client: AsyncClient) -> None:
     assert [h["type"] for h in reversed(hist)] == ["created", "assigned", "deactivated", "activated", "unassigned"]
     assert hist[0]["actor"]["name"] == "Owner One"
 
-    r = await client.post(f"{base}/cards/bulk", json={"count": 3, "kind": "tag", "name_prefix": "Table"},
-                          headers=owner["headers"])
-    assert r.status_code == 201 and [c["name"] for c in r.json()["items"]] == ["Table 1", "Table 2", "Table 3"]
-    r = await client.get(f"{base}/cards?kind=tag&programmed=false", headers=owner["headers"])
-    assert r.json()["total"] == 3
-    r = await client.post(f"{base}/cards/bulk", json={"count": 47, "kind": "card"}, headers=owner["headers"])
-    assert r.status_code == 402 and r.json()["error"]["details"]["limit"] == "cards"
-    assert r.json()["error"]["ref"] == "NFC-7001"
+    # Bulk creation was removed: cards are registered on a phone, which reads the UID.
+    r = await client.post(f"{base}/cards/bulk", json={"count": 3, "kind": "tag"}, headers=owner["headers"])
+    assert r.status_code in (404, 405, 422)
 
 
 async def _card_with_action(client: AsyncClient, owner: dict, action: dict, **extra) -> dict:  # type: ignore[type-arg]

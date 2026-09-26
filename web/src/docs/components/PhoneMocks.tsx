@@ -3,7 +3,7 @@ import { Bell, Check, CircleHelp, ExternalLink, Plus, Radio, TriangleAlert } fro
 import { cn } from '@/lib/cn'
 
 /*
- * Illustrations of what the NFC Terminal app shows after a read (mobile-style mockups, not screenshots of
+ * Illustrations of what the nexTap app shows after a read (mobile-style mockups, not screenshots of
  * the Flutter app). Always rendered on a dark "phone" surface, independent of the site theme.
  */
 
@@ -38,7 +38,7 @@ const tones = {
 export function DeveloperResultMock() {
   return (
     <Phone label="Developer device after a read: status Delivered, card UID, UID only badge">
-      <Header title="NFC Terminal" />
+      <Header title="nexTap" />
       <div className="mt-6 flex flex-col items-center">
         <span className={cn('flex h-20 w-20 items-center justify-center rounded-full border-4', tones.green.ring)}>
           <Check className="h-9 w-9" aria-hidden="true" />
@@ -108,7 +108,7 @@ export function BackgroundNotificationMock() {
     <Phone label="Unlocked phone with another app open: a Card delivered notification appears after a background read">
       <div className="rounded-2xl bg-white/10 p-2.5 shadow-lg ring-1 ring-white/10">
         <p className="flex items-center gap-1.5 text-[9.5px] text-[#b3acac]">
-          <Bell className="h-3 w-3" aria-hidden="true" /> NFC Terminal · Card reads · now
+          <Bell className="h-3 w-3" aria-hidden="true" /> nexTap · Card reads · now
         </p>
         <p className="mt-1 text-[11.5px] font-semibold">Card delivered</p>
         <p className="text-[10.5px] text-[#d6d0d0]">04A1B2C3D4E5 · Front desk check-in</p>

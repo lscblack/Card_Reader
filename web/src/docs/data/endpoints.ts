@@ -25,7 +25,7 @@ export const endpointGroups: EndpointGroup[] = [
       ['GET', '/actions/types', 'Tap action types and their form fields'],
       ['GET', '/meta/branding', 'Product name, logo, fonts and theme'],
       ['GET', '/meta/app-release', 'Latest published Android app build (404 no_release if none)'],
-      ['GET', '/downloads/android/latest', 'Download the latest NFC Terminal APK (server root)'],
+      ['GET', '/downloads/android/latest', 'Download the latest nexTap APK (server root)'],
       ['GET', '/billing/promotions/active', 'Promotions shown on the landing page'],
       ['GET', '/invitations/{token}', 'Invitation details (business, role, email, status)'],
       ['GET', '/public/b/{slug}', 'Published business profile'],

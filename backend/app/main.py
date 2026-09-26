@@ -102,7 +102,7 @@ OPENAPI_TAGS = [
     {"name": "Usage & billing", "description": "Plans, subscription and usage counters."},
     {"name": "Audit logs", "description": "Security-relevant actions on your account."},
     {"name": "Admin", "description": "Platform administration (role = admin)."},
-    {"name": "Device API (mobile terminal)", "description": "Endpoints called by the Android NFC terminal app."},
+    {"name": "Device API (mobile terminal)", "description": "Endpoints called by the nexTap Android app."},
 ]
 
 

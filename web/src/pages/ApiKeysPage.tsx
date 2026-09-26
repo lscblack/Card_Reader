@@ -27,7 +27,7 @@ export default function ApiKeysPage() {
     <>
       <PageHeader
         title="API Keys"
-        description="Keys let the NFC Terminal app register a phone for an application. The full key is shown only once, at creation."
+        description="Keys let the nexTap app register a phone for an application. The full key is shown only once, at creation."
         actions={
           <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)} disabled={!apps.data?.length}>
             New API key

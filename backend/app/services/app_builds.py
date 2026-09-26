@@ -1,4 +1,4 @@
-"""Mobile NFC Terminal builds (Part 3 §9).
+"""Mobile nexTap builds (Part 3 §9).
 
 The worker runs a *fixed* command — never a shell — with validated arguments:
     <FLUTTER_BIN> build apk --<release|debug> --build-name=<v> --build-number=<n> --dart-define=API_BASE_URL=<url>
@@ -214,7 +214,7 @@ async def _notify_finished(session: AsyncSession, release: AppRelease) -> None:
     recipients = [*([release.created_by] if release.created_by else []), *await notifications.admin_ids(session)]
     notifications.notify(
         session, recipients, type_=f"app_build.{'succeeded' if ok else release.status}",
-        title=f"NFC Terminal {release.version_name} ({release.build_number}) "
+        title=f"nexTap {release.version_name} ({release.build_number}) "
               f"{'built successfully' if ok else release.status}",
         body=(f"{release.build_type} APK, {round((release.file_size or 0) / 1_048_576, 1)} MB"
               + (" — published" if release.is_published else "")) if ok else (release.error or "Build failed"),
@@ -260,7 +260,7 @@ async def execute(session_factory: async_sessionmaker[AsyncSession], release_id)
                 src = artifact_source(release)
                 if not src.exists():
                     raise FileNotFoundError(f"artifact not found: {src.name}")
-                rel = f"releases/nfc-terminal-{release.version_name}-{release.build_number}-{release.build_type}.apk"
+                rel = f"releases/nextap-{release.version_name}-{release.build_number}-{release.build_type}.apk"
                 dest = artifact_file(rel)
                 # Copy + hash a multi-MB APK in a thread: the worker shares the API's event loop.
                 sha256, size = await asyncio.to_thread(_copy_and_hash, src, dest)

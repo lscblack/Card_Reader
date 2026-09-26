@@ -221,7 +221,7 @@ function DevicesTab({ app }: { app: Application }) {
         <EmptyState
           icon={Smartphone}
           title="No devices yet"
-          description="Install the NFC Terminal app on an Android phone, then pair it by scanning a QR code (or register it with one of this application's API keys)."
+          description="Install the nexTap app on an Android phone, then pair it by scanning a QR code (or register it with one of this application's API keys)."
           action={
             <div className="flex flex-col items-center gap-2">
               <PairPhoneButton applicationId={app.id} disabled={!app.is_active} />

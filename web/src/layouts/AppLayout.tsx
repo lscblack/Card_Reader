@@ -1,11 +1,12 @@
-import { Navigate } from 'react-router'
-import { useAuth } from '@/auth/context'
+import { RequireArea } from '@/auth/guards'
 import { DashboardShell } from './DashboardShell'
 import { developerNav } from './nav'
 
-/** Developer dashboard layout (/dashboard/*). Personal accounts have their own area (/me). */
+/** Developer dashboard layout (/dashboard/*). Other account types are sent to their own area. */
 export function AppLayout() {
-  const { user } = useAuth()
-  if (user?.account_type === 'personal' && user.role !== 'admin') return <Navigate to="/me" replace />
-  return <DashboardShell nav={developerNav} homeTo="/dashboard" settingsPath="/dashboard/settings" />
+  return (
+    <RequireArea area="dashboard">
+      <DashboardShell nav={developerNav} homeTo="/dashboard" settingsPath="/dashboard/settings" />
+    </RequireArea>
+  )
 }

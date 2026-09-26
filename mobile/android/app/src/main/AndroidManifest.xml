@@ -14,7 +14,7 @@
     <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
 
     <application
-        android:label="NFC Terminal"
+        android:label="nexTap"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"

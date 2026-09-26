@@ -29,7 +29,7 @@ function ExchangeQr({ cardId }: { cardId: string }) {
   const left = q.data ? new Date(q.data.expires_at).getTime() - now : 0
   return (
     <Card>
-      <CardHeader title="Exchange QR" description="For phones without NFC: they scan this in the NFC Terminal app and you both get each other’s card." />
+      <CardHeader title="Exchange QR" description="For phones without NFC: they scan this in the nexTap app and you both get each other’s card." />
       <CardBody className="flex flex-col items-center gap-3">
         {q.error ? (
           <BizErrorState error={q.error} onRetry={() => q.refetch()} />
@@ -96,7 +96,7 @@ function PhoneLogin() {
   const expired = st === 'expired' || (st === 'pending' && !!code && left <= 0)
   return (
     <Card>
-      <CardHeader title="Sign in on your phone" description="Scan with the NFC Terminal app to sign it in as you — no password typing. The code works once, for 5 minutes." />
+      <CardHeader title="Sign in on your phone" description="Scan with the nexTap app to sign it in as you — no password typing. The code works once, for 5 minutes." />
       <CardBody className="flex flex-col items-center gap-3 text-center">
         <FormError error={error} className="w-full" />
         {!code ? (

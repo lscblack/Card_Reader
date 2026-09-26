@@ -28,6 +28,37 @@ export const authApi = {
 }
 
 /** Where a freshly signed-in user lands by default (Part 2 routing). */
+type AreaUser = { role?: string; account_type?: string; memberships?: unknown[] } | null | undefined
+
+/** The signed-in areas of the app. Each account type has exactly one home area. */
+export type Area = 'dashboard' | 'business' | 'me' | 'admin'
+
+export function areaOf(path: string): Area | null {
+  const seg = path.split(/[?#]/)[0].split('/')[1]
+  return seg === 'dashboard' || seg === 'business' || seg === 'me' || seg === 'admin' ? seg : null
+}
+
+/**
+ * Who may enter which area. Admins can inspect developer and business areas; personal accounts
+ * only have /me; business accounts reach /dashboard just for their workspace sandbox.
+ */
+export function canEnter(user: AreaUser, area: Area | null, path = ''): boolean {
+  if (!user) return false
+  if (!area) return true
+  const admin = user.role === 'admin'
+  switch (area) {
+    case 'admin':
+      return admin
+    case 'me':
+      return user.account_type === 'personal'
+    case 'business':
+      return admin || user.account_type === 'business' || (user.memberships?.length ?? 0) > 0
+    case 'dashboard':
+      if (admin || user.account_type === 'developer' || !user.account_type) return true
+      return user.account_type === 'business' && path.startsWith('/dashboard/sandbox')
+  }
+}
+
 export function homePathFor(user: { role?: string; account_type?: string } | null | undefined): string {
   if (!user) return '/login'
   if (user.role === 'admin') return '/admin'

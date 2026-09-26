@@ -94,7 +94,7 @@ export const docPages: DocPage[] = [
     slug: 'mobile-app',
     title: 'Mobile app',
     group: 'Core concepts',
-    description: 'Install NFC Terminal, pair it with a QR code, understand background reading and program cards.',
+    description: 'Install nexTap, pair it with a QR code, understand background reading and program cards.',
     headings: [
       { id: 'download', title: 'Download the Android app' },
       { id: 'requirements', title: 'Requirements' },

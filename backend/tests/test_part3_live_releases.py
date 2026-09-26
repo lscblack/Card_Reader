@@ -198,7 +198,7 @@ async def test_app_release_build_publish_and_download(client: AsyncClient, user:
     dl = await client.get("/downloads/android/latest")
     assert dl.status_code == 200 and dl.content == b"PK\x03\x04fake-apk"
     assert dl.headers["content-type"] == "application/vnd.android.package-archive"
-    assert 'filename="nfc-terminal-2.3.4.apk"' in dl.headers["content-disposition"]
+    assert 'filename="nextap-2.3.4.apk"' in dl.headers["content-disposition"]
     assert (await client.get(f"/downloads/android/{rel['id']}")).status_code == 200
     assert (await client.get(f"/api/v1/admin/app-releases/{rel['id']}", headers=admin)).json()["downloads"] == 2
 

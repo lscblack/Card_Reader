@@ -154,7 +154,7 @@ void main() {
       expect(r!.status, EventStatus.delivered);
       expect(r.pendingReport, isNull);
       expect(seen.followRedirects, isFalse);
-      expect(seen.headers['User-Agent'], 'NFCPlatform-Terminal/1.0');
+      expect(seen.headers['User-Agent'], 'nexTap-Terminal/1.0');
       expect(
         seen.headers['X-NFC-Signature'],
         Signer.sign(secret: secret, timestamp: seen.headers['X-NFC-Timestamp']!, nonce: seen.headers['X-NFC-Nonce']!, bodyBytes: seen.bodyBytes),

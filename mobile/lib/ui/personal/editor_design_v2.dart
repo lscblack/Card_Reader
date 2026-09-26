@@ -199,9 +199,10 @@ class _DesignV2PanelState extends State<DesignV2Panel> {
         colorRow('Background', d.background, (c) => _set(d.copyWith(background: c))),
         colorRow('Text', d.text, (c) => _set(d.copyWith(text: c))),
         colorRow('Accent', d.accent, (c) => _set(d.copyWith(accent: c))),
-        for (final w in warnings)
+        // Several warnings can show at once; sibling keys must be unique.
+        for (final (i, w) in warnings.indexed)
           Padding(
-            key: const Key('contrastWarning'),
+            key: ValueKey('contrastWarning-$i'),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(Icons.contrast, size: 18, color: StatusColors.warning(context)),

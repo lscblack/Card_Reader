@@ -50,7 +50,7 @@ def _parts(msg: EmailMessage) -> tuple[str, str]:
 def test_every_template_renders_html_and_text(name: str) -> None:
     subject = "A message from the team" if name == "admin_message" else None
     r = email_templates.render(name, email_templates.sample_context(name), branding.merged({}), subject)
-    assert r.subject and "NFC Platform" in (r.subject + r.html)
+    assert r.subject and "nexTap" in (r.subject + r.html)
     assert '<meta name="color-scheme" content="light dark">' in r.html and "prefers-color-scheme: dark" in r.html
     assert 'role="presentation"' in r.html and "600" in r.html and "#B91C1C" in r.html
     assert 'href="http://nexventures.net/"' in r.html and "Powered by" in r.html
@@ -87,7 +87,7 @@ async def test_one_time_links_sent_but_not_stored(client: AsyncClient, outbox: l
     assert r.status_code == 201 and r.json()["dev_verification_url"] is None  # email enabled → no dev link
     await client.post("/api/v1/auth/forgot-password", json={"email": "links@example.com"})
     verify_msg, reset_msg = outbox[0], outbox[1]
-    assert verify_msg["Subject"] == "Verify your NFC Platform email" and verify_msg["To"] == "links@example.com"
+    assert verify_msg["Subject"] == "Verify your nexTap email" and verify_msg["To"] == "links@example.com"
     html, text = _parts(reset_msg)
     reset_link = next(w for w in text.split() if "reset-password?token=" in w)
     assert reset_link in html and "Reset password" in html and "Hi Link Tester" in text
@@ -107,7 +107,7 @@ async def test_one_time_links_sent_but_not_stored(client: AsyncClient, outbox: l
     verify_link = next(w for w in _parts(verify_msg)[1].split() if "verify-email?token=" in w)
     await client.post("/api/v1/auth/verify-email", json={"token": token_from_url(verify_link)})
     subjects = [m["Subject"] for m in outbox]
-    assert "Your NFC Platform password was changed" in subjects and "Welcome to NFC Platform" in subjects
+    assert "Your nexTap password was changed" in subjects and "Welcome to nexTap" in subjects
 
 
 async def test_emails_logged_when_disabled_and_failures_recorded(client: AsyncClient,

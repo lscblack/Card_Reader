@@ -92,7 +92,7 @@ async def test_relay_event_delivered_with_valid_signature(client: AsyncClient, u
     assert res["status_code"] == 200 and res["error"] is None and res["latency_ms"] is not None
 
     req = received[0]
-    assert req.headers["User-Agent"] == "NFCPlatform-Webhook/1.0"
+    assert req.headers["User-Agent"] == "nexTap-Webhook/1.0"
     assert req.headers["X-NFC-Event-Id"] == body["event_id"]
     assert req.headers["X-NFC-Delivery-Mode"] == "relay"
     assert req.headers["X-NFC-Device-Id"] == ctx["device"]["id"]

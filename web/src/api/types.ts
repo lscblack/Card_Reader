@@ -36,7 +36,7 @@ export interface Health {
 }
 
 export interface ServerMeta {
-  /** URL to enter as "Server URL" in the NFC Terminal app. */
+  /** URL to enter as "Server URL" in the nexTap app. */
   device_server_url: string
   environment: string
   version: string

@@ -45,7 +45,7 @@ export function ReaderTapHelp({ canRegister }: { canRegister: boolean }) {
         <CircleHelp className="h-5 w-5 shrink-0 text-subtle" />
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold">What happens when a device reads a card?</span>
-          <span className="block text-[13px] text-muted">The NFC Terminal app shows a result card for every tap — here’s how to read it.</span>
+          <span className="block text-[13px] text-muted">The nexTap app shows a result card for every tap — here’s how to read it.</span>
         </span>
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-subtle transition-transform', open && 'rotate-180')} />
       </button>

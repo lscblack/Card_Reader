@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
-import { homePathFor } from '@/api/auth'
+import { areaOf, canEnter, homePathFor, type Area } from '@/api/auth'
 import { safeNext } from '@/lib/url'
 import { useAuth } from './context'
 import { SessionRestoring } from './SessionRestoring'
@@ -21,14 +21,25 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+/** Keeps each account in its own area; anything else goes to the account's home dashboard. */
+export function RequireArea({ area, children }: { area: Area; children: ReactNode }) {
+  const { user } = useAuth()
+  const loc = useLocation()
+  if (!canEnter(user, area, loc.pathname)) return <Navigate to={homePathFor(user)} replace />
+  return <>{children}</>
+}
+
 /** Login/register pages: once authenticated, go to ?next= (same-origin only) or the account's home. */
 export function GuestOnly({ children }: { children: ReactNode }) {
   const { status, user } = useAuth()
   const loc = useLocation()
   if (status === 'loading') return <SessionRestoring />
   if (status === 'authenticated') {
-    const next = new URLSearchParams(loc.search).get('next')
-    return <Navigate to={next ? safeNext(next) : homePathFor(user)} replace />
+    const raw = new URLSearchParams(loc.search).get('next')
+    const next = raw ? safeNext(raw) : null
+    // Only follow ?next= into an area this account may use (e.g. never send a developer to /me).
+    const target = next && canEnter(user, areaOf(next), next) ? next : homePathFor(user)
+    return <Navigate to={target} replace />
   }
   return <>{children}</>
 }

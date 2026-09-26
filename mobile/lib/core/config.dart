@@ -15,7 +15,7 @@ class AppConfig {
   static const String apiPrefix = '/api/v1';
 
   /// User-Agent used for direct deliveries (contract section 4).
-  static const String terminalUserAgent = 'NFCPlatform-Terminal/1.0';
+  static const String terminalUserAgent = 'nexTap-Terminal/1.0';
 
   /// User-Agent used for calls to the platform API.
   static const String apiUserAgent = 'NFCTerminal-Android/1.0';

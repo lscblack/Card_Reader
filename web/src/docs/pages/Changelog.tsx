@@ -106,7 +106,7 @@ export default function Changelog() {
         items={[
           'Accounts, applications, API keys, webhook secrets and device tokens.',
           <>
-            <b className="text-fg">NFC Terminal</b> Android app: reader mode, background reading, offline retry queue, history.
+            <b className="text-fg">nexTap</b> Android app: reader mode, background reading, offline retry queue, history.
           </>,
           <>
             Signed <C>card.detected</C> webhooks (<C>v1=</C> HMAC-SHA256) with <b className="text-fg">relay</b> and{' '}

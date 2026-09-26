@@ -35,7 +35,7 @@ function Checklist({ data }: { data: BusinessOverview }) {
     { done: c.logo_uploaded && c.profile_published, title: 'Complete your business profile', body: 'Upload your logo and publish your business page — it’s what customers see.', to: c.logo_uploaded ? `${base}/profiles` : `${base}/settings`, cta: c.logo_uploaded ? 'Edit profile' : 'Upload logo' },
     { done: c.first_employee, title: 'Add an employee', body: 'Give your team digital business cards.', to: `${base}/employees?new=1`, cta: 'Add employee' },
     { done: c.first_card, title: 'Add an NFC card', body: 'Create a card and assign it to someone.', to: `${base}/cards?new=1`, cta: 'Add card' },
-    { done: c.card_programmed, app: true, title: 'Program the card with the app', body: 'Open NFC Terminal → Program card and hold the card to the phone.', to: `${base}/cards`, cta: 'View cards' },
+    { done: c.card_programmed, app: true, title: 'Program the card with the app', body: 'Open nexTap → Program card and hold the card to the phone.', to: `${base}/cards`, cta: 'View cards' },
     { done: c.device_paired, title: 'Pair a device', body: 'Turn an Android phone into a reader for your counter or events.', to: `${base}/devices?pair=1`, cta: 'Pair device' },
     { done: emailVerified, title: 'Verify your email', body: 'Public pages go live once the business email is verified.', to: null, cta: null },
   ]

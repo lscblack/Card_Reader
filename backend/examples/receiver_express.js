@@ -1,4 +1,4 @@
-// Minimal webhook receiver that verifies NFC Platform signatures (relay + direct modes).
+// Minimal webhook receiver that verifies nexTap signatures (relay + direct modes).
 //
 //   npm install express
 //   NFC_WEBHOOK_SECRET=whsec_... node receiver_express.js

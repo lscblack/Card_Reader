@@ -368,16 +368,16 @@ async def test_image_resizing_runs_in_a_worker_thread(client: AsyncClient, monke
 
 # ── APKs live outside the public media tree ──────────────────────────────────
 async def test_release_apks_are_private_and_legacy_ones_are_moved(client: AsyncClient) -> None:
-    rel = "releases/nfc-terminal-9.9.9-99-debug.apk"
-    (app_builds.releases_root() / "nfc-terminal-9.9.9-99-debug.apk").unlink(missing_ok=True)
+    rel = "releases/nextap-9.9.9-99-debug.apk"
+    (app_builds.releases_root() / "nextap-9.9.9-99-debug.apk").unlink(missing_ok=True)
     legacy = media_root() / rel  # where builds used to be written (publicly served by /media)
     legacy.parent.mkdir(parents=True, exist_ok=True)
     legacy.write_bytes(b"PK\x03\x04 fake apk")
     (media_root() / "public-check.txt").write_text("ok")
-    for path in (f"/media/{rel}", "/media/releases/../releases/nfc-terminal-9.9.9-99-debug.apk"):
+    for path in (f"/media/{rel}", "/media/releases/../releases/nextap-9.9.9-99-debug.apk"):
         assert (await client.get(path)).status_code == 404, path
     assert app_builds.migrate_legacy_artifacts() == 1
-    assert not legacy.exists() and (app_builds.releases_root() / "nfc-terminal-9.9.9-99-debug.apk").exists()
+    assert not legacy.exists() and (app_builds.releases_root() / "nextap-9.9.9-99-debug.apk").exists()
     assert not str(app_builds.releases_root()).startswith(str(media_root()))
     async with SessionLocal() as s:
         r = AppRelease(version_name="9.9.9", build_number=99, build_type="debug", channel="stable",

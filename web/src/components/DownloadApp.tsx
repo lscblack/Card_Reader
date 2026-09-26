@@ -21,7 +21,7 @@ export function DownloadAppCard({ className, compact = false }: { className?: st
             <Smartphone className="size-4" />
           </span>
           <div className="min-w-0">
-            <p className="text-[13px] font-medium">NFC Terminal for Android</p>
+            <p className="text-[13px] font-medium">nexTap for Android</p>
             <p className="text-xs text-muted">
               v{r.version_name} ({r.build_number}) · {formatBytes(r.file_size)} · Android {r.min_android}+
             </p>
@@ -67,7 +67,7 @@ export function DownloadAppInline() {
     <div className="flex items-center gap-3 rounded-lg border border-border p-3">
       <QrCode value={r.download_url} size={88} label="QR code to download the Android app" />
       <div className="min-w-0 space-y-1.5">
-        <p className="text-[13px] font-medium">Don’t have NFC Terminal yet?</p>
+        <p className="text-[13px] font-medium">Don’t have nexTap yet?</p>
         <p className="text-xs text-muted">Scan to download v{r.version_name} ({formatBytes(r.file_size)}).</p>
         <a href={r.download_url} download className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline">
           <Download className="h-3.5 w-3.5" /> Download APK

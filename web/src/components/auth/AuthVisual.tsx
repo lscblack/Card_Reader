@@ -15,7 +15,7 @@ const HIGHLIGHTS = [
   {
     icon: QrCode,
     title: 'Pair a phone in seconds',
-    body: 'Scan a QR code with NFC Terminal, and any Android phone becomes a card reader. No typing API keys.',
+    body: 'Scan a QR code with nexTap, and any Android phone becomes a card reader. No typing API keys.',
     stat: '< 30 s',
     statLabel: 'from unboxing to first tap',
   },

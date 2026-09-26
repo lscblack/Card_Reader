@@ -114,7 +114,7 @@ export function TapResultBadge({ result }: { result: TapResult }) {
 
 export function TapSourceBadge({ source }: { source: TapSource }) {
   return source === 'reader' ? (
-    <Badge tone="accent" className="gap-1" title="Read by one of your NFC Terminal devices">
+    <Badge tone="accent" className="gap-1" title="Read by one of your nexTap devices">
       <Radio className="h-3 w-3" aria-hidden="true" /> Reader
     </Badge>
   ) : (

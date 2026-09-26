@@ -40,7 +40,7 @@ async def health() -> JSONResponse:
 @router.get(
     "/meta",
     summary="Public server info",
-    description="`device_server_url` is the URL to enter as *Server URL* in the NFC Terminal app.",
+    description="`device_server_url` is the URL to enter as *Server URL* in the nexTap app.",
 )
 async def meta() -> dict[str, str]:
     return {

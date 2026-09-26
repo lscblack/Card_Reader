@@ -22,7 +22,7 @@ export function businessTourSteps(base: string): TourStep[] {
     { element: nav('employees'), title: '2 · Add an employee', description: 'Each employee gets a digital business card. Customers work the same way for loyalty cards.', side: 'right' },
     { element: nav('cards'), title: '3 · Create a card', description: 'Cards are held by people; NFC Tags go on tables, posters and products. Assign a card to the employee you just added.', side: 'right' },
     { element: nav('actions'), title: '4 · Choose what a tap does', description: 'Open a profile, a website, WhatsApp, Wi-Fi, a menu, save a contact or call your own webhook. Change it anytime — no reprogramming.', side: 'right' },
-    { element: nav('devices'), title: '5 · Download the app & program the card', description: 'Install NFC Terminal on an Android phone (download it from Devices), open “Program card” and hold the card to the phone.', side: 'right' },
+    { element: nav('devices'), title: '5 · Download the app & program the card', description: 'Install nexTap on an Android phone (download it from Devices), open “Program card” and hold the card to the phone.', side: 'right' },
     { element: nav('devices'), title: '6 · Pair a device', description: 'Pair a phone by scanning a QR code. It reads cards at your counter or events and shows who tapped.', side: 'right' },
     { element: nav('events'), title: 'Every tap, live', description: 'NFC Events lists taps from customers’ phones (Web) and from your devices (Reader).', side: 'right' },
     { element: nav('analytics'), title: '7 · View analytics', description: 'Taps over time, top cards and employees, device types and the busiest hours.', side: 'right' },

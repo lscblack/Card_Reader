@@ -148,7 +148,7 @@ export default function Webhooks() {
       <Table
         head={['Header', 'Value']}
         rows={[
-          [<C key="h">User-Agent</C>, <><C>NFCPlatform-Webhook/1.0</C> (relay) or <C>NFCPlatform-Terminal/1.0</C> (direct)</>],
+          [<C key="h">User-Agent</C>, <><C>nexTap-Webhook/1.0</C> (relay) or <C>nexTap-Terminal/1.0</C> (direct)</>],
           [<C key="h">X-NFC-Event-Id</C>, 'Event UUID — use for idempotency; retries reuse it'],
           [<C key="h">X-NFC-Timestamp</C>, 'Unix seconds (string)'],
           [<C key="h">X-NFC-Nonce</C>, '32 hex chars, random per attempt'],

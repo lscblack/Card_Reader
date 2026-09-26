@@ -79,12 +79,12 @@ export function ArchitectureDiagram() {
     <Diagram
       h={330}
       title="Architecture"
-      desc="An NFC card is read by an Android phone running NFC Terminal. In relay mode the phone sends the event to the platform, which signs and delivers it to your endpoint with retries. In direct mode the phone signs and posts to your endpoint itself and reports the result. Customers' phones open a card's tap link, which runs the configured action."
+      desc="An NFC card is read by an Android phone running nexTap. In relay mode the phone sends the event to the platform, which signs and delivers it to your endpoint with retries. In direct mode the phone signs and posts to your endpoint itself and reports the result. Customers' phones open a card's tap link, which runs the configured action."
     >
       {() => (
         <>
           <Box x={10} y={40} w={120} title="NFC card / tag" sub="UID, NDEF link" tone="muted" />
-          <Box x={190} y={40} w={150} title="Android phone" sub="NFC Terminal app" />
+          <Box x={190} y={40} w={150} title="Android phone" sub="nexTap app" />
           <Box x={400} y={40} w={150} title="Platform API" sub="sign · log · retry" tone="accent" />
           <Box x={600} y={40} w={110} title="Your endpoint" sub="HTTPS" tone="ok" />
           <Arrow d="M130 68 H186" label="tap" lx={158} ly={60} />
@@ -173,7 +173,7 @@ export function PairingSequenceDiagram() {
   const lanes = [
     { x: 110, label: 'Dashboard' },
     { x: 360, label: 'Platform API' },
-    { x: 610, label: 'Phone (NFC Terminal)' },
+    { x: 610, label: 'Phone (nexTap)' },
   ]
   const msgs: { from: number; to: number; y: number; label: string; accent?: boolean; dashed?: boolean }[] = [
     { from: 0, to: 1, y: 90, label: 'POST /applications/{id}/pairing-codes' },
@@ -228,7 +228,7 @@ export function TapFlowDiagram() {
     <Diagram
       h={320}
       title="Business tap flow: customer phone versus reader device"
-      desc="A customer's phone reads the NDEF link on a programmed card and opens the tap URL; the platform records a web tap and runs the card's action. A business reader device running NFC Terminal reads the UID and posts an event; the platform looks up the card, records a reader tap, runs a developer webhook if configured, and returns the result shown on the phone."
+      desc="A customer's phone reads the NDEF link on a programmed card and opens the tap URL; the platform records a web tap and runs the card's action. A business reader device running nexTap reads the UID and posts an event; the platform looks up the card, records a reader tap, runs a developer webhook if configured, and returns the result shown on the phone."
     >
       {() => (
         <>
@@ -244,7 +244,7 @@ export function TapFlowDiagram() {
           <Arrow d="M540 64 H586" accent />
           <line x1="10" y1="120" x2="710" y2="120" stroke="var(--border)" />
           <text x="10" y="150" fontSize="13" fontWeight="700" fill="var(--accent)">
-            READER DEVICE (NFC Terminal, business)
+            READER DEVICE (nexTap, business)
           </text>
           <Box x={10} y={164} w={140} title="Card" sub="UID read" tone="muted" />
           <Box x={200} y={164} w={150} title="POST /device/events" sub="device token" />

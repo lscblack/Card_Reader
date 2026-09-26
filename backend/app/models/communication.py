@@ -110,7 +110,7 @@ class Notification(UUIDPk, CreatedAt, Base):
 
 
 class AppRelease(UUIDPk, CreatedAt, Base):
-    """Mobile NFC Terminal APK builds (Part 3 §9)."""
+    """Mobile nexTap APK builds (Part 3 §9)."""
 
     __tablename__ = "app_releases"
     __table_args__ = (

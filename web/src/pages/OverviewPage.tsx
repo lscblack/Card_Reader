@@ -23,7 +23,7 @@ import { useTour, developerDashboardTour } from '@/tours'
 const steps = [
   { title: 'Create an application', body: 'Groups your devices, API keys and endpoint.' },
   { title: 'Copy your API key', body: 'Shown once when the application is created — store it safely.' },
-  { title: 'Install the app & register a phone', body: 'Install NFC Terminal on an NFC-capable Android phone and scan the pairing QR code (or paste the API key).' },
+  { title: 'Install the app & register a phone', body: 'Install nexTap on an NFC-capable Android phone and scan the pairing QR code (or paste the API key).' },
   { title: 'Configure your endpoint', body: 'Set the HTTPS URL that should receive signed card events.' },
   { title: 'Tap a card', body: 'Hold an NFC card to the phone — the event shows up here in seconds.' },
 ]
@@ -207,7 +207,7 @@ export default function OverviewPage() {
               <EmptyState
                 icon={Activity}
                 title="No card events yet"
-                description="Register a phone with the NFC Terminal app and tap a card. Events appear here in real time."
+                description="Register a phone with the nexTap app and tap a card. Events appear here in real time."
               />
             ) : (
               <EventsTable events={o.recent_events} compact onSelect={(e) => setSelected(e.id)} />

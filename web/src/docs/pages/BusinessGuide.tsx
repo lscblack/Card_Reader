@@ -204,7 +204,7 @@ export default function BusinessGuide() {
 
       <H2 id="programming">Programming cards</H2>
       <OL>
-        <li>Pair a phone to your business (Devices → Add device, scan the QR code with NFC Terminal).</li>
+        <li>Pair a phone to your business (Devices → Add device, scan the QR code with nexTap).</li>
         <li>
           In the app open <B>Program card</B>, search for the card, hold a writable card or tag to the phone.
         </li>
@@ -223,7 +223,7 @@ export default function BusinessGuide() {
 
       <H2 id="reader-devices">Reader devices</H2>
       <P>
-        A phone running NFC Terminal and paired to your business becomes a front-desk reader. When a card is tapped on it, the app shows
+        A phone running nexTap and paired to your business becomes a front-desk reader. When a card is tapped on it, the app shows
         whether it&apos;s recognised, who it belongs to and its status, and offers to open its action. Unknown cards can be registered on the
         spot. Devices can be assigned to an employee; the dashboard shows which are online and their recent activity.
       </P>

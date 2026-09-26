@@ -72,7 +72,7 @@ export default function DigitalCards() {
           socials, custom links…).
         </li>
         <li>
-          Install NFC Terminal on your Android phone (<DocLink to="/docs/mobile-app#download">download</DocLink>) and choose <B>Personal digital
+          Install nexTap on your Android phone (<DocLink to="/docs/mobile-app#download">download</DocLink>) and choose <B>Personal digital
           card</B>. Sign in with your password, or scan the <B>Sign in on your phone</B> QR from the web (single use, valid 5 minutes).
         </li>
       </OL>
@@ -232,7 +232,7 @@ export default function DigitalCards() {
 
       <H2 id="developers">For developers: reading digital cards</H2>
       <P>
-        Every NFC Terminal (developer or business) recognises digital cards automatically: on any ISO-DEP tag it first sends the digital-card
+        Every nexTap (developer or business) recognises digital cards automatically: on any ISO-DEP tag it first sends the digital-card
         SELECT; a phone that answers <C>NFCDC</C> is treated as a digital card, anything else goes through the normal UID flow. If you build your
         own reader client, use the same exchange:
       </P>

@@ -52,7 +52,7 @@ export default function EventsPage() {
     <>
       <PageHeader
         title="NFC Events"
-        description="Every tap on your cards and tags — from customers’ phones (web) and from your NFC Terminal devices (reader)."
+        description="Every tap on your cards and tags — from customers’ phones (web) and from your nexTap devices (reader)."
         actions={
           <Button leftIcon={live ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />} onClick={() => setLive((l) => !l)} aria-pressed={live}>
             {live ? 'Pause live' : 'Resume live'}

@@ -1,4 +1,4 @@
-"""NFC Terminal app releases (Part 3 §9): public download + admin builds."""
+"""nexTap app releases (Part 3 §9): public download + admin builds."""
 
 from __future__ import annotations
 
@@ -56,12 +56,12 @@ async def _latest_published(session: SessionDep) -> AppRelease | None:
         .order_by(AppRelease.build_number.desc(), AppRelease.created_at.desc()).limit(1))).scalar_one_or_none()
 
 
-@router.get("/meta/app-release", summary="Latest published NFC Terminal APK (public)")
+@router.get("/meta/app-release", summary="Latest published nexTap APK (public)")
 async def latest_release(session: SessionDep, request: Request) -> dict[str, Any]:
     set_actor(request, "public")
     r = await _latest_published(session)
     if r is None:
-        raise AppError(404, "no_release", "No NFC Terminal release has been published yet")
+        raise AppError(404, "no_release", "No nexTap release has been published yet")
     return {"version_name": r.version_name, "build_number": r.build_number, "file_size": r.file_size,
             "sha256": r.sha256, "published_at": _iso(r.published_at), "download_url":
             f"{settings.public_api_url}/downloads/android/latest", "min_android": MIN_ANDROID}
@@ -76,7 +76,7 @@ async def _serve(session: SessionDep, r: AppRelease | None) -> Response:
     await session.execute(update(AppRelease).where(AppRelease.id == r.id).values(downloads=AppRelease.downloads + 1))
     await session.commit()
     return FileResponse(path, media_type="application/vnd.android.package-archive",
-                        filename=f"nfc-terminal-{r.version_name}.apk",
+                        filename=f"nextap-{r.version_name}.apk",
                         headers={"Cache-Control": "no-store", "X-Content-SHA256": r.sha256 or ""})
 
 

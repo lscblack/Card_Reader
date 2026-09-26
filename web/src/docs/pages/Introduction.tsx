@@ -7,7 +7,7 @@ import { Figure } from '../components/Figure'
 import { useProductName } from '@/marketing/lib'
 import { ArchitectureDiagram } from '../components/Diagrams'
 
-const flow = `NFC card ──tap──▶ Android phone (NFC Terminal app)
+const flow = `NFC card ──tap──▶ Android phone (nexTap app)
                         │
          ┌──────────────┴───────────────┐
          ▼ relay (default)              ▼ direct
@@ -99,7 +99,7 @@ export default function Introduction() {
       <CodeBlock code={flow} language="text" title="How a tap flows" />
       <UL>
         <li>
-          <B>NFC Terminal</B> — the Flutter Android app. Reads card UIDs in reader mode, queues events offline and (for business devices)
+          <B>nexTap</B> — the Flutter Android app. Reads card UIDs in reader mode, queues events offline and (for business devices)
           programs cards.
         </li>
         <li>

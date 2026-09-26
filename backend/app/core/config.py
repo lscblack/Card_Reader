@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     )
 
     # ── Application ──────────────────────────────────────────────
-    APP_NAME: str = "NFC Platform"
+    APP_NAME: str = "nexTap"
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
     API_BASE_URL: str = "http://127.0.0.1:8000"
@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     EMAIL_LOGIN: str = "info@example.com"
     EMAIL_SENDER_EMAIL: str = "info@example.com"
     EMAIL_SENDER_PASSWORD: str = ""
-    EMAIL_SENDER_NAME: str = "NFC Platform"
+    EMAIL_SENDER_NAME: str = "nexTap"
 
     # ── Default admin ────────────────────────────────────────────
     DEFAULT_ADMIN_EMAIL: str = "admin@example.com"

@@ -1,4 +1,4 @@
 {% extends "base.txt" %}{% block content %}Your email is verified and your {{ brand.product_name }} account is ready.
 {% if account_type == "business" %}
-Next steps: add employees and create their cards, pair a phone as an NFC Terminal, publish your business profile.{% else %}
+Next steps: add employees and create their cards, pair a phone as an nexTap, publish your business profile.{% else %}
 Next steps: create an application, watch deliveries in your sandbox endpoint, register an Android phone as a reader.{% endif %}{% endblock %}

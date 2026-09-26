@@ -37,7 +37,7 @@ class MobError {
   static const cameraDenied = MobError('MOB-1011', 'camera_permission_denied', 'Camera permission denied',
       'The QR scanner needs camera access.', 'Allow camera access in app settings, or enter an API key manually.');
   static const invalidQr = MobError('MOB-1012', 'invalid_qr', 'Invalid pairing QR code',
-      'The scanned QR code is not a valid NFC Terminal pairing code.', 'Generate a new pairing code in the dashboard.');
+      'The scanned QR code is not a valid nexTap pairing code.', 'Generate a new pairing code in the dashboard.');
   static const ndefWriteFailed = MobError('MOB-1013', 'ndef_write_failed', 'Writing the card failed',
       'The NDEF write was rejected by the card.', 'Retry holding the card still; try another card.');
   static const tagReadOnly = MobError('MOB-1014', 'tag_read_only', 'Card is read-only',
@@ -46,7 +46,7 @@ class MobError {
       'The link does not fit in the card\'s NDEF memory.', 'Use a card with more memory (e.g. NTAG215/216).');
   static const notificationsDenied = MobError('MOB-1016', 'notification_permission_denied',
       'Notifications not allowed', 'Background reads work, but their result cannot be shown as a notification.',
-      'Allow notifications for NFC Terminal in the system settings.');
+      'Allow notifications for nexTap in the system settings.');
   static const tagNotNdef = MobError('MOB-1017', 'tag_not_ndef', 'Card cannot store a link',
       'The card does not support NDEF and cannot be formatted for it (e.g. MIFARE Classic on many phones).',
       'Use an NDEF-compatible card (NTAG21x, MIFARE Ultralight, DESFire).');
@@ -60,7 +60,7 @@ class MobError {
       'Direct mode: the application has no enabled endpoint.', 'Set and enable the endpoint in the dashboard.');
 
   static const notADigitalCard = MobError('MOB-1022', 'not_a_digital_card', 'Not a digital card',
-      'The tapped phone or card does not share an NFC Terminal digital card.',
+      'The tapped phone or card does not share an nexTap digital card.',
       'Ask the other person to open My Card → Share, or scan their exchange QR code.');
   static const hceUnsupported = MobError('MOB-1023', 'hce_unsupported', 'Phone can\'t share by NFC',
       'This phone does not support NFC card emulation (HCE), so it cannot act as a card.',

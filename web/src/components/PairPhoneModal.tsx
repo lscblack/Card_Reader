@@ -37,7 +37,7 @@ function ManualEntry({ serverUrl, code }: { serverUrl: string; code: string }) {
       </button>
       {open && (
         <div className="space-y-3 border-t border-border px-3 py-3">
-          <p className="text-xs text-subtle">In NFC Terminal choose manual setup and enter both values. The code works once.</p>
+          <p className="text-xs text-subtle">In nexTap choose manual setup and enter both values. The code works once.</p>
           {[
             ['Server URL', serverUrl],
             ['Pairing code', code],
@@ -241,7 +241,7 @@ function PairPhoneDialog({ open, onClose, applicationId }: PairPhoneProps) {
       ) : (
         <div className="space-y-4">
           <div className="flex flex-col items-center gap-3">
-            <QrCode value={created.qr_payload} size={260} label="Pairing QR code — scan it with the NFC Terminal app" />
+            <QrCode value={created.qr_payload} size={260} label="Pairing QR code — scan it with the nexTap app" />
             <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px]">
               <span className={cn('inline-flex items-center gap-1.5 font-medium tabular-nums', remaining < 60_000 ? 'text-amber-600 dark:text-amber-400' : 'text-muted')}>
                 <Clock className="h-3.5 w-3.5" /> Expires in {formatRemaining(remaining)}
@@ -259,7 +259,7 @@ function PairPhoneDialog({ open, onClose, applicationId }: PairPhoneProps) {
             <li className="flex gap-2">
               <span className="font-semibold text-fg">1.</span>
               <span>
-                Open <span className="font-medium text-fg">NFC Terminal</span> on the Android phone.
+                Open <span className="font-medium text-fg">nexTap</span> on the Android phone.
               </span>
             </li>
             <li className="flex gap-2">

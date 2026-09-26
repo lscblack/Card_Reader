@@ -191,7 +191,7 @@ export const samplePayload = `{
 
 export const sampleHeaders = `POST /api/nfc/card HTTP/1.1
 Content-Type: application/json
-User-Agent: NFCPlatform-Webhook/1.0
+User-Agent: nexTap-Webhook/1.0
 X-NFC-Event-Id: 7f1c2d3e-9a4b-4c1d-8e2f-3a4b5c6d7e8f
 X-NFC-Timestamp: 1790325021
 X-NFC-Nonce: 9f86d081884c7d659a2feaa0c55ad015

@@ -18,7 +18,6 @@ from app.schemas.business import (
     ActionPreviewIn,
     ActionPreviewOut,
     AssignIn,
-    BulkCardsIn,
     CardIn,
     CardOut,
     CardTapOut,
@@ -172,25 +171,6 @@ async def create_card(body: CardIn, ctx: Manage, session: SessionDep, client: Cl
                  resource_id=card.id, metadata={"name": card.name, "kind": card.kind})
     await session.commit()
     return card_out(await _reload(session, card.id), ctx.business)
-
-
-@router.post("/cards/bulk", status_code=201, summary="Create a batch of unprogrammed cards (for printing)")
-async def bulk_cards(body: BulkCardsIn, ctx: Manage, session: SessionDep, client: ClientDep) -> dict[str, Any]:
-    await biz.ensure_business_limit(session, ctx.business, "cards", adding=body.count)
-    cards = []
-    width = len(str(body.count))
-    for i in range(1, body.count + 1):
-        card = Card(business_id=ctx.business.id, kind=body.kind, name=f"{body.name_prefix.strip()} {i:0{width}d}",
-                    public_code=await unique_public_code(session), status="active", total_taps=0, unique_visitors=0)
-        session.add(card)
-        cards.append(card)
-    await session.flush()
-    for card in cards:
-        history(session, card, "created", user=ctx.user, name=card.name, kind=card.kind, bulk=True)
-    audit.record(session, action="card.bulk_create", user_id=ctx.user.id, client=client, resource_type="business",
-                 resource_id=ctx.business.id, metadata={"count": body.count, "kind": body.kind})
-    await session.commit()
-    return {"created": len(cards), "items": [card_out(c, ctx.business).model_dump(mode="json") for c in cards]}
 
 
 @router.get("/cards/{card_id}", response_model=CardOut, summary="Get a card")

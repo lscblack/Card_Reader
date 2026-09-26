@@ -168,7 +168,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         Provider<DigitalCardScanner>.value(value: _scanner),
       ],
       child: MaterialApp(
-        title: 'NFC Terminal',
+        title: 'nexTap',
         navigatorKey: _navigator,
         scaffoldMessengerKey: _messenger,
         debugShowCheckedModeBanner: false,

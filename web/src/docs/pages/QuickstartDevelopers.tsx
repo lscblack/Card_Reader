@@ -52,7 +52,7 @@ export default function QuickstartDevelopers() {
       <H2 id="pair-phone">3. Pair a phone</H2>
       <OL>
         <li>
-          Install <B>NFC Terminal</B> on an NFC Android phone (Android 7.0+).
+          Install <B>nexTap</B> on an NFC Android phone (Android 7.0+).
         </li>
         <li>
           In the dashboard click <B>Pair a phone</B>, pick the application and optionally preset a device name. A QR code appears.

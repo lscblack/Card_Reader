@@ -58,7 +58,7 @@ PLAN_SEED: list[dict] = [
         "max_cards": 50,
         "max_members": 5,
         "audience": "business",
-        "features": ["50 cards & tags", "3 NFC Terminal devices", "5 team members", "Public profiles & menus",
+        "features": ["50 cards & tags", "3 nexTap devices", "5 team members", "Public profiles & menus",
                      "Tap analytics"],
         "sort_order": 10,
     },

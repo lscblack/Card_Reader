@@ -49,7 +49,7 @@ export function useReducedMotionPref(): boolean {
 
 /** Product name from runtime branding (Part 3 §1), with the built-in default. */
 export function useProductName(): string {
-  return useBranding().branding.product_name || 'NFC Platform'
+  return useBranding().branding.product_name || 'nexTap'
 }
 
 export const POWERED_BY_URL = 'http://nexventures.net/'

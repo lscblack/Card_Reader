@@ -49,7 +49,7 @@ void main() {
     final h = req.headers;
     expect(req.url.toString(), 'https://example.com/api/nfc/card');
     expect(h['Content-Type'], 'application/json');
-    expect(h['User-Agent'], 'NFCPlatform-Terminal/1.0');
+    expect(h['User-Agent'], 'nexTap-Terminal/1.0');
     expect(h['X-NFC-Event-Id'], '7f1c2d3e-0000-4000-8000-000000000001');
     expect(h['X-NFC-Timestamp'], '${now.millisecondsSinceEpoch ~/ 1000}');
     expect(h['X-NFC-Nonce'], '00112233445566778899aabbccddeeff');

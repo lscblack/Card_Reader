@@ -133,7 +133,7 @@ export default function InviteAcceptPage() {
   }
 
   return (
-    <AuthLayout title="You’re invited" subtitle={d && d.status === 'pending' ? `Join ${d.business_name} on NFC Platform` : undefined}>
+    <AuthLayout title="You’re invited" subtitle={d && d.status === 'pending' ? `Join ${d.business_name} on nexTap` : undefined}>
       {body}
     </AuthLayout>
   )

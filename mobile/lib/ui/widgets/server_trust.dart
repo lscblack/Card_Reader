@@ -70,17 +70,26 @@ class ServerTrustPanel extends StatelessWidget {
             subtitle: Text(insecure ? 'Not encrypted (http) — development only' : 'Encrypted (https)'),
           ),
         ),
-        for (final w in warnings)
-          Container(
+        // One keyed group for all warnings: several can apply at once (e.g. http AND a different
+        // server), and sibling widgets must never share a key.
+        if (warnings.isNotEmpty)
+          Column(
             key: const Key('serverWarning'),
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: warn.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.warning_amber_rounded, color: warn, size: 20),
-              const SizedBox(width: 8),
-              Expanded(child: Text(w)),
-            ]),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, w) in warnings.indexed)
+                Container(
+                  key: ValueKey('serverWarning-$i'),
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: warn.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(Icons.warning_amber_rounded, color: warn, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(w)),
+                  ]),
+                ),
+            ],
           ),
         if (warnings.isNotEmpty)
           CheckboxListTile(

@@ -1,7 +1,7 @@
 import type { Branding } from '@/api/types'
 
 export const DEFAULT_BRANDING: Branding = {
-  product_name: 'NFC Platform',
+  product_name: 'nexTap',
   tagline: 'NFC detection → Card ID → Secure delivery',
   logo_url: null,
   logo_dark_url: null,

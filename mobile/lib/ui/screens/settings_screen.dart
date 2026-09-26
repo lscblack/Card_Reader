@@ -146,7 +146,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               Text(
                 'Works when the screen is on and unlocked. Android may ask which app to use if another '
-                'NFC app is installed — choose NFC Terminal and "Always". After a read the app shows a '
+                'NFC app is installed — choose nexTap and "Always". After a read the app shows a '
                 'notification and returns to what you were doing.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),

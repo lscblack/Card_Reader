@@ -284,10 +284,6 @@ class AssignIn(Schema):
     assignee_id: uuid.UUID
 
 
-class BulkCardsIn(Schema):
-    count: int = Field(ge=1, le=500)
-    kind: Literal["card", "tag"] = "card"
-    name_prefix: str = Field(default="Card", min_length=1, max_length=100)
 
 
 class ActionPreviewIn(Schema):

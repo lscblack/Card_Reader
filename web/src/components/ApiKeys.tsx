@@ -179,7 +179,7 @@ export function CreateApiKeyModal({
         onClose={() => setPlaintext(null)}
       >
         <p className="text-[13px] text-muted">
-          In the NFC Terminal app, choose <span className="font-medium text-fg">Register device</span> and paste this key (or scan it).
+          In the nexTap app, choose <span className="font-medium text-fg">Register device</span> and paste this key (or scan it).
           The app exchanges it for a device token and then discards it.
         </p>
       </SecretsModal>

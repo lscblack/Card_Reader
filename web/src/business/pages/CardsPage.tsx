@@ -50,7 +50,7 @@ function CreateCardModal({ open, onClose, kind }: { open: boolean; onClose: () =
     e.preventDefault()
     try {
       const c = await create.mutateAsync(undefined)
-      toast.success(`“${c.name}” created. Program it with the NFC Terminal app.`, `${kind === 'tag' ? 'Tag' : 'Card'} created`)
+      toast.success(`“${c.name}” created. Program it with the nexTap app.`, `${kind === 'tag' ? 'Tag' : 'Card'} created`)
       close()
       navigate(`${base}/${kind === 'tag' ? 'tags' : 'cards'}/${c.id}`)
     } catch {
@@ -314,8 +314,8 @@ export default function CardsPage({ kind }: { kind: CardKind }) {
               filtered
                 ? 'Try a different search or clear the filters.'
                 : isTag
-                  ? 'Create a tag for a table, poster or product, then program it with the NFC Terminal app.'
-                  : 'Create a card, program it with the NFC Terminal app, and hand it to an employee or customer.'
+                  ? 'Create a tag for a table, poster or product, then program it with the nexTap app.'
+                  : 'Create a card, program it with the nexTap app, and hand it to an employee or customer.'
             }
             action={
               filtered ? (

@@ -498,7 +498,7 @@ export default function CardDetailPage() {
           </Alert>
         )}
         {!card.programmed && (
-          <Alert tone="info" title="Program this card with the NFC Terminal app">
+          <Alert tone="info" title="Program this card with the nexTap app">
             On a paired business phone open <strong>Program card</strong>, search for “{card.name}” and hold the card to the phone. The app writes the
             tap link below to the chip and records its UID.
           </Alert>

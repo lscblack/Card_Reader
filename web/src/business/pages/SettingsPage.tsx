@@ -118,7 +118,7 @@ function InfoForm() {
       <Card>
         <CardHeader
           title="Business information"
-          description="Shown on your public business page and in the NFC Terminal app."
+          description="Shown on your public business page and in the nexTap app."
           actions={
             business.verified ? (
               <Badge tone="success" className="gap-1">
@@ -262,7 +262,7 @@ function DeviceSettings() {
   const value = business.settings.devices_can_register_cards
   return (
     <Card id="devices">
-      <CardHeader title="Device settings" description="What your NFC Terminal phones are allowed to do." />
+      <CardHeader title="Device settings" description="What your nexTap phones are allowed to do." />
       <CardBody>
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3">

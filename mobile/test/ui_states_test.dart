@@ -113,6 +113,19 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('pair link with several warnings (http + different server) renders without duplicate keys', (tester) async {
+    // Regression: each warning box used the same key → "Duplicate keys found" red screen.
+    final (app, p) = await states(tester, terminalServer: 'https://api.example.com');
+    final pairing = PairingPayload.parse('nfcterminal://pair?v=1&server=http%3A%2F%2F192.168.1.74%3A8000&code=nfcp_abcdefghijklmnopqrstuvwx');
+    await tester.pumpWidget(host(app, p, PairConfirmScreen(pairing: pairing)));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('serverWarning')), findsOneWidget);
+    expect(find.byKey(const ValueKey('serverWarning-1')), findsOneWidget); // at least two warnings shown
+    app.dispose();
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('pair link to the server this phone already uses needs no extra confirmation', (tester) async {
     final (app, p) = await states(tester, terminalServer: 'https://api.example.com');
     final pairing = PairingPayload.parse('nfcterminal://pair?v=1&server=https%3A%2F%2Fapi.example.com&code=nfcp_abcdefghijklmnopqrstuvwx');

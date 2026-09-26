@@ -16,7 +16,7 @@ export function DownloadApp({ className, compact = false }: { className?: string
     return (
       <div className={cn('rounded-xl border border-border bg-surface p-3 text-[12.5px]', className)}>
         <p className="flex items-center gap-1.5 font-semibold text-fg">
-          <Smartphone className="h-4 w-4 text-accent" aria-hidden="true" /> NFC Terminal for Android
+          <Smartphone className="h-4 w-4 text-accent" aria-hidden="true" /> nexTap for Android
         </p>
         {url && release ? (
           <a href={url} className="mt-2 inline-flex items-center gap-1.5 font-medium text-accent hover:underline" rel="noopener">
@@ -33,7 +33,7 @@ export function DownloadApp({ className, compact = false }: { className?: string
     <div className={cn('grid items-center gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-[1fr_auto] sm:p-8', className)}>
       <div className="min-w-0">
         <p className="flex items-center gap-2 text-[13px] font-semibold text-accent">
-          <Smartphone className="h-4 w-4" aria-hidden="true" /> NFC Terminal for Android
+          <Smartphone className="h-4 w-4" aria-hidden="true" /> nexTap for Android
         </p>
         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-fg">Turn a phone into a reader today</h3>
         {release && url ? (
@@ -66,7 +66,7 @@ export function DownloadApp({ className, compact = false }: { className?: string
       </div>
       {url && (
         <div className="justify-self-center">
-          <QrCode value={url} size={148} label={`QR code to download NFC Terminal ${release?.version_name ?? ''}`} />
+          <QrCode value={url} size={148} label={`QR code to download nexTap ${release?.version_name ?? ''}`} />
         </div>
       )}
     </div>

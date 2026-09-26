@@ -195,7 +195,7 @@ unique_visitors, last_tap_at, created_at }`
 - `POST …/cards/{cid}/activate|deactivate`.
 - `GET …/cards/{cid}/history` → assignment + status changes + programming (who, when).
 - `GET …/cards/{cid}/taps?page=` and `GET …/cards/{cid}/stats?range=` → `{ total_taps, unique_visitors, timeline, by_source, by_device_type, by_country }`.
-- Bulk: `POST …/cards/bulk` `{ count (1-500), kind, name_prefix }` → creates unprogrammed cards (for printing batches).
+- ~~Bulk creation~~ removed: cards are registered on a business phone (Register cards mode / `POST /device/business/cards`), which reads the UID. A card may still be prepared on the web without a UID and linked later via Program card.
 
 ### B5. Actions (what a tap does — no code needed)
 
@@ -246,7 +246,7 @@ published: bool, theme: { accent: hex, cover_image_url? }, sections: Section[], 
 ### B7. Taps (the business event model) & analytics
 
 `CardTap` = `{ id, business_id, card_id, card_name, card_kind, assignee: {type,id,name}|null,
-source: "web" (consumer phone opened tap_url) | "reader" (business device via NFC Terminal),
+source: "web" (consumer phone opened tap_url) | "reader" (business device via nexTap),
 action_type, result: "redirected"|"page"|"vcard"|"webhook"|"inactive"|"unknown_card", device_id|null,
 device_name|null, nfc_event_id|null, visitor_hash (daily-rotating salt; used for unique counts), device_type
 ("ios"|"android"|"desktop"|"other"), browser, country|null (only from trusted proxy header; no GeoIP, no raw IP),
@@ -296,7 +296,7 @@ created_at }`
 
 ---
 
-## C. Mobile (NFC Terminal) — business devices
+## C. Mobile (nexTap) — business devices
 
 ### C1. DeviceConfig additions (additive)
 

@@ -10,7 +10,7 @@ export default function MobileApp() {
     <article>
       <DocHeader slug="mobile-app" />
       <P>
-        <B>NFC Terminal</B> is a generic reader app: tap a card → read its UID → deliver the event. It has no business logic and never decides
+        <B>nexTap</B> is a generic reader app: tap a card → read its UID → deliver the event. It has no business logic and never decides
         what a card means.
       </P>
 
@@ -54,7 +54,7 @@ export default function MobileApp() {
           application and optionally preset a device name.
         </li>
         <li>
-          On the phone open <B>NFC Terminal → Scan QR code</B> (scanning with the system camera also opens the app). It shows the server host
+          On the phone open <B>nexTap → Scan QR code</B> (scanning with the system camera also opens the app). It shows the server host
           — tap <B>Pair this device</B>.
         </li>
         <li>
@@ -124,7 +124,7 @@ export default function MobileApp() {
         </li>
         <li>
           Toggle this with <B>Settings → Read cards when app is closed</B> (on by default). On Android 13+ it asks for notification permission —
-          reading still works without it. If another NFC app is installed, Android may ask which app to use: choose NFC Terminal and “Always”.
+          reading still works without it. If another NFC app is installed, Android may ask which app to use: choose nexTap and “Always”.
         </li>
       </UL>
 

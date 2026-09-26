@@ -102,7 +102,7 @@ function Sessions() {
   const revoke = usePMutation((id: string) => sessionsApi.revoke(id))
   return (
     <Card>
-      <CardHeader title="Phones signed in" description="The NFC Terminal app signs in as you to share your card. Revoke a phone you lost or no longer use — it stops sharing immediately." />
+      <CardHeader title="Phones signed in" description="The nexTap app signs in as you to share your card. Revoke a phone you lost or no longer use — it stops sharing immediately." />
       {error ? (
         <BizErrorState error={error} onRetry={() => refetch()} />
       ) : isLoading ? (

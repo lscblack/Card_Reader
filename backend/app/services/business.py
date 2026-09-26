@@ -152,7 +152,7 @@ async def create_workspace(session: AsyncSession, owner: User, data: dict[str, A
     ))
     app = Application(
         owner_id=owner.id, business_id=business.id, name=BUSINESS_TERMINAL_APP,
-        description="Default application for this business's NFC Terminal devices.",
+        description="Default application for this business's nexTap devices.",
         is_active=True, delivery_mode="relay", endpoint_url=None, endpoint_enabled=False,
         endpoint_timeout_seconds=max(1, min(30, settings.WEBHOOK_TIMEOUT_SECONDS)),
         endpoint_custom_headers={}, allowed_domains=[],

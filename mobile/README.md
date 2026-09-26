@@ -1,4 +1,4 @@
-# NFC Terminal (Android)
+# nexTap (Android)
 
 A generic NFC terminal: it turns an NFC-capable Android phone into a card reader.
 
@@ -55,14 +55,14 @@ flutter build apk --release    # needs a release keystore, see "Release signing"
 
 Release APKs must be signed with your own upload/release key. Without one, the build still
 succeeds but falls back to the **debug key** and Gradle prints
-`WARNING: NFC Terminal release build is signed with the DEBUG key …` — never publish such an APK
+`WARNING: nexTap release build is signed with the DEBUG key …` — never publish such an APK
 (anyone with the public Android debug key could ship an "update" of it).
 
 1. Create a keystore once and keep it (and its passwords) safe — losing it means you can no
    longer publish updates that install over the existing app:
 
    ```bash
-   keytool -genkeypair -v -keystore ~/nfc-terminal-release.jks -alias nfc-terminal \
+   keytool -genkeypair -v -keystore ~/nextap-release.jks -alias nextap \
      -keyalg RSA -keysize 4096 -validity 10000
    ```
 
@@ -71,7 +71,7 @@ succeeds but falls back to the **debug key** and Gradle prints
 
    ```properties
    # absolute, or relative to mobile/android/ (no trailing comments in .properties values)
-   storeFile=/home/you/nfc-terminal-release.jks
+   storeFile=/home/you/nextap-release.jks
    storePassword=…
    keyAlias=nfc-terminal
    keyPassword=…
@@ -100,7 +100,7 @@ which cannot run on JDK 25 (the JDK bundled with recent Android Studio). You hav
 
 1. In the web dashboard, create an application (or open an existing one) and go to
    **API keys**. Create a key and copy it. It starts with `nfc_` and is only shown once.
-2. Open NFC Terminal. Enter the server URL, paste the API key and confirm the device name
+2. Open nexTap. Enter the server URL, paste the API key and confirm the device name
    (it is pre-filled from the phone model). Then tap **Register device**.
 3. The app calls `POST /api/v1/device/register` and keeps **only** the device token
    (`nfcd_…`), the server URL and an installation ID. It stores them in Android Keystore-backed
@@ -144,7 +144,7 @@ tags with the screen off, so the app covers the rest in two ways.
     revocation.
   - Turning it on asks for notification permission on Android 13+. If you refuse, reading
     still works but you get no notification.
-  - If another NFC app is installed, Android may ask which app to use. Choose NFC Terminal and
+  - If another NFC app is installed, Android may ask which app to use. Choose nexTap and
     "Always".
 
 ## Personal digital card (Part 4)
@@ -255,7 +255,7 @@ in [`ERROR_CODES.md`](ERROR_CODES.md) (source: `lib/core/error_catalog.dart`).
   platform answers `retrying`, the phone does **not** retry too.
 - **Direct mode.** The app builds the section-4 payload and signs the exact body bytes with
   `v1=HMAC_SHA256(signing_secret, "{timestamp}.{nonce}.{body}")`. It posts the payload to
-  the endpoint with every `X-NFC-*` header and `User-Agent: NFCPlatform-Terminal/1.0`, and
+  the endpoint with every `X-NFC-*` header and `User-Agent: nexTap-Terminal/1.0`, and
   does not follow redirects. It then reports the outcome to `POST /device/events`
   (`direct_delivery`). Each attempt gets a fresh timestamp and nonce but keeps the same
   `event_id`.

@@ -129,7 +129,7 @@ class _QrShareScreenState extends State<QrShareScreen> {
           Text(
             _public
                 ? 'Anyone can open your public card page — no app needed.'
-                : 'The other person scans this in NFC Terminal (My Card → Scan a card → Scan QR) and you exchange cards. '
+                : 'The other person scans this in nexTap (My Card → Scan a card → Scan QR) and you exchange cards. '
                       'The code refreshes every minute and expires after 10 minutes.',
             textAlign: TextAlign.center,
             style: t.bodyMedium,

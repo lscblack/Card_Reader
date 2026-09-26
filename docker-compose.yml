@@ -1,4 +1,4 @@
-# NFC Platform: PostgreSQL 16 + Redis 7 + backend API.
+# nexTap: PostgreSQL 16 + Redis 7 + backend API.
 #
 #   docker compose up -d postgres redis      # just the infrastructure (for local dev)
 #   docker compose up -d --build             # everything; API on http://127.0.0.1:8000/docs

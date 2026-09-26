@@ -90,7 +90,7 @@ gradle.taskGraph.whenReady {
             else -> "incomplete signing settings (storePassword, keyAlias, keyPassword)"
         }
         logger.warn(
-            "WARNING: NFC Terminal release build is signed with the DEBUG key ($why). " +
+            "WARNING: nexTap release build is signed with the DEBUG key ($why). " +
                 "Do not publish this APK — see mobile/README.md \"Release signing\"."
         )
     }

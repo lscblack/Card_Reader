@@ -500,7 +500,7 @@ function sandboxHit(ep: SandboxEndpoint, opts: { test?: boolean; bad?: 'signatur
   const unsigned = opts.bad === 'unsigned'
   const headers: Record<string, string> = {
     'content-type': 'application/json',
-    'user-agent': unsigned ? 'curl/8.5.0' : 'NFCPlatform-Webhook/1.0',
+    'user-agent': unsigned ? 'curl/8.5.0' : 'nexTap-Webhook/1.0',
     'content-length': String(raw.length),
   }
   if (!unsigned) {
@@ -720,7 +720,7 @@ const FONTS: FontOption[] = [
 ].map(([family, category]) => ({ family, category: category as FontOption['category'], google: true, weights: [400, 500, 600, 700] }))
 
 const branding: Branding = {
-  product_name: 'NFC Platform',
+  product_name: 'nexTap',
   tagline: 'NFC detection → Card ID → Secure delivery',
   logo_url: null,
   logo_dark_url: null,

@@ -40,7 +40,7 @@ export default function Concepts() {
 
       <H2 id="devices">Devices</H2>
       <P>
-        A <B>device</B> is a phone running NFC Terminal, registered to exactly one application. It has a name, model, OS and app version,
+        A <B>device</B> is a phone running nexTap, registered to exactly one application. It has a name, model, OS and app version,
         last-seen time and event count. You can rename or revoke it at any time; a revoked device gets <C>401 device_revoked</C> on its next
         call and returns to setup. Re-registering with the same <C>installation_id</C> for the same application revokes the old token and
         issues a new one.
@@ -76,7 +76,7 @@ export default function Concepts() {
           ['Latency', 'One extra hop', 'Lowest'],
           ['Custom headers', 'Applied server-side, never sent to phones', 'Sent to the device'],
           ['Redeliver from dashboard', 'Yes', 'No'],
-          ['User-Agent', <C key="u">NFCPlatform-Webhook/1.0</C>, <C key="u">NFCPlatform-Terminal/1.0</C>],
+          ['User-Agent', <C key="u">nexTap-Webhook/1.0</C>, <C key="u">nexTap-Terminal/1.0</C>],
           ['Good for', 'Most integrations, public HTTPS endpoints', 'Latency-critical or LAN-only endpoints'],
         ]}
       />
@@ -113,7 +113,7 @@ export default function Concepts() {
           <C>web</C> — a customer&apos;s phone opened the card&apos;s tap link; the configured action runs (redirect, page, vCard or webhook).
         </li>
         <li>
-          <C>reader</C> — a business device running NFC Terminal read the card; the platform recognises the UID and shows who or what it is.
+          <C>reader</C> — a business device running nexTap read the card; the platform recognises the UID and shows who or what it is.
         </li>
       </UL>
       <P>

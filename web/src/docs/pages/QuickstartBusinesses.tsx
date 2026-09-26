@@ -58,7 +58,7 @@ export default function QuickstartBusinesses() {
       <H2 id="program">5. Program the cards</H2>
       <OL>
         <li>
-          Add a phone as a reader device: <B>Devices → Add device</B> and scan the pairing QR with the <B>NFC Terminal</B> app.
+          Add a phone as a reader device: <B>Devices → Add device</B> and scan the pairing QR with the <B>nexTap</B> app.
         </li>
         <li>
           In the app open <B>Program card</B>, search for the card, and hold a blank card or tag to the phone. The app writes an NDEF link

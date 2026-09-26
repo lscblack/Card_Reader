@@ -70,7 +70,7 @@ ACTION_TYPES: list[dict[str, Any]] = [
      "description": "Opens a product page (profile) or an external product URL (one of).",
      "fields": [_f("profile_id", "profile", False, "Product page"), _f("url", "url", False, "URL")]},
     {"type": "wifi", "label": "Wi-Fi access", "result": "page",
-     "description": "Shows the network name, a copy-password button and a Wi-Fi QR code. The NFC Terminal app "
+     "description": "Shows the network name, a copy-password button and a Wi-Fi QR code. The nexTap app "
                     "can also write a native Wi-Fi record to the tag.",
      "fields": [_f("ssid", "string", True, "Network name (SSID)"), _f("password", "string", False, "Password"),
                 _f("security", "select", True, "Security", options=["WPA", "WEP", "nopass"]),

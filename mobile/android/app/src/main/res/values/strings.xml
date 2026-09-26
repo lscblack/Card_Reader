@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="hce_service_description">NFC Terminal digital card</string>
+    <string name="hce_service_description">nexTap digital card</string>
 </resources>

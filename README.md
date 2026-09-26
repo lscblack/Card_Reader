@@ -1,4 +1,4 @@
-# NFC Platform
+# nexTap
 
 Turn any NFC-enabled Android phone into a programmable NFC card reader.
 
@@ -7,7 +7,7 @@ signed event to the developer's endpoint. What the ID *means* (attendance, acces
 is entirely up to the developer.
 
 ```
-NFC card → Android phone (Flutter NFC Terminal) → [platform relay | direct] → Developer endpoint
+NFC card → Android phone (Flutter nexTap) → [platform relay | direct] → Developer endpoint
 ```
 
 ## Repository layout
@@ -16,7 +16,7 @@ NFC card → Android phone (Flutter NFC Terminal) → [platform relay | direct] 
 |---|---|---|
 | [`backend/`](backend/) | REST API, auth, API keys, devices, event logging, signed webhook delivery, usage, billing architecture | Python, FastAPI, SQLAlchemy, PostgreSQL, Redis, JWT |
 | [`web/`](web/) | Developer dashboard | React, TypeScript, Tailwind CSS |
-| [`mobile/`](mobile/) | NFC terminal app | Flutter, Dart (Android) |
+| [`mobile/`](mobile/) | nexTap Android app (reader, terminal and digital card) | Flutter, Dart (Android) |
 | [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) | The API contract shared by all three | — |
 
 ## Quick start (local)

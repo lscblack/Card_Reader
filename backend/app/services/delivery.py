@@ -33,8 +33,8 @@ LOCK_PREFIX = "nfc:delivery:lock:"
 LOCK_TTL_MS = 120_000
 EXCERPT_MAX_CHARS = 500
 _READ_LIMIT_BYTES = 4096
-RELAY_USER_AGENT = "NFCPlatform-Webhook/1.0"
-DIRECT_USER_AGENT = "NFCPlatform-Terminal/1.0"
+RELAY_USER_AGENT = "nexTap-Webhook/1.0"
+DIRECT_USER_AGENT = "nexTap-Terminal/1.0"
 NIL_UUID = "00000000-0000-0000-0000-000000000000"
 
 # Errors that will not get better by retrying.

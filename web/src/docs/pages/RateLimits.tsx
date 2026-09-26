@@ -46,7 +46,7 @@ export default function RateLimits() {
           Wait at least <C>Retry-After</C> seconds, then retry with backoff and jitter. Don&apos;t retry in a tight loop.
         </li>
         <li>
-          The NFC Terminal app treats <C>429</C> as retryable and queues the event (5 s, 30 s, 2 min, then every 10 min).
+          The nexTap app treats <C>429</C> as retryable and queues the event (5 s, 30 s, 2 min, then every 10 min).
         </li>
         <li>
           Your webhook endpoint can also answer <C>429</C> — the platform treats it as a failed attempt and retries later (relay).

@@ -14,7 +14,7 @@ function isLoopback(url: string): boolean {
   }
 }
 
-/** The URL to type into the NFC Terminal app's "Server URL" field, with a copy button. */
+/** The URL to type into the nexTap app's "Server URL" field, with a copy button. */
 export function ServerUrlCard() {
   const { data } = useServerMeta()
   const url = data?.device_server_url ?? API_BASE_URL
@@ -29,7 +29,7 @@ export function ServerUrlCard() {
           </span>
           <div className="min-w-0">
             <p className="text-[13px] font-medium">Server URL for the mobile app</p>
-            <p className="text-xs text-muted">Easiest: use “Pair a phone” and scan the QR code. Or enter this URL in NFC Terminal with an API key.</p>
+            <p className="text-xs text-muted">Easiest: use “Pair a phone” and scan the QR code. Or enter this URL in nexTap with an API key.</p>
           </div>
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:flex-none">

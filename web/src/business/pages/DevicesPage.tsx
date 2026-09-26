@@ -145,7 +145,7 @@ export default function DevicesPage() {
     <>
       <PageHeader
         title="Devices"
-        description="Android phones running NFC Terminal as readers — at the counter, at events or for programming cards."
+        description="Android phones running nexTap as readers — at the counter, at events or for programming cards."
         actions={
           manage && (
             <Button variant="primary" leftIcon={<QrCode className="h-4 w-4" />} onClick={() => setPairing(true)} disabled={!terminalId}>
@@ -174,7 +174,7 @@ export default function DevicesPage() {
           <EmptyState
             icon={Smartphone}
             title="No devices yet"
-            description="Install NFC Terminal on an NFC-capable Android phone, then pair it by scanning a QR code. It can read cards at your counter and program new ones."
+            description="Install nexTap on an NFC-capable Android phone, then pair it by scanning a QR code. It can read cards at your counter and program new ones."
             action={
               manage && (
                 <Button variant="primary" size="sm" leftIcon={<QrCode className="h-3.5 w-3.5" />} onClick={() => setPairing(true)} disabled={!terminalId}>

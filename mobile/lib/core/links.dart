@@ -24,7 +24,7 @@ class LoginPayload {
   static LoginPayload parse(String raw, {bool? allowLan}) {
     final u = Uri.tryParse(raw.trim());
     if (u == null || u.scheme.toLowerCase() != 'nfcterminal' || u.host.toLowerCase() != 'login') {
-      throw const LinkFormatException('This is not an NFC Terminal sign-in QR code.');
+      throw const LinkFormatException('This is not an nexTap sign-in QR code.');
     }
     if (u.queryParameters['v'] != '1') throw const LinkFormatException('Unsupported sign-in code version.');
     final code = u.queryParameters['code']?.trim() ?? '';

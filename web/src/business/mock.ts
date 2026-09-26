@@ -541,7 +541,7 @@ function seedAcme(): Db {
   for (const c of db.cards) {
     const entries: CardHistoryEntry[] = [
       { id: uuid(), type: 'created', description: `${c.kind === 'tag' ? 'Tag' : 'Card'} created`, actor: { type: 'user', id: null, name: 'Ada Developer' }, created_at: c.created_at },
-      ...(c.programmed_at ? [{ id: uuid(), type: 'programmed', description: 'Programmed with the NFC Terminal app', actor: { type: 'device' as const, id: db.devices[0].id, name: db.devices[0].name }, created_at: c.programmed_at }] : []),
+      ...(c.programmed_at ? [{ id: uuid(), type: 'programmed', description: 'Programmed with the nexTap app', actor: { type: 'device' as const, id: db.devices[0].id, name: db.devices[0].name }, created_at: c.programmed_at }] : []),
       ...(c.assignee ? [{ id: uuid(), type: 'assigned', description: `Assigned to ${c.assignee.name}`, actor: { type: 'user' as const, id: null, name: 'Sofia Rossi' }, created_at: c.programmed_at ?? c.created_at }] : []),
       ...(c.status === 'inactive' ? [{ id: uuid(), type: 'deactivated', description: 'Deactivated', actor: { type: 'user' as const, id: null, name: 'Ada Developer' }, created_at: ago(4 * DAY) }] : []),
     ]
@@ -684,7 +684,7 @@ function addTap(db: Db, card: Card | null, at: number, source: CardTap['source']
     nfc_event_id,
     visitor_hash: source === 'web' ? pick(visitors) : null,
     device_type,
-    browser: source === 'web' ? (device_type === 'ios' ? 'Safari' : device_type === 'android' ? 'Chrome' : pick(['Chrome', 'Firefox', 'Edge'])) : 'NFC Terminal',
+    browser: source === 'web' ? (device_type === 'ios' ? 'Safari' : device_type === 'android' ? 'Chrome' : pick(['Chrome', 'Firefox', 'Edge'])) : 'nexTap',
     country: source === 'web' ? pick(['US', 'US', 'US', 'US', 'CA', 'GB', 'MX', 'DE', null]) : null,
     created_at: iso(at),
   }

@@ -129,7 +129,7 @@ export function describeHistory(h: { type: string; data?: Record<string, unknown
   const s = (k: string) => (typeof d[k] === 'string' ? (d[k] as string) : null)
   switch (h.type) {
     case 'created':
-      return d.bulk ? 'Created in a bulk batch' : s('via') === 'device' ? 'Registered from an NFC Terminal device' : 'Created'
+      return d.bulk ? 'Created in a bulk batch' : s('via') === 'device' ? 'Registered from an nexTap device' : 'Created'
     case 'assigned':
       return s('assignee_name') ? `Assigned to ${s('assignee_name')}` : `Assigned to ${s('assignee_type') === 'customer' ? 'a customer' : 'an employee'}`
     case 'unassigned':
@@ -139,7 +139,7 @@ export function describeHistory(h: { type: string; data?: Record<string, unknown
     case 'deactivated':
       return 'Deactivated'
     case 'programmed':
-      return 'Programmed with the NFC Terminal app'
+      return 'Programmed with the nexTap app'
     case 'action_changed':
       return s('action_type') ? `Action set to ${actionLabel(s('action_type'))}` : 'Action reset to the business default'
     case 'uid_changed':

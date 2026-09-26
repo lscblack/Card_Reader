@@ -56,7 +56,7 @@ export default function DevicesPage() {
           <EmptyState
             icon={Smartphone}
             title={appId || status ? 'No devices match these filters' : 'No devices registered'}
-            description="Install the NFC Terminal app on an NFC-capable Android phone, then register it with an API key."
+            description="Install the nexTap app on an NFC-capable Android phone, then register it with an API key."
             action={
               <Link to="/docs#quick-start" className="text-[13px] font-medium text-accent hover:underline">
                 How to register a device

@@ -10,7 +10,7 @@ const steps: { icon: LucideIcon; title: string; body: string; detail: string; Vi
   {
     icon: QrCode,
     title: 'Pair a phone in seconds',
-    body: 'Install the NFC Terminal app on any NFC Android phone and scan the pairing QR from your dashboard. No API keys typed on a tiny keyboard — the phone only ever keeps its own revocable token.',
+    body: 'Install the nexTap app on any NFC Android phone and scan the pairing QR from your dashboard. No API keys typed on a tiny keyboard — the phone only ever keeps its own revocable token.',
     detail: 'Single-use pairing code · expires in 10 minutes',
     Visual: PairVisual,
   },
