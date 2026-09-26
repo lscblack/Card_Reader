@@ -250,7 +250,7 @@ def card_effective_status(card: Card, business: Business) -> str:
         return "inactive_owner"
     if card.customer is not None and card.customer.status != "active":
         return "inactive_owner"
-    if card.employee_id is None and card.customer_id is None:
+    if card.employee_id is None and card.customer_id is None and not card.assigned_to_business:
         return "unassigned"
     return "active"
 
@@ -263,7 +263,14 @@ def mask_uid(uid: str | None) -> str | None:
     return "•" * (len(uid) - 4) + uid[-4:]
 
 
-def assignee_of(card: Card) -> dict[str, Any] | None:
+def assignee_of(card: Card, business: Business | None = None) -> dict[str, Any] | None:
+    """The card's holder: an employee, a customer or — for company cards — the business itself (pass `business`;
+    without it a company card is reported with just its id)."""
+    if card.assigned_to_business:
+        if business is None:
+            return {"type": "business", "id": card.business_id, "name": None, "photo_url": None, "position": None}
+        return {"type": "business", "id": business.id, "name": business.name, "photo_url": media_url(business.logo_path),
+                "position": None}
     if card.employee is not None:
         e: Employee = card.employee
         return {"type": "employee", "id": e.id, "name": e.full_name, "photo_url": media_url(e.photo_path),

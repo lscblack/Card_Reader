@@ -12,7 +12,7 @@ import { cardsApi } from '../api/cards'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBizMutation, useCards } from '../hooks/queries'
 import { useErrorToast } from '../hooks/useErrorToast'
-import { CardStatusBadge } from './bits'
+import { CardStatusBadge, LinkBadge } from './bits'
 import { BizErrorState } from './BizError'
 
 /** List of cards held by a person + an "assign an unassigned card" picker. Shared with customers. */
@@ -64,11 +64,11 @@ export function HeldCards({ cards, assignee, kindPath = 'cards' }: { cards: Card
           <EmptyState
             icon={Nfc}
             title="No unassigned cards"
-            description="Create a new card (or a bulk batch) first."
+            description="Register cards with the nexTap app on a business phone, or prepare one here and link it on the phone."
             action={
               <Link to={`${base}/cards?new=1`}>
                 <Button size="sm" variant="primary">
-                  New card
+                  Register cards
                 </Button>
               </Link>
             }
@@ -93,7 +93,7 @@ export function HeldCards({ cards, assignee, kindPath = 'cards' }: { cards: Card
                 >
                   <Nfc className="h-4 w-4 text-subtle" />
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{c.name}</span>
-                  <span className="text-xs text-subtle">{c.programmed ? 'Programmed' : 'Not programmed'}</span>
+                  <LinkBadge uid={c.uid} programmed={c.programmed} />
                 </button>
               </li>
             ))}

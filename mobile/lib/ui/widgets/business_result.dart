@@ -65,7 +65,9 @@ class BusinessResultCard extends StatelessWidget {
                 foregroundImage: photo == null ? null : NetworkImage(photo),
                 onForegroundImageError: photo == null ? null : (_, _) {},
                 child: Icon(
-                  b.isRecognized ? Icons.verified_outlined : (b.isInactive ? Icons.block : Icons.help_outline),
+                  b.isCompanyCard
+                      ? Icons.apartment
+                      : (b.isRecognized ? Icons.verified_outlined : (b.isInactive ? Icons.block : Icons.help_outline)),
                   color: color,
                 ),
               ),
@@ -82,6 +84,7 @@ class BusinessResultCard extends StatelessWidget {
                     Text(
                       [
                         businessResultLabel(b),
+                        if (b.isCompanyCard) 'Company card',
                         if (b.cardName != null) '${b.cardName}${b.cardKind == null ? '' : ' (${b.cardKind})'}',
                       ].join(' · '),
                       style: t.bodySmall?.copyWith(color: color),
@@ -91,7 +94,14 @@ class BusinessResultCard extends StatelessWidget {
               ),
             ],
           ),
-          if (!compact && b.assigneeName != null && b.message != null && !b.message!.contains(b.assigneeName!)) ...[
+          if (!compact && b.isCompanyCard) ...[
+            const SizedBox(height: 8),
+            Row(key: const Key('companyCard'), children: [
+              Icon(Icons.apartment, size: 18, color: color),
+              const SizedBox(width: 6),
+              Expanded(child: Text('Company card · ${b.assigneeName ?? 'your business'}')),
+            ]),
+          ] else if (!compact && b.assigneeName != null && b.message != null && !b.message!.contains(b.assigneeName!)) ...[
             const SizedBox(height: 8),
             Text([b.assigneeName, ?b.assigneePosition].join(' · ')),
           ],

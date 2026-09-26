@@ -227,3 +227,26 @@ export function ActionIcon({ type, className }: { type: string | null | undefine
   const Icon = type == null ? Sparkles : (ACTION_ICONS[type] ?? Zap)
   return <Icon className={className} aria-hidden="true" />
 }
+
+/**
+ * Chip linkage: "Not linked" = no UID yet (bind it with nexTap → Program card); "Linked" = UID known but the tap link
+ * wasn't written by the app; "Programmed" = UID known and the tap link was written to the chip.
+ */
+export function LinkBadge({ uid, programmed }: { uid: string | null | undefined; programmed: boolean }) {
+  if (!uid) {
+    return (
+      <Badge tone="warning" dot title="Tap this card with the nexTap app (Program card) to link it">
+        Not linked
+      </Badge>
+    )
+  }
+  return programmed ? (
+    <Badge tone="success" dot title="Linked to its chip and the tap link is written">
+      Programmed
+    </Badge>
+  ) : (
+    <Badge tone="info" dot title="The chip’s UID is known. Program it with nexTap to write the tap link">
+      Linked
+    </Badge>
+  )
+}

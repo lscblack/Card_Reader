@@ -71,7 +71,7 @@ def card_summary(card: Card, business: Business) -> CardSummary:
 
 
 def card_out(card: Card, business: Business) -> CardOut:
-    assignee = assignee_of(card)
+    assignee = assignee_of(card, business)
     return CardOut(
         id=card.id, business_id=card.business_id, kind=card.kind,  # type: ignore[arg-type]
         name=card.name, uid=card.uid, uid_masked=mask_uid(card.uid), public_code=card.public_code,

@@ -160,10 +160,30 @@ class FakeDeviceApi implements DeviceApi {
       .where((c) => query == null || query.isEmpty || c.name.toLowerCase().contains(query.toLowerCase()))
       .toList();
 
+  final registeredOptions = <Map<String, Object?>>[];
+
   @override
-  Future<void> registerBusinessCard({required String uid, String? name, required String kind}) async {
+  Future<BusinessCardItem> registerBusinessCard({
+    required String uid,
+    String? name,
+    required String kind,
+    bool? assignToBusiness,
+    String? note,
+  }) async {
     if (registerError != null) throw registerError!;
     registered.add({'uid': uid, 'name': name, 'kind': kind});
+    registeredOptions.add({'assign_to_business': assignToBusiness, 'note': note});
+    final item = BusinessCardItem(
+      id: 'new${registered.length}',
+      name: (name == null || name.trim().isEmpty) ? 'Card ${uid.substring(uid.length - 4)}' : name.trim(),
+      kind: kind,
+      assigneeType: assignToBusiness == true ? 'business' : null,
+      uidMasked: '••${uid.substring(uid.length - 4)}',
+      tapUrl: 'https://t.example/c/new${registered.length}',
+      programmed: false,
+    );
+    cards = [...cards, item];
+    return item;
   }
 
   @override

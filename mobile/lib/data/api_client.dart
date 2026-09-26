@@ -48,7 +48,15 @@ abstract class DeviceApi {
 
   // Part 2 C3 — business devices with capabilities.
   Future<List<BusinessCardItem>> listBusinessCards({String? query, bool? programmed});
-  Future<void> registerBusinessCard({required String uid, String? name, required String kind});
+  /// [assignToBusiness]: the card belongs to the company itself (null = server default).
+  /// [note] is sent for servers that store it (ignored otherwise).
+  Future<BusinessCardItem> registerBusinessCard({
+    required String uid,
+    String? name,
+    required String kind,
+    bool? assignToBusiness,
+    String? note,
+  });
   Future<void> markCardProgrammed({required String cardId, required String uid});
 }
 
@@ -148,12 +156,21 @@ class ApiClient implements DeviceApi {
   }
 
   @override
-  Future<void> registerBusinessCard({required String uid, String? name, required String kind}) async {
-    await _request('POST', '/device/business/cards', body: {
+  Future<BusinessCardItem> registerBusinessCard({
+    required String uid,
+    String? name,
+    required String kind,
+    bool? assignToBusiness,
+    String? note,
+  }) async {
+    final j = await _request('POST', '/device/business/cards', body: {
       'uid': uid,
       if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
       'kind': kind,
+      'assign_to_business': ?assignToBusiness,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     });
+    return BusinessCardItem.fromJson(j);
   }
 
   @override

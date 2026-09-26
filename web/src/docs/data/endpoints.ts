@@ -184,7 +184,6 @@ export const endpointGroups: EndpointGroup[] = [
       ['POST', '/businesses/{id}/cards/{cid}/assign | unassign', 'Assignment (history kept)'],
       ['POST', '/businesses/{id}/cards/{cid}/activate | deactivate', 'Status'],
       ['GET', '/businesses/{id}/cards/{cid}/history | taps | stats', 'History, taps, stats'],
-      ['POST', '/businesses/{id}/cards/bulk', 'Create 1–500 unprogrammed cards'],
       ['POST', '/businesses/{id}/actions/preview', 'Resolve an action without saving'],
       ['GET / POST', '/businesses/{id}/profiles', 'List / create profiles'],
       ['GET / PATCH / DELETE', '/businesses/{id}/profiles/{pid}', 'One profile'],

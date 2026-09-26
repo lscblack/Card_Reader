@@ -94,7 +94,7 @@ export function BizAppSelect({ value, onChange, id, className }: { value: string
   )
 }
 
-function PeopleList({ type, current, onPick }: { type: AssigneeType; current: Assignee | null; onPick: (a: Assignee) => void }) {
+function PeopleList({ type, current, onPick }: { type: Exclude<AssigneeType, 'business'>; current: Assignee | null; onPick: (a: Assignee) => void }) {
   const { business } = useBusiness()
   const [q, setQ] = useState('')
   const dq = useDebounced(q, 250)
@@ -165,7 +165,9 @@ export function AssigneePickerModal({
   loading?: boolean
   defaultType?: AssigneeType
 }) {
-  const [type, setType] = useState<AssigneeType>(current?.type ?? defaultType)
+  const { business } = useBusiness()
+  const [type, setType] = useState<Exclude<AssigneeType, 'business'>>(current?.type && current.type !== 'business' ? current.type : defaultType === 'business' ? 'employee' : defaultType)
+  const isCompany = current?.type === 'business'
   return (
     <Modal
       open={open}
@@ -178,7 +180,20 @@ export function AssigneePickerModal({
         </Button>
       }
     >
-      <Tabs<AssigneeType>
+      <button
+        type="button"
+        onClick={() => onPick({ type: 'business', id: business.id, name: business.name, photo_url: business.logo_url })}
+        aria-pressed={isCompany}
+        className={cn('mb-4 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors', isCompany ? 'border-accent bg-accent-soft' : 'border-border hover:bg-surface-2')}
+      >
+        <Avatar name={business.name} src={business.logo_url} size={36} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13.5px] font-medium">{business.name} (company)</span>
+          <span className="block text-xs text-subtle">A shared company card — counter, reception, events. Taps are attributed to the business.</span>
+        </span>
+        {isCompany && <Check className="h-4 w-4 shrink-0 text-accent" />}
+      </button>
+      <Tabs<Exclude<AssigneeType, 'business'>>
         className="mb-3"
         value={type}
         onChange={setType}

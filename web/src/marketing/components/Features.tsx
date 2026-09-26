@@ -348,7 +348,7 @@ const stats: { to: number; suffix?: string; label: string; note: string }[] = [
   { to: 14, label: 'no-code tap actions', note: 'website, WhatsApp, menu, Wi-Fi, vCard…' },
   { to: 300, suffix: ' s', label: 'replay window', note: 'older timestamps are rejected' },
   { to: 10, suffix: ' min', label: 'pairing code lifetime', note: 'single use, hashed at rest' },
-  { to: 500, label: 'cards per bulk batch', note: 'create a print run in one request' },
+  { to: 16, label: 'card design templates', note: 'business cards, ID badges, loyalty' },
 ]
 
 export function Stats() {

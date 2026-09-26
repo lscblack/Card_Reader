@@ -35,3 +35,4 @@ API failures keep the server's `NFC-*` ref and `request_id`. Tapping the referen
 | MOB-1024 | `session_expired` | Signed out | Your personal session was revoked or expired. | Sign in again. |
 | MOB-1025 | `invalid_login_qr` | Invalid sign-in QR code | The QR code is not a valid "Sign in on your phone" code. | Create a new code on the web (Share → Sign in on your phone). |
 | MOB-1026 | `image_pick_failed` | Photo not available | The photo could not be picked, cropped or read. | Allow photo/camera access and try again. |
+| MOB-1027 | `wrong_card` | Different card | Another card was held to the phone than the one just registered, so its link was not written. | Hold the card you just registered and try again. |

@@ -129,9 +129,9 @@ export function describeHistory(h: { type: string; data?: Record<string, unknown
   const s = (k: string) => (typeof d[k] === 'string' ? (d[k] as string) : null)
   switch (h.type) {
     case 'created':
-      return d.bulk ? 'Created in a bulk batch' : s('via') === 'device' ? 'Registered from an nexTap device' : 'Created'
+      return s('via') === 'device' ? 'Registered from an nexTap device' : 'Created'
     case 'assigned':
-      return s('assignee_name') ? `Assigned to ${s('assignee_name')}` : `Assigned to ${s('assignee_type') === 'customer' ? 'a customer' : 'an employee'}`
+      return s('assignee_name') ? `Assigned to ${s('assignee_name')}` : `Assigned to ${s('assignee_type') === 'customer' ? 'a customer' : s('assignee_type') === 'business' ? 'the company' : 'an employee'}`
     case 'unassigned':
       return 'Unassigned'
     case 'activated':
@@ -152,3 +152,8 @@ export function describeHistory(h: { type: string; data?: Record<string, unknown
       return h.type.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
   }
 }
+
+export const ASSIGNEE_TYPE_LABEL: Record<string, string> = { employee: 'Employee', customer: 'Customer', business: 'Company' }
+export const assigneeTypeLabel = (t: string | null | undefined) => (t ? (ASSIGNEE_TYPE_LABEL[t] ?? t) : 'Unassigned')
+/** Dashboard link for an assignee (company cards have no person page). */
+export const assigneeHref = (base: string, a: { type: string; id: string }) => (a.type === 'employee' ? `${base}/employees/${a.id}` : a.type === 'customer' ? `${base}/customers/${a.id}` : null)

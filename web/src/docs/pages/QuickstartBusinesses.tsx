@@ -31,18 +31,26 @@ export default function QuickstartBusinesses() {
 
       <Figure shot="profile" narrow caption="Your public business profile as customers see it on their phone." />
 
-      <H2 id="cards">3. Add cards &amp; tags</H2>
+      <H2 id="cards">3. Register cards &amp; tags</H2>
       <UL>
         <li>
-          A <B>card</B> is held by a person — an employee business card or a customer loyalty card. Assign it to an employee or customer.
+          A <B>card</B> is held by a person — an employee business card or a customer loyalty card — or by the company itself (a shared
+          front-desk or events card). Assign it to an employee, a customer or the company.
         </li>
         <li>
           A <B>tag</B> is placed on a thing — a table, product, poster or door.
         </li>
       </UL>
       <P>
-        Create them one by one, or in bulk (up to 500 at a time) for a print run. Each gets a short, unguessable tap link like{' '}
-        <C>{'{PUBLIC_API_URL}/t/Ab3dE5gH7k'}</C> — it is not the card&apos;s UID.
+        Cards are registered <B>on a phone</B>, so the platform learns each chip&apos;s unique ID without any typing: open <B>nexTap</B> on a
+        paired business phone → <B>Reader</B> → <B>Register cards</B>, then tap each card. It appears in the dashboard instantly, and the phone
+        can assign it to a person or mark it as a company card on the spot. A reader that taps an unknown card also offers{' '}
+        <B>Register this card</B>.
+      </P>
+      <P>
+        You can also <B>prepare</B> a card in the dashboard (NFC Cards → Register cards → “Prepare a card here”) with its name, holder and
+        action. It shows a <B>Not linked</B> badge until you tap it with nexTap → <B>Program card</B>, which binds the chip and writes the tap
+        link. Each card gets a short, unguessable tap link like <C>{'{PUBLIC_API_URL}/t/Ab3dE5gH7k'}</C> — it is not the card&apos;s UID.
       </P>
 
       <Figure shot="card" caption="A card’s detail page: holder, action, tap statistics and the tap link with its QR code." />

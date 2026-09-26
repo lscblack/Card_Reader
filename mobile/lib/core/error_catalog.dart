@@ -72,11 +72,16 @@ class MobError {
   static const imagePickFailed = MobError('MOB-1026', 'image_pick_failed', 'Photo not available',
       'The photo could not be picked, cropped or read.', 'Allow photo/camera access and try again.');
 
+  static const wrongCard = MobError('MOB-1027', 'wrong_card', 'Different card',
+      'Another card was held to the phone than the one just registered, so its link was not written.',
+      'Hold the card you just registered and try again.');
+
   static const all = <MobError>[
     nfcUnsupported, nfcDisabled, tagLost, uidUnavailable, offline, serverUnreachable, tlsError, timeout,
     signingFailed, domainNotAllowed, cameraDenied, invalidQr, ndefWriteFailed, tagReadOnly, tagTooSmall,
     notificationsDenied, tagNotNdef, invalidServerResponse, programmingTimeout, endpointUnreachable,
     endpointNotConfigured, notADigitalCard, hceUnsupported, sessionExpired, invalidLoginQr, imagePickFailed,
+    wrongCard,
   ];
 
   static MobError? byRef(String? ref) {

@@ -52,7 +52,7 @@ async def record_tap(
 ) -> CardTap:
     bot = is_bot(ua) if source == "web" else False
     vhash = visitor_hash(ip, ua) if source == "web" and not bot else None
-    assignee = assignee_of(card) if card is not None else None
+    assignee = assignee_of(card, business) if card is not None else None
     now = datetime.now(UTC)
     tap = CardTap(
         business_id=business.id,
@@ -132,7 +132,7 @@ async def create_webhook_event(
     if app is None or app.business_id != business.id or app.deleted_at is not None or not app.is_active:
         return None
     now = datetime.now(UTC)
-    assignee = assignee_of(card)
+    assignee = assignee_of(card, business)
     event = NfcEvent(
         id=uuid.uuid4(),
         application_id=app.id,
@@ -174,11 +174,11 @@ class ReaderOutcome:
     webhook_event: NfcEvent | None
 
 
-def _message(result: str, card: Card | None, eff: str | None) -> str:
+def _message(result: str, card: Card | None, eff: str | None, business: Business | None = None) -> str:
     if result == "unknown_card":
         return "Unknown card"
     assert card is not None
-    assignee = assignee_of(card)
+    assignee = assignee_of(card, business)
     if result == "inactive":
         who = assignee["name"] if assignee else card.name
         return f"{who} · {'owner inactive' if eff == 'inactive_owner' else 'inactive'}"
@@ -198,11 +198,11 @@ async def resolve_reader_tap(
         tap = await record_tap(session, business=business, card=None, source="reader", result="unknown_card",
                                action_type=None, device=device, nfc_event_id=nfc_event_id, scanned_uid=card_uid)
         block = {"result": "unknown_card", "card": None, "assignee": None, "action": None,
-                 "message": _message("unknown_card", None, None)}
+                 "message": _message("unknown_card", None, None, business)}
         return ReaderOutcome(block, tap, None)
 
     eff = card_effective_status(card, business)
-    assignee = assignee_of(card)
+    assignee = assignee_of(card, business)
     card_info = {"id": str(card.id), "name": card.name, "kind": card.kind, "status": card.status,
                  "effective_status": eff}
     assignee_info = ({"type": assignee["type"], "id": str(assignee["id"]), "name": assignee["name"],
@@ -212,7 +212,7 @@ async def resolve_reader_tap(
         tap = await record_tap(session, business=business, card=card, source="reader", result="inactive",
                                action_type=None, device=device, nfc_event_id=nfc_event_id, scanned_uid=card_uid)
         block = {"result": "inactive", "card": card_info, "assignee": assignee_info, "action": None,
-                 "message": _message("inactive", card, eff)}
+                 "message": _message("inactive", card, eff, business)}
         return ReaderOutcome(block, tap, None)
 
     action = effective_action(card, business)
@@ -232,7 +232,7 @@ async def resolve_reader_tap(
         "card": card_info,
         "assignee": assignee_info,
         "action": {"type": res.action_type, "label": res.label, "url": res.url if res.kind != "vcard" or res.url else None},
-        "message": _message("recognized", card, eff),
+        "message": _message("recognized", card, eff, business),
     }
     return ReaderOutcome(block, tap, webhook_event)
 
@@ -249,7 +249,7 @@ async def block_for_existing_event(session: AsyncSession, nfc_event_id: uuid.UUI
     if card is None or business is None:
         return {"result": "unknown_card", "card": None, "assignee": None, "action": None, "message": "Unknown card"}
     eff = card_effective_status(card, business)
-    assignee = assignee_of(card)
+    assignee = assignee_of(card, business)
     result = "inactive" if tap.result == "inactive" else "recognized"
     res = await resolve(session, business, card) if result == "recognized" else None
     return {
@@ -260,5 +260,5 @@ async def block_for_existing_event(session: AsyncSession, nfc_event_id: uuid.UUI
                       "position": assignee.get("position"), "photo_url": assignee.get("photo_url")}
                      if assignee else None),
         "action": {"type": res.action_type, "label": res.label, "url": res.url} if res else None,
-        "message": _message(result, card, eff),
+        "message": _message(result, card, eff, business),
     }

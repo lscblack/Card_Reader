@@ -398,9 +398,10 @@ async def _business_device(session: SessionDep, device: Device, capability: str 
     return business
 
 
-def _device_card(card: Card) -> dict[str, Any]:
-    assignee = biz.assignee_of(card)
+def _device_card(card: Card, business: Business) -> dict[str, Any]:
+    assignee = biz.assignee_of(card, business)
     return {"id": str(card.id), "name": card.name, "kind": card.kind,
+            "assignee_type": assignee["type"] if assignee else None,
             "assignee_name": assignee["name"] if assignee else None, "uid_masked": biz.mask_uid(card.uid),
             "tap_url": biz.tap_url(card.public_code), "programmed": card.programmed_at is not None,
             "status": card.status}
@@ -424,7 +425,7 @@ async def device_cards(device: CurrentDevice, session: SessionDep, pagination: P
     total = (await session.execute(select(func.count()).select_from(Card).where(*conds))).scalar_one()
     rows = (await session.execute(select(Card).where(*conds).order_by(Card.name, Card.id)
                                   .offset(pagination.offset).limit(pagination.page_size))).scalars().unique()
-    return {"items": [_device_card(c) for c in rows], "total": total, "page": pagination.page,
+    return {"items": [_device_card(c, business) for c in rows], "total": total, "page": pagination.page,
             "page_size": pagination.page_size}
 
 
@@ -432,6 +433,7 @@ class DeviceCardIn(Schema):
     uid: str = Field(min_length=4, max_length=200)
     name: str | None = Field(default=None, max_length=120)
     kind: Literal["card", "tag"] = "card"
+    assign_to_business: bool = False  # register it as a company card (assignee = the business)
 
 
 class ProgrammedIn(Schema):
@@ -449,7 +451,7 @@ async def device_register_card(body: DeviceCardIn, device: CurrentDevice, sessio
     await biz.ensure_business_limit(session, business, "cards")
     card = Card(business_id=business.id, kind=body.kind, name=(body.name or "").strip() or f"Card {uid[-4:]}",
                 uid=uid, public_code=await unique_public_code(session), status="active", total_taps=0,
-                unique_visitors=0)
+                unique_visitors=0, assigned_to_business=body.assign_to_business)
     session.add(card)
     try:
         await session.flush()
@@ -457,6 +459,8 @@ async def device_register_card(body: DeviceCardIn, device: CurrentDevice, sessio
         await session.rollback()
         raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID") from None
     history(session, card, "created", device_id=device.id, name=card.name, via="device")
+    if body.assign_to_business:
+        history(session, card, "assigned", device_id=device.id, assignee_type="business", assignee_id=business.id)
     audit.record(session, action="card.create", user_id=None, client=client, resource_type="card",
                  resource_id=card.id, metadata={"via": "device", "device_id": str(device.id)})
     await session.commit()

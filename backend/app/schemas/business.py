@@ -265,8 +265,8 @@ class CardIn(Schema):
     name: str = Field(min_length=1, max_length=120)
     uid: str | None = Field(default=None, max_length=200)
     status: Literal["active", "inactive"] = "active"
-    assignee_type: Literal["employee", "customer"] | None = None
-    assignee_id: uuid.UUID | None = None
+    assignee_type: Literal["employee", "customer", "business"] | None = None
+    assignee_id: uuid.UUID | None = None  # optional for "business" (null or the business id)
     profile_id: uuid.UUID | None = None
     action: dict[str, Any] | None = None
 
@@ -280,8 +280,8 @@ class CardUpdateIn(Schema):
 
 
 class AssignIn(Schema):
-    assignee_type: Literal["employee", "customer"]
-    assignee_id: uuid.UUID
+    assignee_type: Literal["employee", "customer", "business"]
+    assignee_id: uuid.UUID | None = None  # required for employee/customer; optional for business (= the company)
 
 
 

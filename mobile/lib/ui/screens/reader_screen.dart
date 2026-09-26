@@ -21,8 +21,9 @@ import '../widgets/digital_card_result.dart';
 import '../widgets/error_ref.dart';
 import '../widgets/help_sheet.dart';
 import '../widgets/update_banner.dart';
-import '../widgets/register_card_sheet.dart';
 import 'program_card_screen.dart';
+import 'register_cards_screen.dart';
+import '../../services/card_registrar.dart';
 import '../widgets/status_indicator.dart';
 
 class ReaderScreen extends StatelessWidget {
@@ -37,6 +38,13 @@ class ReaderScreen extends StatelessWidget {
       appBar: AppBar(
         title: _Title(config: app.config),
         actions: [
+          if ((app.config?.can(Capability.registerCards) ?? false) && app.api != null)
+            IconButton(
+              key: const Key('registerCardsAction'),
+              tooltip: 'Register cards',
+              icon: const Icon(Icons.add_card),
+              onPressed: () => openRegisterCards(context, app, reader),
+            ),
           if ((app.config?.can(Capability.programCards) ?? false) && app.api != null)
             IconButton(
               key: const Key('programCardAction'),
@@ -314,14 +322,8 @@ class _LastCardCard extends StatelessWidget {
           BusinessResultCard(
             result: e!.business!,
             onRegister: (config?.can(Capability.registerCards) ?? false) && api != null
-                ? () async {
-                    final ok = await showRegisterCardSheet(context, api: api!, uid: card.uid);
-                    if (ok && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Card registered ✓ — assign it in the dashboard.')),
-                      );
-                    }
-                  }
+                ? () => openRegisterCards(context, context.read<AppState>(), context.read<ReaderController>(),
+                    initialUid: card.uid)
                 : null,
           ),
         ],
@@ -395,4 +397,20 @@ class _QueueSummaryState extends State<_QueueSummary> {
       ),
     );
   }
+}
+
+/// Opens "Register cards" (pauses event delivery until it closes).
+Future<void> openRegisterCards(BuildContext context, AppState app, ReaderController reader, {String? initialUid}) {
+  final api = app.api!;
+  final canProgram = app.config?.can(Capability.programCards) ?? false;
+  final registrar = CardRegistrar(
+    api: api,
+    nfc: reader.nfc,
+    reader: reader,
+    businessName: app.config?.business?.name,
+    programmer: canProgram ? CardProgrammer(writer: context.read<NfcWriter>(), api: api, reader: reader) : null,
+  );
+  return Navigator.of(context).push(MaterialPageRoute<void>(
+    builder: (_) => RegisterCardsScreen(registrar: registrar, initialUid: initialUid),
+  ));
 }

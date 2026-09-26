@@ -236,7 +236,7 @@ async def seed_demo(session: AsyncSession) -> None:
         created = now - timedelta(days=rng.randint(0, 29), hours=rng.randint(0, 23), minutes=rng.randint(0, 59))
         vh = visitor_hash(f"10.0.{rng.randint(0, 9)}.{rng.randint(1, 60)}", ua, created.strftime("%Y-%m-%d")) \
             if source == "web" else None
-        assignee = biz.assignee_of(c)
+        assignee = biz.assignee_of(c, business)
         session.add(CardTap(
             business_id=business.id, card_id=c.id, card_name=c.name, card_kind=c.kind,
             assignee_type=assignee["type"] if assignee else None, assignee_id=assignee["id"] if assignee else None,

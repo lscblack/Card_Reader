@@ -64,10 +64,13 @@ class FakeNfcWriter implements NfcWriter {
   final uris = <String>[];
 
   @override
-  Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60)}) {
+  Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60), String? expectedUid}) {
     uris.add(uri);
+    expected.add(expectedUid);
     return onWrite(uri);
   }
+
+  final expected = <String?>[];
 
   @override
   Future<void> cancel() async {}

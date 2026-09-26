@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Activity, ArrowRight, Check, Contact, MousePointerClick, Nfc, Plus, Smartphone, Tag, Users } from 'lucide-react'
+import { Activity, ArrowRight, Check, Contact, MousePointerClick, Nfc, Smartphone, Tag, Users } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -34,9 +34,9 @@ function Checklist({ data }: { data: BusinessOverview }) {
   const steps = [
     { done: c.logo_uploaded && c.profile_published, title: 'Complete your business profile', body: 'Upload your logo and publish your business page — it’s what customers see.', to: c.logo_uploaded ? `${base}/profiles` : `${base}/settings`, cta: c.logo_uploaded ? 'Edit profile' : 'Upload logo' },
     { done: c.first_employee, title: 'Add an employee', body: 'Give your team digital business cards.', to: `${base}/employees?new=1`, cta: 'Add employee' },
-    { done: c.first_card, title: 'Add an NFC card', body: 'Create a card and assign it to someone.', to: `${base}/cards?new=1`, cta: 'Add card' },
-    { done: c.card_programmed, app: true, title: 'Program the card with the app', body: 'Open nexTap → Program card and hold the card to the phone.', to: `${base}/cards`, cta: 'View cards' },
-    { done: c.device_paired, title: 'Pair a device', body: 'Turn an Android phone into a reader for your counter or events.', to: `${base}/devices?pair=1`, cta: 'Pair device' },
+    { done: c.device_paired, title: 'Pair a business phone', body: 'Install nexTap on an Android phone and pair it — it registers, programs and reads your cards.', to: `${base}/devices?pair=1`, cta: 'Pair device' },
+    { done: c.first_card, app: true, title: 'Register your first card', body: 'Open nexTap on the business phone → Reader → Register cards, and tap a card.', to: `${base}/cards?new=1`, cta: 'Register cards' },
+    { done: c.card_programmed, app: true, title: 'Program the card', body: 'In nexTap → Program card, hold the card to the phone to write its tap link.', to: `${base}/cards`, cta: 'View cards' },
     { done: emailVerified, title: 'Verify your email', body: 'Public pages go live once the business email is verified.', to: null, cta: null },
   ]
   const done = steps.filter((s) => s.done).length
@@ -109,11 +109,11 @@ export default function OverviewPage() {
           can('cards.manage') && (
             <>
               <Link to={`${base}/tags?new=1`}>
-                <Button leftIcon={<Tag className="h-4 w-4" />}>New tag</Button>
+                <Button leftIcon={<Tag className="h-4 w-4" />}>Register tags</Button>
               </Link>
               <Link to={`${base}/cards?new=1`}>
-                <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
-                  New card
+                <Button variant="primary" leftIcon={<Smartphone className="h-4 w-4" />}>
+                  Register cards
                 </Button>
               </Link>
             </>
@@ -201,8 +201,8 @@ export default function OverviewPage() {
                   action={
                     can('cards.manage') && (
                       <Link to={`${base}/cards?new=1`}>
-                        <Button size="sm" variant="primary" leftIcon={<Plus className="h-3.5 w-3.5" />}>
-                          Create a card
+                        <Button size="sm" variant="primary" leftIcon={<Smartphone className="h-3.5 w-3.5" />}>
+                          Register cards
                         </Button>
                       </Link>
                     )

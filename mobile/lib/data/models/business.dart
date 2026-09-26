@@ -84,6 +84,9 @@ class BusinessResult {
   bool get isUnknown => result == 'unknown_card';
   bool get isInactive => result == 'inactive';
 
+  /// The card belongs to the company itself (assignee `{type: "business", name, photo_url: logo}`).
+  bool get isCompanyCard => assigneeType == 'business';
+
   factory BusinessResult.fromJson(Map<String, dynamic> j) {
     final card = j['card'] is Map ? (j['card'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
     final who = j['assignee'] is Map ? (j['assignee'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
@@ -115,10 +118,14 @@ class BusinessCardItem {
     required this.name,
     required this.kind,
     this.assigneeName,
+    this.assigneeType,
     this.uidMasked,
     required this.tapUrl,
     required this.programmed,
   });
+
+  /// `employee` | `customer` | `business` (company card) | null (unassigned).
+  final String? assigneeType;
 
   final String id;
   final String name;
@@ -128,11 +135,13 @@ class BusinessCardItem {
   final String tapUrl;
   final bool programmed;
 
+  /// Also accepts the full `CardOut` shape (`assignee: {type, name}`) returned by registration.
   factory BusinessCardItem.fromJson(Map<String, dynamic> j) => BusinessCardItem(
-    id: j['id'] as String? ?? '',
+    id: j['id']?.toString() ?? '',
     name: j['name'] as String? ?? '',
     kind: j['kind'] as String? ?? 'card',
-    assigneeName: j['assignee_name'] as String?,
+    assigneeName: j['assignee_name'] as String? ?? (j['assignee'] is Map ? (j['assignee'] as Map)['name'] as String? : null),
+    assigneeType: j['assignee_type'] as String? ?? (j['assignee'] is Map ? (j['assignee'] as Map)['type'] as String? : null),
     uidMasked: j['uid_masked'] as String?,
     tapUrl: j['tap_url'] as String? ?? '',
     programmed: j['programmed'] as bool? ?? false,

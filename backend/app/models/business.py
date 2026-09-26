@@ -206,7 +206,8 @@ class Card(UUIDPk, Timestamps, Base):
     __table_args__ = (
         CheckConstraint("kind IN ('card','tag')", name="kind"),
         CheckConstraint("status IN ('active','inactive')", name="status"),
-        CheckConstraint("employee_id IS NULL OR customer_id IS NULL", name="single_assignee"),
+        CheckConstraint("(employee_id IS NOT NULL)::int + (customer_id IS NOT NULL)::int "
+                        "+ assigned_to_business::int <= 1", name="single_assignee"),
         Index("uq_cards_business_uid", "business_id", "uid", unique=True,
               postgresql_where=text("uid IS NOT NULL AND deleted_at IS NULL")),
         Index("ix_cards_business", "business_id", "created_at"),
@@ -224,6 +225,9 @@ class Card(UUIDPk, Timestamps, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     employee_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("employees.id", ondelete="SET NULL"))
     customer_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("customers.id", ondelete="SET NULL"))
+    # Assigned to the company itself (not a person); exclusive with employee_id / customer_id.
+    assigned_to_business: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False,
+                                                       server_default=text("false"))
     profile_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("profiles.id", ondelete="SET NULL"))
     action: Mapped[dict | None] = mapped_column(JSONB)
     programmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

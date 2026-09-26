@@ -52,7 +52,7 @@ export const docPages: DocPage[] = [
     headings: [
       { id: 'register', title: '1. Create a business account' },
       { id: 'profile', title: '2. Publish your profile' },
-      { id: 'cards', title: '3. Add cards & tags' },
+      { id: 'cards', title: '3. Register cards & tags' },
       { id: 'actions', title: '4. Choose what a tap does' },
       { id: 'program', title: '5. Program the cards' },
       { id: 'share', title: '6. Tap, share & measure' },

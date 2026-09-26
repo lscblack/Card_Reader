@@ -93,7 +93,8 @@ export interface BusinessCategory {
 export type CardKind = 'card' | 'tag'
 export type CardStatus = 'active' | 'inactive'
 export type EffectiveStatus = 'active' | 'inactive' | 'inactive_owner' | 'unassigned' | 'business_suspended'
-export type AssigneeType = 'employee' | 'customer'
+/** `business` = the company itself (assignee_id = business id; name = business name, photo_url = logo). */
+export type AssigneeType = 'employee' | 'customer' | 'business'
 
 export interface Assignee {
   type: AssigneeType
@@ -150,6 +151,8 @@ export interface CreateCardRequest {
   kind: CardKind
   name: string
   uid?: string
+  assignee_type?: AssigneeType
+  assignee_id?: UUID
   action?: Action | null
   profile_id?: UUID | null
 }
@@ -159,12 +162,6 @@ export interface UpdateCardRequest {
   uid?: string | null
   action?: Action | null
   profile_id?: UUID | null
-}
-
-export interface BulkCreateCardsRequest {
-  count: number
-  kind: CardKind
-  name_prefix: string
 }
 
 /** `GET …/cards/{cid}/history` (backend: `{ id, type, data, actor, created_at }`). */
@@ -526,6 +523,8 @@ export interface Analytics {
   by_device_type: { device_type: DeviceType; taps: number }[]
   by_country: { country: string; taps: number }[]
   by_hour: { hour: number; taps: number }[]
+  /** Taps by owner type (employee / customer / business / unassigned). */
+  by_assignee_type?: { assignee_type: string | null; taps: number }[]
   last_activity: CardTap | null
 }
 

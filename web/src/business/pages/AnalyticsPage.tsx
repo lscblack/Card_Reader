@@ -12,7 +12,7 @@ import type { AnalyticsRange, CardTap } from '../api/types'
 import { useBusiness, useCan } from '../hooks/context'
 import { useAnalytics, useCards } from '../hooks/queries'
 import { CHART } from '../lib/chart'
-import { DEVICE_TYPE_LABEL, RANGES, actionLabel, countryName, delta } from '../lib/format'
+import { DEVICE_TYPE_LABEL, RANGES, actionLabel, assigneeTypeLabel, countryName, delta } from '../lib/format'
 import { FilterBar, FilterSelect, KpiCard, TapResultBadge, TapSourceBadge } from '../components/bits'
 import { BizErrorState, NoAccess } from '../components/BizError'
 import { EmployeeSelect } from '../components/Pickers'
@@ -152,6 +152,25 @@ export default function AnalyticsPage() {
                 )}
               </CardBody>
             </Card>
+            {(!a || a.by_assignee_type) && (
+              <Card className="lg:col-span-2">
+                <CardHeader title="By owner type" description="Taps on company cards vs cards held by employees or customers." />
+                <CardBody>
+                  {!a ? (
+                    <Skeleton className="h-24" />
+                  ) : (
+                    <BarList
+                      items={(a.by_assignee_type ?? []).map((x) => ({
+                        key: x.assignee_type ?? 'none',
+                        label: x.assignee_type === 'business' ? `${business.name} (company)` : assigneeTypeLabel(x.assignee_type),
+                        value: x.taps,
+                      }))}
+                      color={CHART.tertiary}
+                    />
+                  )}
+                </CardBody>
+              </Card>
+            )}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">

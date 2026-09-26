@@ -4,7 +4,6 @@ import type {
   ActionPreview,
   ActionTypeDef,
   AssigneeType,
-  BulkCreateCardsRequest,
   Card,
   CardFilters,
   CardHistoryEntry,
@@ -21,7 +20,6 @@ export const cardsApi = {
   list: (bid: string, f: CardFilters) => api.get<Paginated<Card>>(c(bid), { ...f }),
   get: (bid: string, cid: string) => api.get<Card>(`${c(bid)}/${cid}`),
   create: (bid: string, body: CreateCardRequest) => api.post<Card>(c(bid), body),
-  bulk: (bid: string, body: BulkCreateCardsRequest) => api.post<Card[] | { items: Card[] }>(`${c(bid)}/bulk`, body),
   update: (bid: string, cid: string, body: UpdateCardRequest) => api.patch<Card>(`${c(bid)}/${cid}`, body),
   remove: (bid: string, cid: string) => api.delete(`${c(bid)}/${cid}`),
   assign: (bid: string, cid: string, assignee_type: AssigneeType, assignee_id: string) =>

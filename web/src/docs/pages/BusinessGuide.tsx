@@ -34,7 +34,7 @@ export default function BusinessGuide() {
         rows={[
           ['Held by', 'A person (employee or customer)', 'A thing: table, product, poster, door, shelf'],
           ['Typical actions', 'Employee profile, save contact, WhatsApp, loyalty', 'Menu, product info, Wi-Fi, website, reviews'],
-          ['Assignment', 'Assign / unassign to an employee or customer (history kept)', 'Usually unassigned'],
+          ['Assignment', 'Assign / unassign to an employee, a customer or the company (history kept)', 'Unassigned or the company'],
         ]}
       />
       <UL>
@@ -49,7 +49,16 @@ export default function BusinessGuide() {
           <B>Effective status</B> combines several states: <C>active</C>, <C>inactive</C>, <C>inactive_owner</C> (its employee was
           deactivated), <C>unassigned</C>, <C>business_suspended</C>.
         </li>
-        <li>Create cards in bulk (1–500 at a time, with a name prefix) for a print batch; they start unprogrammed.</li>
+        <li>
+          <B>Register cards on a phone</B>: nexTap → Reader → <B>Register cards</B>, then tap each chip (or tap an unknown card →{' '}
+          <B>Register this card</B>). This needs “Devices can register and program cards” in Business Settings. A card prepared in the
+          dashboard has no UID and shows <B>Not linked</B> until it is tapped with nexTap → Program card. <i>Linked</i> means the UID is known;{' '}
+          <i>programmed</i> means the tap link is written to the chip.
+        </li>
+        <li>
+          Cards can belong to the <B>company</B> (<C>assignee_type: &quot;business&quot;</C>) — shared counter, reception or event cards. Their
+          taps count for the business, and analytics break taps down by owner type.
+        </li>
       </UL>
 
       <Figure shot="card" caption="Card detail: the holder, the tap action, statistics and the printable tap-link QR code." />

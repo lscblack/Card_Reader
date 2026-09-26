@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { ExternalLink, Globe, Radio } from 'lucide-react'
+import { Building2, ExternalLink, Globe, Radio } from 'lucide-react'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/Table'
 import { Drawer } from '@/components/ui/Modal'
 import { Badge } from '@/components/ui/Badge'
@@ -11,7 +11,7 @@ import { useNow } from '@/hooks/useNow'
 import { dateTime, relativeTime } from '@/lib/format'
 import type { CardTap } from '../api/types'
 import { useBusiness } from '../hooks/context'
-import { DEVICE_TYPE_LABEL, actionLabel, countryName } from '../lib/format'
+import { DEVICE_TYPE_LABEL, actionLabel, assigneeHref, assigneeTypeLabel, countryName } from '../lib/format'
 import { ActionIcon, DetailRow, KindBadge, TapResultBadge, TapSourceBadge } from './bits'
 
 /** Taps table (NFC Events). Rows open the detail drawer via `onOpen`. */
@@ -48,7 +48,16 @@ export function TapsTable({ taps, onOpen, showCard = true, compact = false }: { 
                     {t.card_name ? <span className="block truncate font-medium">{t.card_name}</span> : <span className="text-subtle">Unknown card</span>}
                   </TD>
                 )}
-                <TD className="max-w-[180px] truncate">{t.assignee?.name ?? <span className="text-subtle">—</span>}</TD>
+                <TD className="max-w-[180px] truncate">
+                  {t.assignee ? (
+                    <span className="inline-flex max-w-full items-center gap-1">
+                      {t.assignee.type === 'business' && <Building2 className="h-3.5 w-3.5 shrink-0 text-subtle" aria-label="Company card" />}
+                      <span className="truncate">{t.assignee.name}</span>
+                    </span>
+                  ) : (
+                    <span className="text-subtle">—</span>
+                  )}
+                </TD>
                 <TD>
                   <TapSourceBadge source={t.source} />
                 </TD>
@@ -120,13 +129,17 @@ export function TapDetailDrawer({ tap, onClose }: { tap: CardTap | null; onClose
               </DetailRow>
               <DetailRow label="Holder">
                 {tap.assignee ? (
-                  <Link to={`${base}/${tap.assignee.type === 'employee' ? 'employees' : 'customers'}/${tap.assignee.id}`} className="text-accent hover:underline">
-                    {tap.assignee.name}
-                  </Link>
+                  assigneeHref(base, tap.assignee) ? (
+                    <Link to={assigneeHref(base, tap.assignee)!} className="text-accent hover:underline">
+                      {tap.assignee.name}
+                    </Link>
+                  ) : (
+                    tap.assignee.name
+                  )
                 ) : (
                   '—'
                 )}
-                {tap.assignee && <Badge className="ml-2">{tap.assignee.type}</Badge>}
+                {tap.assignee && <Badge className="ml-2">{assigneeTypeLabel(tap.assignee.type)}</Badge>}
               </DetailRow>
               <DetailRow label="Action">{tap.action_type ? actionLabel(tap.action_type) : '—'}</DetailRow>
               <DetailRow label="Source">{tap.source === 'reader' ? 'nexTap (business device)' : 'Customer phone (web link)'}</DetailRow>

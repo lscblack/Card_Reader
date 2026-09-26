@@ -88,16 +88,32 @@ async def _reload(session: SessionDep, card_id: uuid.UUID) -> Card:
 
 
 async def _assignee(session: SessionDep, business_id: uuid.UUID, type_: str | None, ident: uuid.UUID | None,
-                    prefix: str = "body") -> tuple[uuid.UUID | None, uuid.UUID | None]:
+                    prefix: str = "body") -> tuple[uuid.UUID | None, uuid.UUID | None, bool]:
+    """(employee_id, customer_id, assigned_to_business) — at most one is set."""
+    if type_ == "business":  # the company itself: no id, or the business's own id
+        if ident is not None and ident != business_id:
+            raise validation_error(f"{prefix}.assignee_id", "for assignee_type business, omit assignee_id or pass "
+                                                             "this business's id")
+        return None, None, True
     if type_ is None and ident is None:
-        return None, None
+        return None, None, False
     if type_ is None or ident is None:
         raise validation_error(f"{prefix}.assignee_id", "assignee_type and assignee_id go together")
     model = Employee if type_ == "employee" else Customer
     obj = await session.get(model, ident)
     if obj is None or obj.business_id != business_id:
         raise validation_error(f"{prefix}.assignee_id", f"{type_} not found in this business")
-    return (ident, None) if type_ == "employee" else (None, ident)
+    return (ident, None, False) if type_ == "employee" else (None, ident, False)
+
+
+def _assignee_ref(card: Card) -> tuple[str | None, uuid.UUID | None]:
+    if card.assigned_to_business:
+        return "business", card.business_id
+    if card.employee_id:
+        return "employee", card.employee_id
+    if card.customer_id:
+        return "customer", card.customer_id
+    return None, None
 
 
 async def _check_profile(session: SessionDep, business_id: uuid.UUID, profile_id: uuid.UUID | None) -> None:
@@ -113,7 +129,7 @@ async def _check_profile(session: SessionDep, business_id: uuid.UUID, profile_id
 async def list_cards(ctx: View, session: SessionDep, pagination: PaginationDep,
                      kind: Literal["card", "tag"] | None = None,
                      status: Literal["active", "inactive"] | None = None,
-                     assignee_type: Literal["employee", "customer", "none"] | None = None,
+                     assignee_type: Literal["employee", "customer", "business", "none"] | None = None,
                      programmed: bool | None = None,
                      q: str | None = Query(default=None, max_length=100)) -> Page[CardOut]:
     conds = [Card.business_id == ctx.business.id, Card.deleted_at.is_(None)]
@@ -125,8 +141,11 @@ async def list_cards(ctx: View, session: SessionDep, pagination: PaginationDep,
         conds.append(Card.employee_id.is_not(None))
     elif assignee_type == "customer":
         conds.append(Card.customer_id.is_not(None))
+    elif assignee_type == "business":
+        conds.append(Card.assigned_to_business.is_(True))
     elif assignee_type == "none":
-        conds.append(and_(Card.employee_id.is_(None), Card.customer_id.is_(None)))
+        conds.append(and_(Card.employee_id.is_(None), Card.customer_id.is_(None),
+                          Card.assigned_to_business.is_(False)))
     if programmed is not None:
         conds.append(Card.programmed_at.is_not(None) if programmed else Card.programmed_at.is_(None))
     if q:
@@ -150,12 +169,13 @@ async def create_card(body: CardIn, ctx: Manage, session: SessionDep, client: Cl
     await biz.ensure_business_limit(session, ctx.business, "cards")
     uid = normalize_uid(body.uid)
     await ensure_uid_free(session, ctx.business.id, uid)
-    employee_id, customer_id = await _assignee(session, ctx.business.id, body.assignee_type, body.assignee_id)
+    employee_id, customer_id, to_business = await _assignee(session, ctx.business.id, body.assignee_type,
+                                                            body.assignee_id)
     await _check_profile(session, ctx.business.id, body.profile_id)
     action = await validate_action(session, ctx.business.id, body.action)
     card = Card(business_id=ctx.business.id, kind=body.kind, name=body.name.strip(), uid=uid,
                 public_code=await unique_public_code(session), status=body.status, employee_id=employee_id,
-                customer_id=customer_id, profile_id=body.profile_id, action=action,
+                customer_id=customer_id, assigned_to_business=to_business, profile_id=body.profile_id, action=action,
                 total_taps=0, unique_visitors=0)
     session.add(card)
     try:
@@ -164,9 +184,9 @@ async def create_card(body: CardIn, ctx: Manage, session: SessionDep, client: Cl
         await session.rollback()
         raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID") from None
     history(session, card, "created", user=ctx.user, name=card.name, kind=card.kind)
-    if employee_id or customer_id:
+    if employee_id or customer_id or to_business:
         history(session, card, "assigned", user=ctx.user, assignee_type=body.assignee_type,
-                assignee_id=body.assignee_id)
+                assignee_id=_assignee_ref(card)[1])
     audit.record(session, action="card.create", user_id=ctx.user.id, client=client, resource_type="card",
                  resource_id=card.id, metadata={"name": card.name, "kind": card.kind})
     await session.commit()
@@ -216,14 +236,20 @@ async def delete_card(card_id: uuid.UUID, ctx: Manage, session: SessionDep, clie
     return Response(status_code=204)
 
 
-@router.post("/cards/{card_id}/assign", response_model=CardOut, summary="Assign to an employee or customer")
+@router.post("/cards/{card_id}/assign", response_model=CardOut,
+             summary="Assign to an employee, a customer or the business itself",
+             description="`assignee_type: business` makes it a company card (`assignee_id` omitted or the business id).")
 async def assign_card(card_id: uuid.UUID, body: AssignIn, ctx: Manage, session: SessionDep, client: ClientDep) -> CardOut:
     card = await _get_card(session, ctx.business.id, card_id)
-    card.employee_id, card.customer_id = await _assignee(session, ctx.business.id, body.assignee_type, body.assignee_id)
-    history(session, card, "assigned", user=ctx.user, assignee_type=body.assignee_type, assignee_id=body.assignee_id)
+    if body.assignee_type != "business" and body.assignee_id is None:
+        raise validation_error("body.assignee_id", "assignee_id is required for employee/customer")
+    card.employee_id, card.customer_id, card.assigned_to_business = await _assignee(
+        session, ctx.business.id, body.assignee_type, body.assignee_id)
+    _, assignee_id = _assignee_ref(card)
+    history(session, card, "assigned", user=ctx.user, assignee_type=body.assignee_type, assignee_id=assignee_id)
     audit.record(session, action="card.assign", user_id=ctx.user.id, client=client, resource_type="card",
                  resource_id=card.id, metadata={"assignee_type": body.assignee_type,
-                                                "assignee_id": str(body.assignee_id)})
+                                                "assignee_id": str(assignee_id)})
     await session.commit()
     return card_out(await _reload(session, card.id), ctx.business)
 
@@ -231,9 +257,11 @@ async def assign_card(card_id: uuid.UUID, body: AssignIn, ctx: Manage, session: 
 @router.post("/cards/{card_id}/unassign", response_model=CardOut, summary="Remove the assignee")
 async def unassign_card(card_id: uuid.UUID, ctx: Manage, session: SessionDep, client: ClientDep) -> CardOut:
     card = await _get_card(session, ctx.business.id, card_id)
-    previous = card.employee_id or card.customer_id
+    previous_type, previous = _assignee_ref(card)
     card.employee_id = card.customer_id = None
-    history(session, card, "unassigned", user=ctx.user, previous_assignee_id=previous)
+    card.assigned_to_business = False
+    history(session, card, "unassigned", user=ctx.user, previous_assignee_id=previous,
+            previous_assignee_type=previous_type)
     audit.record(session, action="card.unassign", user_id=ctx.user.id, client=client, resource_type="card",
                  resource_id=card.id)
     await session.commit()
@@ -409,6 +437,10 @@ async def analytics(ctx: Analytics, session: SessionDep,
         select(CardTap.assignee_id, func.max(CardTap.assignee_name), func.count())
         .where(*conds, CardTap.assignee_type == "employee").group_by(CardTap.assignee_id)
         .order_by(func.count().desc()).limit(20))).all()
+    kinds = {(k or "unassigned"): n for k, n in (await session.execute(
+        select(CardTap.assignee_type, func.count())
+        .where(*conds, or_(CardTap.card_id.is_not(None), CardTap.assignee_type.is_not(None)))
+        .group_by(CardTap.assignee_type))).all()}
     last = (await session.execute(select(CardTap).where(*base).order_by(CardTap.created_at.desc()).limit(1))).scalar_one_or_none()
     return {
         "range": range,
@@ -417,6 +449,7 @@ async def analytics(ctx: Analytics, session: SessionDep,
         "timeline": await _timeline(session, conds, tz, days),
         "by_card": [{"card_id": str(r[0]), "name": r[1], "taps": int(r[2])} for r in by_card],
         "by_employee": [{"employee_id": str(r[0]), "name": r[1], "taps": int(r[2])} for r in by_employee],
+        "by_assignee_type": {k: int(kinds.get(k, 0)) for k in ("employee", "customer", "business", "unassigned")},
         "by_action": await _breakdown(session, CardTap.action_type, conds, "action_type"),
         "by_device_type": await _breakdown(session, CardTap.device_type, conds, "device_type"),
         "by_country": await _breakdown(session, CardTap.country, conds, "country"),

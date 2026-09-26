@@ -413,10 +413,13 @@ function seedAcme(): Db {
   db.customers.slice(0, 5).forEach((c, i) => {
     db.cards.push(mkCard('card', `Loyalty card · ${c.full_name.split(' ')[0]}`, { type: 'customer', id: c.id, name: c.full_name }, { action: i === 0 ? { type: 'developer_webhook', config: { application_id: '', then: { type: 'business_profile', config: {} } } } : { type: 'website', config: { url: 'https://acme-cafe.example/loyalty' } } }))
   })
-  for (let i = 1; i <= 4; i++) db.cards.push(mkCard('card', `Blank card #${String(i).padStart(3, '0')}`, null, { programmed: false }))
+  const company: Assignee = { type: 'business', id: business.id, name: business.name, photo_url: business.logo_url }
+  db.cards.push(mkCard('card', 'Front desk card', company, { action: { type: 'business_profile', config: {} } }))
+  db.cards.push(mkCard('card', 'Events team card', company, { action: { type: 'share_contact', config: {} } }))
+  for (let i = 1; i <= 2; i++) db.cards.push(mkCard('card', `Spare card #${String(i).padStart(3, '0')}`, null, { programmed: false }))
   // Tags
-  for (let t = 1; t <= 6; t++) db.cards.push(mkCard('tag', `Table ${t}`, null, { action: { type: 'digital_menu', config: { profile_id: menu.id } } }))
-  db.cards.push(mkCard('tag', 'Front window poster', null, { action: { type: 'website', config: { url: 'https://acme-cafe.example/summer' } } }))
+  for (let t = 1; t <= 6; t++) db.cards.push(mkCard('tag', `Table ${t}`, t <= 3 ? company : null, { action: { type: 'digital_menu', config: { profile_id: menu.id } } }))
+  db.cards.push(mkCard('tag', 'Front window poster', company, { action: { type: 'website', config: { url: 'https://acme-cafe.example/summer' } } }))
   db.cards.push(mkCard('tag', 'Guest Wi-Fi sticker', null, { action: { type: 'wifi', config: { ssid: 'AcmeCafe-Guest', password: 'espresso2026', security: 'WPA', hidden: false } } }))
   db.cards.push(mkCard('tag', 'Counter stand', null, { action: { type: 'business_profile', config: {} } }))
   db.cards.push(mkCard('tag', 'Bean shelf — House Blend', null, { action: { type: 'product_info', config: { profile_id: product.id } } }))
@@ -769,6 +772,9 @@ function analytics(db: Db, q: Query): Analytics {
     by_card: countBy(cur, (t) => t.card_id).slice(0, 10).map(([card_id, taps]) => ({ card_id, name: cardName.get(card_id) ?? 'Deleted card', taps })),
     by_employee: countBy(cur, (t) => (t.assignee?.type === 'employee' ? t.assignee.id : null)).slice(0, 10).map(([employee_id, taps]) => ({ employee_id, name: empName.get(employee_id) ?? '—', taps })),
     by_action: countBy(cur, (t) => t.action_type).map(([action_type, taps]) => ({ action_type, taps })),
+    by_assignee_type: (['business', 'employee', 'customer', null] as const)
+      .map((assignee_type) => ({ assignee_type, taps: cur.filter((t) => (t.assignee?.type ?? null) === assignee_type).length }))
+      .filter((r) => r.taps > 0),
     by_device_type: countBy(cur, (t) => t.device_type).map(([device_type, taps]) => ({ device_type: device_type as DeviceType, taps })),
     by_country: countBy(cur, (t) => t.country).map(([country, taps]) => ({ country, taps })),
     by_hour: Array.from({ length: 24 }, (_, hour) => ({ hour, taps: cur.filter((t) => new Date(t.created_at).getHours() === hour).length })),
@@ -1095,27 +1101,15 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
     const errs = validateAction(db, body.action)
     if (errs) return fail(422, 'invalid_action_config', 'Invalid action configuration', errs)
     const code = base62(10)
-    const c: Card = { id: uuid(), business_id: b.id, kind: body.kind === 'tag' ? 'tag' : 'card', name, uid, uid_masked: uid ? `${uid.slice(0, 2)}••••••${uid.slice(-2)}` : null, public_code: code, tap_url: TAP_BASE + code, status: 'active', effective_status: 'active', assignee: null, profile_id: (body.profile_id as string) ?? null, action: (body.action as Action) ?? null, programmed: false, programmed_at: null, total_taps: 0, unique_visitors: 0, last_tap_at: null, created_at: now() }
+    const at_ = body.assignee_type
+    const who = at_ === 'business' ? b : at_ === 'employee' ? db.employees.find((e) => e.id === body.assignee_id) : at_ === 'customer' ? db.customers.find((x) => x.id === body.assignee_id) : undefined
+    if (at_ && !who) return fail(404, 'not_found', 'Assignee not found')
+    const assignee: Assignee | null = !who ? null : at_ === 'business' ? { type: 'business', id: b.id, name: b.name, photo_url: b.logo_url } : { type: at_ as Assignee['type'], id: who.id, name: 'full_name' in who ? who.full_name : '', photo_url: 'photo_url' in who ? who.photo_url : null }
+    const c: Card = { id: uuid(), business_id: b.id, kind: body.kind === 'tag' ? 'tag' : 'card', name, uid, uid_masked: uid ? `${uid.slice(0, 2)}••••••${uid.slice(-2)}` : null, public_code: code, tap_url: TAP_BASE + code, status: 'active', effective_status: 'active', assignee, profile_id: (body.profile_id as string) ?? null, action: (body.action as Action) ?? null, programmed: false, programmed_at: null, total_taps: 0, unique_visitors: 0, last_tap_at: null, created_at: now() }
     db.cards.unshift(c)
     db.history.set(c.id, [{ id: uuid(), type: 'created', description: `${c.kind === 'tag' ? 'Tag' : 'Card'} created`, actor: { type: 'user', id: null, name: 'You' }, created_at: now() }])
     refresh(db)
     return ok(c, 201)
-  }
-  if (at('POST', '/cards/bulk')) {
-    const count = Math.floor(Number(body.count))
-    if (!(count >= 1 && count <= 500)) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.count', message: 'Between 1 and 500' }])
-    const prefix = str(body.name_prefix).trim() || 'Card'
-    const created: Card[] = []
-    const startN = db.cards.filter((c) => c.name.startsWith(prefix)).length
-    for (let i = 1; i <= count; i++) {
-      const code = base62(10)
-      const c: Card = { id: uuid(), business_id: b.id, kind: body.kind === 'tag' ? 'tag' : 'card', name: `${prefix} ${String(startN + i).padStart(3, '0')}`, uid: null, uid_masked: null, public_code: code, tap_url: TAP_BASE + code, status: 'active', effective_status: 'active', assignee: null, profile_id: null, action: null, programmed: false, programmed_at: null, total_taps: 0, unique_visitors: 0, last_tap_at: null, created_at: now() }
-      created.push(c)
-      db.history.set(c.id, [{ id: uuid(), type: 'created', description: 'Created in a bulk batch', actor: { type: 'user', id: null, name: 'You' }, created_at: now() }])
-    }
-    db.cards.unshift(...created)
-    refresh(db)
-    return ok({ created: created.length, items: created }, 201)
   }
   if (seg[2] === 'cards' && seg[3]) {
     const c = db.cards.find((x) => x.id === seg[3])
@@ -1150,6 +1144,13 @@ export function handleBusinessMock(method: string, path: string, q: Query, body:
     }
     if (at('POST', '/cards/:cid/assign')) {
       const type = body.assignee_type
+      if (type === 'business') {
+        if (body.assignee_id && body.assignee_id !== b.id) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.assignee_id', message: 'Must be this business' }])
+        c.assignee = { type: 'business', id: b.id, name: b.name, photo_url: b.logo_url }
+        hist('assigned', `Assigned to ${b.name} (company)`)
+        refresh(db)
+        return ok(c)
+      }
       const person = type === 'employee' ? db.employees.find((e) => e.id === body.assignee_id) : db.customers.find((x) => x.id === body.assignee_id)
       if (!person) return fail(404, 'not_found', 'Assignee not found')
       c.assignee = { type: type as Assignee['type'], id: person.id, name: person.full_name, photo_url: 'photo_url' in person ? person.photo_url : null }

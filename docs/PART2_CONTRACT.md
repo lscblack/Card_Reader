@@ -407,3 +407,18 @@ REQUEST_LOG_ENABLED=true
 - **Rate limits:** the strict 10/min per-IP bucket applies **only** to credential POSTs (`/auth/login`, `/auth/register`,
   `/auth/forgot-password`, `/auth/reset-password`, `/auth/verify-email`, `/auth/resend-verification`,
   `/invitations/{token}/accept`). `/auth/me` and every other authenticated route use the normal per-user bucket.
+- **Company cards (assignee type `business`).** A card/tag can be assigned to the business itself instead of a person:
+  `POST /businesses/{id}/cards` and `POST …/cards/{cid}/assign` accept `assignee_type: "business"` with `assignee_id`
+  omitted/null or equal to the business id (any other id → `422 validation_error` on `body.assignee_id`). It is
+  exclusive with employee/customer (stored as `cards.assigned_to_business`; DB check: at most one of employee, customer,
+  business). `…/unassign` clears it. History/audit record `assignee_type: "business"`. `Card.assignee` is then
+  `{ type: "business", id: <business id>, name: <business name>, photo_url: <business logo url>|null }`; an active
+  company card's `effective_status` is `active` (not `unassigned`). List filter: `?assignee_type=employee|customer|business|none`
+  (`none` = no person and not the company).
+- Taps of company cards carry `assignee {type: "business", id, name}`; reader responses (`business.result`) are
+  `recognized` with the company as `assignee` (`position: null`, `photo_url` = logo). Public tap resolution is unchanged
+  (the default action is still the business profile).
+- Devices: `POST /device/business/cards` accepts optional `assign_to_business: bool` (default `false`) to register a
+  company card; `GET /device/business/cards` items include `assignee_type` (`employee|customer|business|null`).
+- `GET /businesses/{id}/analytics` adds `by_assignee_type: { employee, customer, business, unassigned }` — tap counts in
+  the range by the holder type at tap time (`by_employee` unchanged).

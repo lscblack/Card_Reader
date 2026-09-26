@@ -229,7 +229,7 @@ export default function ActionsPage() {
             </div>
           ) : !groups.length ? (
             <Card>
-              <EmptyState icon={Nfc} title="No cards or tags yet" description="Create a card or tag and choose what a tap does." />
+              <EmptyState icon={Nfc} title="No cards or tags yet" description="Register a card or tag with the nexTap app, then choose what a tap does." />
             </Card>
           ) : (
             <div className="space-y-3">

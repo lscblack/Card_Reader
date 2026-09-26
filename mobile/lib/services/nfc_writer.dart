@@ -22,9 +22,10 @@ class NfcWriteException implements Exception {
 /// Writes an NDEF URI to the next presented tag (mockable).
 abstract class NfcWriter {
   /// Waits for a tag, writes [uri] as an NDEF URI record and returns the tag
-  /// UID (uppercase hex). Never makes the tag read-only.
+  /// UID (uppercase hex). Never makes the tag read-only. With [expectedUid], any other tag is
+  /// refused before anything is written ([MobError.wrongCard]).
   /// Throws [NfcWriteException].
-  Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60)});
+  Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60), String? expectedUid});
 
   /// Aborts a pending [writeUri].
   Future<void> cancel();
@@ -101,7 +102,7 @@ class AndroidNfcWriter implements NfcWriter {
   Completer<String>? _pending;
 
   @override
-  Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60)}) async {
+  Future<String> writeUri(String uri, {Duration timeout = const Duration(seconds: 60), String? expectedUid}) async {
     await cancel();
     final completer = _pending = Completer<String>();
     final message = uriMessage(uri);
@@ -118,7 +119,7 @@ class AndroidNfcWriter implements NfcWriter {
         onTagDiscovered: (tag) async {
           if (completer.isCompleted) return;
           try {
-            final uid = await _write(tag, message);
+            final uid = await _write(tag, message, expectedUid);
             if (!completer.isCompleted) completer.complete(uid);
           } on NfcWriteException catch (e) {
             if (!completer.isCompleted) completer.completeError(e);
@@ -146,10 +147,11 @@ class AndroidNfcWriter implements NfcWriter {
     }
   }
 
-  Future<String> _write(NfcTag tag, NdefMessage message) async {
+  Future<String> _write(NfcTag tag, NdefMessage message, String? expectedUid) async {
     final android = NfcTagAndroid.from(tag);
     final uid = android == null ? null : CardUtils.normalizeUid(CardUtils.bytesToHex(android.id));
     if (uid == null) throw const NfcWriteException(MobError.uidUnavailable);
+    if (expectedUid != null && uid != expectedUid) throw const NfcWriteException(MobError.wrongCard);
     final ndef = NdefAndroid.from(tag);
     final formatable = NdefFormatableAndroid.from(tag);
     final method = planNdefWrite(

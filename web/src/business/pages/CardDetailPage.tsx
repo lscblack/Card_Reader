@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import {
   ArrowLeft,
-  CheckCircle2,
-  CircleDashed,
+  Building2,
   History,
   Nfc,
   Pencil,
@@ -36,8 +35,8 @@ import { useBizMutation, useCard, useCardHistory, useCardStats, useCardTaps } fr
 import { useErrorToast } from '../hooks/useErrorToast'
 import { fieldErrorsOf } from '../lib/errors'
 import { CHART } from '../lib/chart'
-import { DEVICE_TYPE_LABEL, EFFECTIVE_STATUS, countryName, describeHistory, maskUid } from '../lib/format'
-import { Avatar, CardStatusBadge, DetailRow, KindBadge, PageSkeleton } from '../components/bits'
+import { DEVICE_TYPE_LABEL, EFFECTIVE_STATUS, assigneeHref, assigneeTypeLabel, countryName, describeHistory, maskUid } from '../lib/format'
+import { Avatar, CardStatusBadge, DetailRow, KindBadge, LinkBadge, PageSkeleton } from '../components/bits'
 import { BizErrorState, FormError } from '../components/BizError'
 import { ActionConfigurator, ActionSummary } from '../components/ActionConfigurator'
 import { AssigneePickerModal, ProfileSelect } from '../components/Pickers'
@@ -74,14 +73,17 @@ function CardFace({ card }: { card: NfcCard }) {
           <DetailRow label="Name">{card.name}</DetailRow>
           <DetailRow label="Card ID">
             <span className="font-mono text-[12.5px]">{card.uid_masked ?? maskUid(card.uid)}</span>
-            {!card.uid && <span className="ml-2 text-xs text-subtle">captured when programmed</span>}
+            {!card.uid && <span className="ml-2 text-xs text-subtle">not linked — tap it with nexTap (Program card)</span>}
           </DetailRow>
           <DetailRow label={card.kind === 'tag' ? 'Assigned to' : 'Owner'}>
             {card.assignee ? (
               <span className="inline-flex items-center gap-2">
                 <Avatar name={card.assignee.name} src={card.assignee.photo_url} size={22} />
                 {card.assignee.name}
-                <span className="text-xs text-subtle capitalize">· {card.assignee.type}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-subtle">
+                  · {card.assignee.type === 'business' && <Building2 className="h-3 w-3" aria-hidden />}
+                  {assigneeTypeLabel(card.assignee.type)}
+                </span>
               </span>
             ) : (
               <span className="text-subtle">Unassigned</span>
@@ -190,16 +192,23 @@ function AssignmentCard({ card }: { card: NfcCard }) {
   const manage = can('cards.manage')
   return (
     <Card>
-      <CardHeader title="Assignment" description={card.kind === 'tag' ? 'Optionally link this tag to a person.' : 'Who holds this card.'} />
+      <CardHeader title="Assignment" description={card.kind === 'tag' ? 'Optionally link this tag to the company or a person.' : 'Who holds this card — a person or the company.'} />
       <CardBody className="space-y-4">
         {card.assignee ? (
           <div className="flex items-center gap-3">
             <Avatar name={card.assignee.name} src={card.assignee.photo_url} size={40} />
             <div className="min-w-0 flex-1">
-              <Link to={`${base}/${card.assignee.type === 'employee' ? 'employees' : 'customers'}/${card.assignee.id}`} className="block truncate font-medium hover:text-accent hover:underline">
-                {card.assignee.name}
-              </Link>
-              <p className="text-xs text-subtle capitalize">{card.assignee.type}</p>
+              {assigneeHref(base, card.assignee) ? (
+                <Link to={assigneeHref(base, card.assignee)!} className="block truncate font-medium hover:text-accent hover:underline">
+                  {card.assignee.name}
+                </Link>
+              ) : (
+                <p className="truncate font-medium">{card.assignee.name}</p>
+              )}
+              <p className="text-xs text-subtle">
+                {assigneeTypeLabel(card.assignee.type)}
+                {card.assignee.type === 'business' && ' — a shared company card; taps count for the business'}
+              </p>
             </div>
           </div>
         ) : (
@@ -442,15 +451,8 @@ export default function CardDetailPage() {
         }
         description={
           <span className="inline-flex items-center gap-1.5">
-            {card.programmed ? (
-              <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Programmed {card.programmed_at ? relativeTime(card.programmed_at) : ''}
-              </>
-            ) : (
-              <>
-                <CircleDashed className="h-3.5 w-3.5" /> Not programmed yet
-              </>
-            )}
+            <LinkBadge uid={card.uid} programmed={card.programmed} />
+            {card.programmed && card.programmed_at && <span className="text-subtle">programmed {relativeTime(card.programmed_at)}</span>}
             <span className="text-subtle">· created {dateTime(card.created_at)}</span>
           </span>
         }
@@ -497,11 +499,18 @@ export default function CardDetailPage() {
             {card.assignee?.name} is deactivated, so this card shows a neutral page. Reactivate the employee or reassign the card.
           </Alert>
         )}
-        {!card.programmed && (
-          <Alert tone="info" title="Program this card with the nexTap app">
-            On a paired business phone open <strong>Program card</strong>, search for “{card.name}” and hold the card to the phone. The app writes the
-            tap link below to the chip and records its UID.
+        {!card.uid ? (
+          <Alert tone="warning" title="Not linked to a chip yet">
+            Tap this card with the nexTap app to link it: on a paired business phone open <strong>Program card</strong>, search for “{card.name}” and hold the
+            card to the phone. The app records the chip’s UID and writes the tap link below.
           </Alert>
+        ) : (
+          !card.programmed && (
+            <Alert tone="info" title="Program this card with the nexTap app">
+              The chip is linked but its tap link hasn’t been written yet. On a paired business phone open <strong>Program card</strong>, search for “{card.name}”
+              and hold the card to the phone.
+            </Alert>
+          )
         )}
         <CardFace card={card} />
         <div className="grid gap-6 lg:grid-cols-2">

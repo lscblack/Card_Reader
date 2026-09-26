@@ -28,9 +28,26 @@ class CardProgrammer {
       return const ProgramOutcome.failure(AppError('This card has no tap URL yet.', ref: 'MOB-1018'));
     }
     await reader.pauseForProgramming();
+    try {
+      return await writeAndReport(card, timeout: timeout);
+    } finally {
+      await reader.resumeAfterProgramming();
+    }
+  }
+
+  /// Writes [card]'s tap link to the next presented tag (only [expectedUid] when given) and reports
+  /// it as programmed. The caller owns reader mode (no pause/resume here).
+  Future<ProgramOutcome> writeAndReport(
+    BusinessCardItem card, {
+    Duration timeout = const Duration(seconds: 60),
+    String? expectedUid,
+  }) async {
+    if (card.tapUrl.isEmpty) {
+      return const ProgramOutcome.failure(AppError('This card has no tap URL yet.', ref: 'MOB-1018'));
+    }
     String? uid;
     try {
-      uid = await writer.writeUri(card.tapUrl, timeout: timeout);
+      uid = await writer.writeUri(card.tapUrl, timeout: timeout, expectedUid: expectedUid);
       await api.markCardProgrammed(cardId: card.id, uid: uid);
       return ProgramOutcome.success(uid);
     } on NfcWriteException catch (e) {
@@ -50,8 +67,6 @@ class CardProgrammer {
         AppError.network(e, 'The link was written, but the server could not be reached: '),
         uid: uid,
       );
-    } finally {
-      await reader.resumeAfterProgramming();
     }
   }
 
