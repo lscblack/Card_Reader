@@ -332,6 +332,13 @@ async def test_tap_resolution_every_action_type(client: AsyncClient, redis) -> N
     r = await _tap(client, card)
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert "tel:*182*8*1*123%23" in r.text and "tel:*500%23" in r.text and "Pay with MoMo" in r.text
+    # the nexTap app asks for the codes to dial natively (records the tap); other actions → 404, nothing recorded
+    r = await client.post(f"/api/v1/public/t/{card['public_code']}/ussd", headers={"User-Agent": "nexTap/1.0 (Android)"})
+    assert r.status_code == 200, r.text
+    assert r.json()["options"] == [{"label": "Pay with MoMo", "code": "*182*8*1*123#"}, {"label": "Airtel Money", "code": "*500#"}]
+    web_card = await _card_with_action(client, owner, {"type": "website", "config": {"url": "https://acme.example.com"}})
+    assert (await client.post(f"/api/v1/public/t/{web_card['public_code']}/ussd")).status_code == 404
+    assert (await client.post("/api/v1/public/t/NOPE12345/ussd")).status_code == 404
     bad = await client.post(f"{base}/cards", headers=owner["headers"],
                             json={"name": "Bad", "action": {"type": "ussd", "config": {"code": "182 hello"}}})
     assert bad.status_code == 422 and "code" in bad.text

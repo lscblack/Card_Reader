@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/models/business.dart';
+import '../../services/ussd_dialer.dart';
 import '../theme.dart';
 
 /// Colour for a business result: recognized green, inactive amber, unknown neutral.
@@ -20,8 +21,11 @@ String businessResultLabel(BusinessResult b) => switch (b.result) {
 };
 
 /// Opens an action URL if its scheme is allowed (http/https incl. wa.me, tel, mailto).
+/// A USSD code (`tel:*182*8*1%23`) is dialed directly instead of only filling the dialer.
 Future<bool> openActionUrl(String? url) async {
   if (!isOpenableActionUrl(url)) return false;
+  final ussd = ussdCodeFromUrl(url);
+  if (ussd != null) return UssdDialer.dial(ussd);
   try {
     return await launchUrl(Uri.parse(url!.trim()), mode: LaunchMode.externalApplication);
   } catch (_) {

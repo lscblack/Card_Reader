@@ -24,7 +24,7 @@ from pydantic import Field
 from app.schemas.business import CategoryOut
 from app.schemas.common import Schema
 from app.services import delivery, taps
-from app.services.actions import ACTION_TYPES, effective_action, resolve, vcard_for, wifi_qr_string
+from app.services.actions import ACTION_TYPES, effective_action, resolve, ussd_options, vcard_for, wifi_qr_string
 from app.services.business import card_effective_status, media_url
 from app.services.business_serializers import profile_out
 from app.services.request_logs import country_from, ip_hash, set_actor
@@ -315,6 +315,31 @@ async def public_wifi(public_code: str, session: SessionDep, request: Request) -
 
 
 # ── Tap resolution: GET /t/{public_code} (root path) ────────────────────
+@router.post("/public/t/{public_code}/ussd", summary="Card tap from the nexTap app: USSD action",
+             description="Lets the nexTap app dial a card's USSD code natively. When the card is available and its "
+                         "action is `ussd`, records the tap (exactly like `/t/{code}`) and returns the codes; "
+                         "otherwise 404 and nothing is recorded — the app then opens the tap link as usual.")
+async def tap_ussd(public_code: str, session: SessionDep, request: Request) -> dict[str, Any]:
+    set_actor(request, "public")
+    card = (await session.execute(
+        select(Card).where(Card.public_code == public_code, Card.deleted_at.is_(None))
+    )).scalar_one_or_none()
+    business = await session.get(Business, card.business_id) if card is not None else None
+    available = (
+        card is not None and business is not None and business.deleted_at is None and business.status == "active"
+        and business.verified and card_effective_status(card, business) not in ("inactive", "inactive_owner")
+    )
+    if not available or effective_action(card, business).get("type") != "ussd":
+        raise AppError(404, "not_found", "No USSD action for this card")
+    request.state.business_id = business.id
+    res = await resolve(session, business, card)
+    options = ussd_options(effective_action(card, business).get("config") or {})
+    await taps.record_tap(session, business=business, card=card, source="web", result="page", action_type="ussd",
+                          ip=client_ip(request), ua=request.headers.get("user-agent"), country=country_from(request))
+    await session.commit()
+    return {"action_type": "ussd", "url": res.url, "options": [{"label": lbl, "code": code} for lbl, code in options]}
+
+
 def _unavailable_redirect(reason: str) -> RedirectResponse:
     url = f"{settings.public_web_url}/tap/unavailable?" + urlencode({"reason": reason})
     return RedirectResponse(url, status_code=302, headers={"Cache-Control": "no-store"})

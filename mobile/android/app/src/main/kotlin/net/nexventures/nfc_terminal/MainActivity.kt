@@ -43,6 +43,9 @@ class MainActivity : FlutterActivity() {
     /** Not visible (cold start or in background) → a dispatched tag "launched" us. */
     private var stopped = true
     private var pendingPermissionResult: MethodChannel.Result? = null
+
+    /** USSD code waiting for the CALL_PHONE permission answer, and the Dart call to complete. */
+    private var pendingDial: Pair<String, MethodChannel.Result>? = null
     private var notificationId = 1000
 
     /** Recreated from saved state, or relaunched from Recents with the original intent. */
@@ -175,6 +178,15 @@ class MainActivity : FlutterActivity() {
                 result.success(true)
             } catch (e: Exception) {
                 result.success(false)
+            }
+        }
+        MethodChannel(messenger, DIALER_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "dial" -> {
+                    val code = call.argument<String>("code")
+                    if (code.isNullOrBlank()) result.error("bad_args", "code missing", null) else dialUssd(code, result)
+                }
+                else -> result.notImplemented()
             }
         }
         tagsChannel = MethodChannel(messenger, TAGS_CHANNEL).apply {
@@ -404,8 +416,45 @@ class MainActivity : FlutterActivity() {
         requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
     }
 
+    /**
+     * Dials a USSD code: places the call directly (ACTION_CALL) once CALL_PHONE is granted, asking the first time.
+     * Without the permission (denied, or no telephony) the dialer opens with the code filled in instead.
+     * Completes with "called", "dialer" or "failed".
+     */
+    private fun dialUssd(code: String, result: MethodChannel.Result) {
+        if (checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            result.success(startDial(code, Intent.ACTION_CALL))
+            return
+        }
+        if (pendingDial != null) {
+            result.success(startDial(code, Intent.ACTION_DIAL))
+            return
+        }
+        pendingDial = code to result
+        requestPermissions(arrayOf(Manifest.permission.CALL_PHONE), REQUEST_CALL_PHONE)
+    }
+
+    private fun startDial(code: String, action: String): String {
+        // Uri.encode keeps "*" and escapes "#" (%23), which the dialer would otherwise treat as a fragment.
+        val uri = Uri.parse("tel:" + Uri.encode(code))
+        return try {
+            startActivity(Intent(action, uri))
+            if (action == Intent.ACTION_CALL) "called" else "dialer"
+        } catch (e: Exception) {
+            if (action == Intent.ACTION_CALL) startDial(code, Intent.ACTION_DIAL) else "failed"
+        }
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CALL_PHONE) {
+            val pending = pendingDial
+            pendingDial = null
+            if (pending != null) {
+                val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+                pending.second.success(startDial(pending.first, if (granted) Intent.ACTION_CALL else Intent.ACTION_DIAL))
+            }
+        }
         if (requestCode == REQUEST_NOTIFICATIONS) {
             pendingPermissionResult?.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
             pendingPermissionResult = null
@@ -442,8 +491,10 @@ class MainActivity : FlutterActivity() {
         private const val TAGS_CHANNEL = "net.nexventures.nfc_terminal/tags"
         private const val HCE_CHANNEL = "net.nexventures.nfc_terminal/hce"
         private const val CONTACTS_CHANNEL = "net.nexventures.nfc_terminal/contacts"
+        private const val DIALER_CHANNEL = "net.nexventures.nfc_terminal/dialer"
         private const val NOTIFICATION_CHANNEL = "card_reads"
         private const val REQUEST_NOTIFICATIONS = 4711
+        private const val REQUEST_CALL_PHONE = 4712
     }
 }
 

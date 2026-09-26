@@ -10,11 +10,18 @@ import '../../data/models/business.dart' show isOpenableActionUrl;
 import '../../data/models/card_read.dart';
 import '../../services/card_resolver.dart';
 import '../../services/guest_tap.dart';
+import '../../services/ussd_dialer.dart';
 import '../personal/share_ripple.dart';
 import '../theme.dart';
 
 /// Opens a link outside the app (mockable).
 typedef LinkOpener = Future<bool> Function(Uri uri);
+
+/// Asks the server whether a tap link's card dials USSD (null: open the link as usual). Mockable.
+typedef UssdLookup = Future<List<UssdOption>?> Function(Uri tapLink);
+
+/// Dials a USSD code (mockable).
+typedef UssdDial = Future<bool> Function(String code);
 
 Future<bool> openExternally(Uri uri) async {
   try {
@@ -26,9 +33,13 @@ Future<bool> openExternally(Uri uri) async {
 
 /// App-wide guest-tap wiring (provided by `NfcTerminalApp`).
 class GuestTapConfig {
-  const GuestTapConfig({required this.reader, this.opener = openExternally, required this.knownServers, this.resolver});
+  const GuestTapConfig({required this.reader, this.opener = openExternally, required this.knownServers, this.resolver, this.ussdLookup, this.dialer = UssdDialer.dial});
   final GuestTapReader reader;
   final LinkOpener opener;
+
+  /// Cards whose action is a USSD code are dialed by the app instead of opening the browser.
+  final UssdLookup? ussdLookup;
+  final UssdDial dialer;
 
   /// Finds a registered card's tap link by chip ID when the chip itself carries no link.
   final CardResolver? resolver;
@@ -208,7 +219,7 @@ class _GuestTapScopeState extends State<GuestTapScope> {
     _lastAt = now;
     _sheetOpen = true;
     try {
-      await showGuestTag(context, tag, knownServers: c.knownServers(), opener: c.opener, resolver: c.resolver);
+      await showGuestTag(context, tag, knownServers: c.knownServers(), opener: c.opener, resolver: c.resolver, ussdLookup: c.ussdLookup, dialer: c.dialer);
     } finally {
       _sheetOpen = false;
       _lastAt = DateTime.now();
@@ -222,7 +233,7 @@ class _GuestTapScopeState extends State<GuestTapScope> {
 /// Guest tap result sheet: opens nexTap links on known servers right away, asks for other hosts
 /// and other links, and explains cards that aren't set up yet.
 Future<void> showGuestTag(BuildContext context, GuestTag tag,
-    {required Iterable<String?> knownServers, LinkOpener opener = openExternally, CardResolver? resolver}) {
+    {required Iterable<String?> knownServers, LinkOpener opener = openExternally, CardResolver? resolver, UssdLookup? ussdLookup, UssdDial dialer = UssdDialer.dial}) {
   unawaited(HapticFeedback.mediumImpact());
   final link = pickTapLink(tag.uris, knownServers);
   // No link on the chip: the card may still be registered (linked but not programmed) — ask the server.
@@ -237,15 +248,17 @@ Future<void> showGuestTag(BuildContext context, GuestTag tag,
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (_) => GuestTagSheet(tag: tag, link: link, opener: opener, lookup: lookup),
+    builder: (_) => GuestTagSheet(tag: tag, link: link, opener: opener, lookup: lookup, ussdLookup: ussdLookup, dialer: dialer),
   );
 }
 
 class GuestTagSheet extends StatefulWidget {
-  const GuestTagSheet({super.key, required this.tag, required this.link, required this.opener, this.lookup});
+  const GuestTagSheet({super.key, required this.tag, required this.link, required this.opener, this.lookup, this.ussdLookup, this.dialer = UssdDialer.dial});
   final GuestTag tag;
   final TapLink? link;
   final LinkOpener opener;
+  final UssdLookup? ussdLookup;
+  final UssdDial dialer;
 
   /// Resolves the card by chip ID when [link] is null (registered card without a written tap link).
   final Future<TapLink?> Function()? lookup;
@@ -290,7 +303,7 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
       _opening = true;
       _failed = false;
     });
-    final ok = await widget.opener(l.uri);
+    final ok = await _dialUssd(l) ?? await widget.opener(l.uri);
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pop();
@@ -300,6 +313,40 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
         _failed = true;
       });
     }
+  }
+
+  /// A trusted nexTap card whose action is a USSD code: dial it here (asking which one when there are several).
+  /// null = not a USSD card (or the server can't tell) — open the link as usual.
+  Future<bool?> _dialUssd(TapLink l) async {
+    final lookup = widget.ussdLookup;
+    if (lookup == null || l.kind != TapLinkKind.tap || !l.trusted) return null;
+    final options = await lookup(l.uri);
+    if (options == null || options.isEmpty || !mounted) return null;
+    final pick = options.length == 1
+        ? options.first
+        : await showModalBottomSheet<UssdOption>(
+            context: context,
+            showDragHandle: true,
+            builder: (c) => SafeArea(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Text('Choose what to dial', style: Theme.of(c).textTheme.titleMedium),
+                ),
+                for (final o in options)
+                  ListTile(
+                    key: Key('ussdOption_${o.code}'),
+                    leading: const Icon(Icons.dialpad),
+                    title: Text(o.label),
+                    subtitle: Text(o.code, style: const TextStyle(fontFamily: 'monospace')),
+                    onTap: () => Navigator.of(c).pop(o),
+                  ),
+                const SizedBox(height: 8),
+              ]),
+            ),
+          );
+    if (pick == null) return false;
+    return widget.dialer(pick.code);
   }
 
   @override

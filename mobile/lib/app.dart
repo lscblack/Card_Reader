@@ -16,6 +16,7 @@ import 'services/guest_tap.dart';
 import 'services/nfc_service.dart';
 import 'services/personal_state.dart';
 import 'services/tag_dispatch.dart';
+import 'services/ussd_dialer.dart';
 import 'ui/personal/exchange_flow.dart';
 import 'ui/personal/personal_auth_screen.dart';
 import 'ui/personal/welcome_screen.dart';
@@ -71,6 +72,8 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     knownServers: () => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl],
     resolver: widget.cardResolver ??
         httpCardResolver(() => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl]),
+    // Tests inject a link opener; only the real app asks the server about USSD cards.
+    ussdLookup: widget.linkOpener == null ? fetchTapUssd : null,
   );
 
   @override
