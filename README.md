@@ -26,7 +26,7 @@ NFC card → Android phone / iPhone (Flutter nexTap) → [platform relay | direc
 docker compose up -d postgres redis
 
 # 2. Backend
-cd backend && python -m venv .venv && . .venv/bin/activate
+cd backend && conda activate fastapi_setup
 pip install -r requirements.txt && cp .env.example .env   # set EMAIL_ENABLED=false for local dev
 alembic upgrade head && uvicorn app.main:app --reload     # http://127.0.0.1:8000/docs
 

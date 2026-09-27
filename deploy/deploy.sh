@@ -5,8 +5,8 @@
 #  • Web : https://tap.nexventures.net      → nginx serving web/dist (static SPA)
 #  • API : https://tap.api.nexventures.net  → uvicorn on a free local port (systemd: nextap-api)
 #  • Code: deployed in place (this checkout; override with APP_DIR=…)
-#  • Python: backend/.venv (created with $PYTHON, default python3 ≥ 3.11); deps reinstalled when
-#            requirements.txt changes (or with --install-deps)
+#  • Python: the conda env $CONDA_ENV (default fastapi_setup, Python ≥ 3.11; a name or an absolute prefix);
+#            deps pip-installed into it when requirements.txt changes (or with --install-deps)
 #
 #  Before the first run copy the production env onto the server as backend/.env.p (or backend/.env).
 #
@@ -41,11 +41,10 @@ API_DOMAIN="${API_DOMAIN:-tap.api.nexventures.net}"
 WEB_DOMAIN="${WEB_DOMAIN:-tap.nexventures.net}"
 SERVICE="nextap-api"
 RUN_USER="${RUN_USER:-www-data}"
-PYTHON="${PYTHON:-python3}"
+CONDA_ENV="${CONDA_ENV:-fastapi_setup}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-tech@nexventures.net}"
 BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/web"
-VENV="$BACKEND_DIR/.venv"
 STATE_DIR="$APP_DIR/.deploy"
 DO_BACKEND=1; DO_FRONTEND=1; DO_CERTBOT=1; INSTALL_PKGS=0; SET_DB_PASSWORD=0; INSTALL_DEPS=0; FORCE_BUILD=0
 for a in "$@"; do case "$a" in
@@ -72,7 +71,7 @@ mkdir -p "$APP_DIR" "$STATE_DIR"
 if [[ "$SRC_DIR" != "$APP_DIR" ]]; then
   log "Syncing code $SRC_DIR → $APP_DIR"
   command -v rsync >/dev/null || apt_install rsync
-  rsync -a --delete --exclude .git --exclude node_modules --exclude dist --exclude __pycache__ --exclude .venv \
+  rsync -a --delete --exclude .git --exclude node_modules --exclude dist --exclude __pycache__ \
         --exclude 'backend/.env' --exclude 'backend/media' --exclude 'backend/releases' --exclude '.deploy' \
         --exclude 'mobile/build' --exclude 'mobile/.dart_tool' "$SRC_DIR/" "$APP_DIR/"
 fi
@@ -135,7 +134,6 @@ ok "env file: $ENV_FILE (db user $DB_USER, db $DB_NAME @ $DB_HOST:$DB_PORT)"
 log "Checking required tools (nothing is installed or restarted unless --install-packages)"
 need=(); command -v nginx >/dev/null || need+=(nginx)
 command -v psql >/dev/null || need+=(postgresql-client); command -v curl >/dev/null || need+=(curl); command -v openssl >/dev/null || need+=(openssl)
-"$PYTHON" -c 'import venv, ensurepip' >/dev/null 2>&1 || need+=(python3-venv)
 ((${#need[@]})) && apt_install "${need[@]}"
 for svc in nginx postgresql; do
   systemctl is-active --quiet "$svc" && ok "$svc is running" || echo "   ! $svc is not active — start it yourself (systemctl start $svc)"
@@ -179,24 +177,40 @@ if [[ -n "$REDIS_URL" ]] && command -v redis-cli >/dev/null; then
   else echo "   ! Redis did not answer at $REDIS_URL — the API runs degraded (rate limiting fails open)"; fi
 fi
 
-# ── 4. python venv ──────────────────────────────────────────────────────────
-if ((DO_BACKEND)); then
-  "$PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 11))' || die "$PYTHON is $("$PYTHON" --version 2>&1) — Python 3.11+ is required (PYTHON=/path/to/python3.12 to pick another)"
-  if [[ ! -x "$VENV/bin/python" ]]; then
-    log "Creating virtualenv $VENV ($("$PYTHON" --version 2>&1))"
-    "$PYTHON" -m venv "$VENV"; INSTALL_DEPS=1
+# ── 4. python: conda env ────────────────────────────────────────────────────
+# Resolve the env prefix: an absolute path is used as is, a name is looked up with conda
+# (sudo drops the activated shell, so fall back to the usual install locations).
+if [[ "$CONDA_ENV" == /* ]]; then PY_ENV="$CONDA_ENV"
+else
+  CONDA_BIN="${CONDA_EXE:-$(command -v conda || true)}"
+  if [[ -z "$CONDA_BIN" ]]; then
+    for c in /root/miniconda3 /root/anaconda3 /root/miniforge3 /opt/conda /opt/miniconda3 /opt/anaconda3 /opt/miniforge3; do
+      [[ -x "$c/bin/conda" ]] && { CONDA_BIN="$c/bin/conda"; break; }
+    done
   fi
+  [[ -n "$CONDA_BIN" ]] || die "conda not found — run from a conda shell or set CONDA_ENV=/path/to/envs/$CONDA_ENV"
+  PY_ENV="$("$CONDA_BIN" run -n "$CONDA_ENV" python -c 'import sys; print(sys.prefix)' 2>/dev/null | tail -n1)" || true
+  [[ -n "$PY_ENV" ]] || die "conda env '$CONDA_ENV' not found ($CONDA_BIN env list) — create it: conda create -n $CONDA_ENV python=3.13"
+fi
+PYTHON="$PY_ENV/bin/python"
+[[ -x "$PYTHON" ]] || die "no python in conda env $PY_ENV"
+"$PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 11))' || die "conda env $PY_ENV has $("$PYTHON" --version 2>&1) — Python 3.11+ is required"
+# the API runs as $RUN_USER, which must be able to reach the env (e.g. a conda under /root is not traversable by www-data)
+sudo -u "$RUN_USER" "$PYTHON" -c '' 2>/dev/null \
+  || die "$RUN_USER cannot execute $PYTHON — make the conda install traversable for $RUN_USER (chmod o+x on its parent dirs)
+   or rerun with RUN_USER=<a user that can>, e.g. RUN_USER=root"
+ok "conda env: $CONDA_ENV → $PY_ENV ($("$PYTHON" --version 2>&1))"
+if ((DO_BACKEND)); then
   REQ_SHA="$(sha1sum "$BACKEND_DIR/requirements.txt" | cut -d' ' -f1)"
   if ((INSTALL_DEPS)) || [[ "$(cat "$STATE_DIR/requirements.sha" 2>/dev/null)" != "$REQ_SHA" ]]; then
-    log "Installing Python dependencies into $VENV"
-    "$VENV/bin/python" -m pip install -q --upgrade pip
-    "$VENV/bin/python" -m pip install -q -r "$BACKEND_DIR/requirements.txt" || die "pip could not install backend/requirements.txt (see above)"
+    log "Installing Python dependencies into conda env $CONDA_ENV"
+    "$PYTHON" -m pip install -q -r "$BACKEND_DIR/requirements.txt" || die "pip could not install backend/requirements.txt (see above)"
     echo "$REQ_SHA" > "$STATE_DIR/requirements.sha"
     ok "python deps installed"
   else
     ok "python deps unchanged — skipping pip install (--install-deps to force)"
   fi
-  ( cd "$BACKEND_DIR" && "$VENV/bin/python" -c "import app.main" ) >"$STATE_DIR/envcheck.log" 2>&1 || {
+  ( cd "$BACKEND_DIR" && "$PYTHON" -c "import app.main" ) >"$STATE_DIR/envcheck.log" 2>&1 || {
     echo "── error from 'import app.main' ──"; tail -n 15 "$STATE_DIR/envcheck.log" >&2
     die "the backend cannot be imported (see above) — fix backend/.env or rerun with --install-deps"; }
   ok "backend imports cleanly (production settings accepted)"
@@ -244,11 +258,11 @@ chmod -R u+rwX,go+rX,go-w "$BACKEND_DIR"; chmod 640 "$ENV_FILE"
 # ── 7. migrations + systemd service ─────────────────────────────────────────
 if ((DO_BACKEND)); then
   log "Applying database migrations (alembic upgrade head)"
-  ( cd "$BACKEND_DIR" && sudo -u "$RUN_USER" env PYTHONUNBUFFERED=1 "$VENV/bin/alembic" upgrade head ) \
+  ( cd "$BACKEND_DIR" && sudo -u "$RUN_USER" env PYTHONUNBUFFERED=1 "$PY_ENV/bin/alembic" upgrade head ) \
     || die "alembic upgrade head failed — the error above is why the API cannot start (check DATABASE_URL in $ENV_FILE)"
   log "Writing /etc/systemd/system/$SERVICE.service"
   WORKERS="${WORKERS:-$(( $(nproc) * 2 + 1 ))}"; (( WORKERS > 4 )) && WORKERS=4
-  sed -e "s|@APP_DIR@|$APP_DIR|g" -e "s|@VENV@|$VENV|g" -e "s|@PORT@|$API_PORT|g" -e "s|@USER@|$RUN_USER|g" -e "s|@WORKERS@|$WORKERS|g" \
+  sed -e "s|@APP_DIR@|$APP_DIR|g" -e "s|@PYENV@|$PY_ENV|g" -e "s|@PORT@|$API_PORT|g" -e "s|@USER@|$RUN_USER|g" -e "s|@WORKERS@|$WORKERS|g" \
       "$APP_DIR/deploy/nextap-api.service" > "/etc/systemd/system/$SERVICE.service"
   if [[ "$APP_DIR" == /root/* || "$APP_DIR" == /home/* ]]; then
     sed -i -e '/^ProtectHome=/d' "/etc/systemd/system/$SERVICE.service"
@@ -354,8 +368,8 @@ fi
 
 # ── 11. management CLI ──────────────────────────────────────────────────────
 install -m 755 "$APP_DIR/deploy/nextap" /usr/local/bin/nextap
-printf 'APP_DIR=%s\nSERVICE=%s\nAPI_PORT=%s\nVENV=%s\nAPI_DOMAIN=%s\nWEB_DOMAIN=%s\nRUN_USER=%s\nDB_NAME=%s\nDB_USER=%s\n' \
-  "$APP_DIR" "$SERVICE" "$API_PORT" "$VENV" "$API_DOMAIN" "$WEB_DOMAIN" "$RUN_USER" "$DB_NAME" "$DB_USER" > "$STATE_DIR/config"
+printf 'APP_DIR=%s\nSERVICE=%s\nAPI_PORT=%s\nPY_ENV=%s\nAPI_DOMAIN=%s\nWEB_DOMAIN=%s\nRUN_USER=%s\nDB_NAME=%s\nDB_USER=%s\n' \
+  "$APP_DIR" "$SERVICE" "$API_PORT" "$PY_ENV" "$API_DOMAIN" "$WEB_DOMAIN" "$RUN_USER" "$DB_NAME" "$DB_USER" > "$STATE_DIR/config"
 install -m 644 "$STATE_DIR/config" "$CONF_FILE"   # fixed path so `nextap` finds the deployment wherever it lives
 
 echo; ok "Deploy complete"

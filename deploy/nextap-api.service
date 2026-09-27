@@ -12,15 +12,15 @@ User=@USER@
 Group=@USER@
 # settings (and alembic) read backend/.env from the working directory
 WorkingDirectory=@APP_DIR@/backend
-Environment=PATH=@VENV@/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=@PYENV@/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONUNBUFFERED=1
 # APK builds (Part 3): flutter/gradle/pub caches live in a private, writable home
 Environment=HOME=@APP_DIR@/.deploy/home
 Environment=PUB_CACHE=@APP_DIR@/.deploy/home/.pub-cache
 Environment=GRADLE_USER_HOME=@APP_DIR@/.deploy/home/.gradle
 # apply pending database migrations before the workers start (idempotent)
-ExecStartPre=@VENV@/bin/alembic upgrade head
-ExecStart=@VENV@/bin/uvicorn app.main:app \
+ExecStartPre=@PYENV@/bin/alembic upgrade head
+ExecStart=@PYENV@/bin/uvicorn app.main:app \
   --host 127.0.0.1 --port @PORT@ \
   --workers @WORKERS@ \
   --proxy-headers --forwarded-allow-ips 127.0.0.1 \

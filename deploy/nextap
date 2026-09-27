@@ -6,7 +6,7 @@ for CONF in /etc/nextap.conf; do
   [[ -f "$CONF" ]] && { source "$CONF"; break; }
 done
 APP_DIR="${APP_DIR:-/var/www/nextap}"; SERVICE="${SERVICE:-nextap-api}"; API_PORT="${API_PORT:-}"
-VENV="${VENV:-$APP_DIR/backend/.venv}"; API_DOMAIN="${API_DOMAIN:-tap.api.nexventures.net}"; WEB_DOMAIN="${WEB_DOMAIN:-tap.nexventures.net}"
+PY_ENV="${PY_ENV:-}"; API_DOMAIN="${API_DOMAIN:-tap.api.nexventures.net}"; WEB_DOMAIN="${WEB_DOMAIN:-tap.nexventures.net}"
 RUN_USER="${RUN_USER:-www-data}"; DB_NAME="${DB_NAME:-nfc_platform}"; DB_USER="${DB_USER:-postgres}"
 c() { printf '\e[1;36m%s\e[0m\n' "$*"; }
 need_root() { [[ $EUID -eq 0 ]] || exec sudo -E "$0" "$@"; }
@@ -27,10 +27,10 @@ case "${1:-help}" in
   deploy)            need_root "$@"; shift; bash "$APP_DIR/deploy/deploy.sh" "$@" ;;
   build|frontend)    need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --frontend-only --no-certbot ;;
   backend)           need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --backend-only --no-certbot ;;
-  migrate)           need_root "$@"; cd "$APP_DIR/backend"; sudo -u "$RUN_USER" "$VENV/bin/alembic" upgrade head ;;
-  shell)             cd "$APP_DIR/backend"; exec "$VENV/bin/python" ;;
+  migrate)           need_root "$@"; cd "$APP_DIR/backend"; sudo -u "$RUN_USER" "$PY_ENV/bin/alembic" upgrade head ;;
+  shell)             cd "$APP_DIR/backend"; exec "$PY_ENV/bin/python" ;;
   psql)              sudo -u postgres psql "$DB_NAME" ;;
-  where|info)        echo "app dir : $APP_DIR"; echo "service : $SERVICE"; echo "port    : ${API_PORT:-unknown}"; echo "venv    : $VENV"; echo "db      : $DB_NAME (role $DB_USER)"; echo "domains : $WEB_DOMAIN (web), $API_DOMAIN (api)" ;;
+  where|info)        echo "app dir : $APP_DIR"; echo "service : $SERVICE"; echo "port    : ${API_PORT:-unknown}"; echo "python  : $PY_ENV (conda)"; echo "db      : $DB_NAME (role $DB_USER)"; echo "domains : $WEB_DOMAIN (web), $API_DOMAIN (api)" ;;
   env)               need_root "$@"; ${EDITOR:-nano} "$APP_DIR/backend/.env"; echo "run: nextap restart" ;;
   port)              echo "${API_PORT:-unknown}" ;;
   cert|certbot)      need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --backend-only ;;
@@ -47,7 +47,7 @@ nextap — nexTap service manager ($WEB_DOMAIN + $API_DOMAIN)
   nextap build               rebuild the frontend only           | nextap backend (python deps + service)
   nextap migrate             alembic upgrade head (idempotent)
   nextap env                 edit backend/.env (then nextap restart) | nextap psql (database shell)
-  nextap port                show the local API port            | nextap shell (python in the venv)
+  nextap port                show the local API port            | nextap shell (python in the conda env)
   nextap where               show the deployed paths, port, database and domains
   nextap cert                obtain missing Let's Encrypt certificates | nextap renew
   nextap backup              pg_dump + media/releases tarball into .deploy/backups

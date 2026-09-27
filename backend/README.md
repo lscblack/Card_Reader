@@ -19,16 +19,16 @@ PyJWT · argon2 · httpx · pydantic-settings · cryptography (Fernet).
 
 ```bash
 cd backend
-python3.13 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+conda activate fastapi_setup      # or: conda create -n fastapi_setup python=3.13
+pip install -r requirements-dev.txt
 cp .env.example .env               # adjust DATABASE_URL / REDIS_URL; set EMAIL_ENABLED=false for local dev
 
 # Postgres + Redis: use local services, or from the repo root:
 #   docker compose up -d postgres redis
 createdb -h 127.0.0.1 -U postgres nfc_platform   # if it doesn't exist yet
 
-.venv/bin/alembic upgrade head
-.venv/bin/uvicorn app.main:app --reload            # http://127.0.0.1:8000/docs
+alembic upgrade head
+uvicorn app.main:app --reload                        # http://127.0.0.1:8000/docs
 ```
 
 On startup the app seeds (idempotently) the `free` / `pro` / `business` plans and the default admin from
@@ -61,8 +61,8 @@ each run) and **fakeredis**. Outbound webhooks are mocked with `respx`.
 
 ```bash
 createdb -h 127.0.0.1 -U postgres nfc_platform_test
-.venv/bin/pytest -q
-# override: TEST_DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db .venv/bin/pytest
+pytest -q                          # inside the fastapi_setup conda env
+# override: TEST_DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db pytest
 ```
 
 ## Configuration
