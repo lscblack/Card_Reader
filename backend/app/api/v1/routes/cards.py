@@ -50,16 +50,25 @@ def normalize_uid(raw: str | None, field: str = "body.uid") -> str | None:
 
 async def ensure_uid_free(session: SessionDep, business_id: uuid.UUID, uid: str | None,
                           exclude: uuid.UUID | None = None) -> None:
+    """A physical chip (UID) belongs to at most one live card on the whole platform."""
     if uid is None:
         return
-    stmt = select(Card.id, Card.name, Card.kind).where(Card.business_id == business_id, Card.uid == uid,
-                                                       Card.deleted_at.is_(None))
+    stmt = select(Card.id, Card.name, Card.kind, Card.business_id).where(Card.uid == uid, Card.deleted_at.is_(None))
     if exclude:
         stmt = stmt.where(Card.id != exclude)
-    if existing := (await session.execute(stmt)).first():
-        # Same business only, so naming the existing card leaks nothing ("Already registered as <name>").
+    existing = (await session.execute(stmt.limit(1))).first()
+    if existing is None:
+        return
+    if existing.business_id == business_id:
+        # Same business, so naming the existing card leaks nothing ("Already registered as <name>").
         raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID",
                        {"card_id": str(existing.id), "name": existing.name, "kind": existing.kind})
+    # Another business owns this chip: say so without revealing who.
+    raise uid_taken()
+
+
+def uid_taken() -> AppError:
+    return AppError(409, "card_uid_taken", "This card is already registered and cannot be set up again")
 
 
 async def unique_public_code(session: SessionDep) -> str:
@@ -185,7 +194,7 @@ async def create_card(body: CardIn, ctx: Manage, session: SessionDep, client: Cl
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID") from None
+        raise uid_taken() from None  # lost a race with another registration of the same chip
     history(session, card, "created", user=ctx.user, name=card.name, kind=card.kind)
     if employee_id or customer_id or to_business:
         history(session, card, "assigned", user=ctx.user, assignee_type=body.assignee_type,

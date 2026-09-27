@@ -56,6 +56,8 @@ class CardProgrammer {
       final msg = switch (e.code) {
         'card_uid_exists' =>
           'The link was written, but this card is already registered as another card in your business.',
+        'card_uid_taken' =>
+          'The link was written, but this physical card is already registered elsewhere — each card can only be set up once. Use a new card.',
         'card_uid_mismatch' =>
           'The link was written, but this entry is already bound to a different physical card.',
         'device_capability_missing' => 'This device is no longer allowed to program cards.',
@@ -77,6 +79,8 @@ class CardProgrammer {
 AppError registerCardError(Object e) => switch (e) {
   ApiException(code: 'card_uid_exists') =>
     AppError.api(e, 'This card is already registered in your business.'),
+  ApiException(code: 'card_uid_taken') =>
+    AppError.api(e, 'This card is already registered to another account. Each card can only be set up once — use a new card.'),
   ApiException(code: 'insufficient_permissions' || 'device_capability_missing' || 'device_not_business') =>
     AppError.api(e, 'This device is not allowed to register cards.'),
   ApiException() => AppError.api(e),

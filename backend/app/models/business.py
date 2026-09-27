@@ -211,8 +211,8 @@ class Card(UUIDPk, Timestamps, Base):
         CheckConstraint("status IN ('active','inactive')", name="status"),
         CheckConstraint("(employee_id IS NOT NULL)::int + (customer_id IS NOT NULL)::int "
                         "+ assigned_to_business::int <= 1", name="single_assignee"),
-        Index("uq_cards_business_uid", "business_id", "uid", unique=True,
-              postgresql_where=text("uid IS NOT NULL AND deleted_at IS NULL")),
+        # One live card per physical chip across the whole platform.
+        Index("uq_cards_uid", "uid", unique=True, postgresql_where=text("uid IS NOT NULL AND deleted_at IS NULL")),
         Index("ix_cards_business", "business_id", "created_at"),
         Index("ix_cards_employee", "employee_id"),
         Index("ix_cards_customer", "customer_id"),

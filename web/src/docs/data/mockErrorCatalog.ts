@@ -51,6 +51,7 @@ export const mockErrorCatalog: MockCatalogEntry[] = [
   e('NFC-5008', 'delivery_ssrf_blocked', null, 'delivery', 'Private address blocked', 'The endpoint resolved to a private, loopback or metadata address.', 'Use a public HTTPS endpoint.'),
   e('NFC-6003', 'insufficient_permissions', 403, 'api', 'Insufficient permissions', 'Your business role lacks the permission in details.required.', 'Ask an owner or admin for the permission.'),
   e('NFC-6010', 'invalid_action_config', 422, 'api', 'Invalid action configuration', "The tap action's config is missing or invalid fields.", 'Fix the fields listed in details.'),
+  e('NFC-6026', 'card_uid_taken', 409, 'api', 'Card already registered', 'This physical card (chip ID) is already registered — every card can only be set up once on the platform.', 'Use a new card, or ask its current owner to delete it first.'),
   e('NFC-6011', 'card_uid_exists', 409, 'api', 'Card UID already registered', 'Another card in this business already has this UID.', 'Use a different card or edit the existing one.'),
   e('NFC-7001', 'plan_limit_reached', 402, 'api', 'Plan limit reached', 'A plan limit (details.limit) was reached.', 'Upgrade your plan or free up capacity.'),
   e('NFC-8001', 'sandbox_body_too_large', 413, 'api', 'Sandbox body too large', 'Requests to a sandbox endpoint are limited to 64 KB.', 'Send a smaller body.'),

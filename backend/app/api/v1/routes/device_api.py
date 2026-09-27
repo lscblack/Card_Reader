@@ -444,7 +444,7 @@ class ProgrammedIn(Schema):
 @router.post("/business/cards", status_code=201, summary="Register a scanned card (needs cards.register)")
 async def device_register_card(body: DeviceCardIn, device: CurrentDevice, session: SessionDep,
                                client: ClientDep) -> dict[str, Any]:
-    from app.api.v1.routes.cards import ensure_uid_free, history, normalize_uid, unique_public_code
+    from app.api.v1.routes.cards import ensure_uid_free, history, normalize_uid, uid_taken, unique_public_code
 
     business = await _business_device(session, device, "cards.register")
     uid = normalize_uid(body.uid)
@@ -458,7 +458,7 @@ async def device_register_card(body: DeviceCardIn, device: CurrentDevice, sessio
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID") from None
+        raise uid_taken() from None  # lost a race with another registration of the same chip
     note = (body.note or "").strip() or None
     history(session, card, "created", device_id=device.id, name=card.name, via="device", note=note)
     if body.assign_to_business:
@@ -474,7 +474,7 @@ async def device_register_card(body: DeviceCardIn, device: CurrentDevice, sessio
 @router.post("/business/cards/{card_id}/programmed", summary="Report a card as programmed (needs cards.program)")
 async def device_card_programmed(card_id: uuid.UUID, body: ProgrammedIn, device: CurrentDevice, session: SessionDep,
                                  client: ClientDep) -> dict[str, Any]:
-    from app.api.v1.routes.cards import ensure_uid_free, history, normalize_uid
+    from app.api.v1.routes.cards import ensure_uid_free, history, normalize_uid, uid_taken
 
     business = await _business_device(session, device, "cards.program")
     card = (await session.execute(select(Card).where(Card.id == card_id, Card.business_id == business.id,
@@ -495,7 +495,7 @@ async def device_card_programmed(card_id: uuid.UUID, body: ProgrammedIn, device:
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise AppError(409, "card_uid_exists", "Another card of this business already uses this UID") from None
+        raise uid_taken() from None  # lost a race with another registration of the same chip
     card = (await session.execute(select(Card).where(Card.id == card_id)
                                   .execution_options(populate_existing=True))).scalar_one()
     return card_out(card, business).model_dump(mode="json")

@@ -190,7 +190,8 @@ unique_visitors, last_tap_at, created_at }`
 
 - `tap_url = {PUBLIC_API_URL}/t/{public_code}`; `public_code` = 10 random base62 chars (unguessable, not the UID).
 - CRUD: `GET/POST /businesses/{id}/cards?kind=&status=&assignee_type=&q=&page=`, `GET/PATCH/DELETE …/cards/{cid}`.
-  `uid` unique per business (`409 card_uid_exists`); normalised like Part 1 `card_id`.
+  `uid` unique across the whole platform: one live card per physical chip. Same business → `409 card_uid_exists`
+  (details name the existing card); another business → `409 card_uid_taken` (no details). Normalised like Part 1 `card_id`.
 - `POST …/cards/{cid}/assign` `{ assignee_type, assignee_id }` / `POST …/cards/{cid}/unassign` → records history.
 - `POST …/cards/{cid}/activate|deactivate`.
 - `GET …/cards/{cid}/history` → assignment + status changes + programming (who, when).

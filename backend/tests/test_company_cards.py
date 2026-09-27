@@ -146,9 +146,10 @@ async def test_public_resolve_by_chip_id_opens_registered_cards(client: AsyncCli
     r = await client.get("/api/v1/public/cards/resolve", params={"uid": "zz"})
     assert r.status_code == 422
 
-    # The same chip registered by two businesses is ambiguous → never guess.
+    # A chip can only be registered once: another business is refused, and the chip keeps opening the first card.
     other = await register_business(client, name="Other Co")
     dev2 = await pair_business_device(client, other)
-    await client.post("/api/v1/device/business/cards", headers=dev2["headers"], json={"uid": "8C530107"})
+    r = await client.post("/api/v1/device/business/cards", headers=dev2["headers"], json={"uid": "8C530107"})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "card_uid_taken"
     r = await client.get("/api/v1/public/cards/resolve", params={"uid": "8C530107"})
-    assert r.status_code == 404
+    assert r.status_code == 200 and r.json()["tap_url"] == card["tap_url"]

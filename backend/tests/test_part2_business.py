@@ -280,6 +280,19 @@ async def _tap(client: AsyncClient, card: dict, ua: str = BROWSER_UA, ip: str | 
     if ip:
         headers["X-Forwarded-For"] = ip
     return await client.get(f"/t/{card['public_code']}", headers=headers)
+    # A chip can only be set up once on the whole platform: another business gets a neutral 409 (no names leaked).
+    other = await register_business(client, name="Other Co")
+    obase = f"/api/v1/businesses/{other['business_id']}"
+    r = await client.post(f"{obase}/cards", json={"name": "Mine now", "uid": "04:AA:BB:CC:DD"}, headers=other["headers"])
+    assert r.status_code == 409 and r.json()["error"]["code"] == "card_uid_taken", r.text
+    assert r.json()["error"]["details"] is None and "A" not in (r.json()["error"]["message"].split())
+    free = await create_card(client, other, name="Blank")
+    r = await client.patch(f"{obase}/cards/{free['id']}", json={"uid": "04AABBCCDD"}, headers=other["headers"])
+    assert r.status_code == 409 and r.json()["error"]["code"] == "card_uid_taken"
+    # Once the first business deletes its card, the chip can be registered again.
+    assert (await client.delete(f"{base}/cards/{card['id']}", headers=owner["headers"])).status_code == 204
+    r = await client.post(f"{obase}/cards", json={"name": "Mine now", "uid": "04AABBCCDD"}, headers=other["headers"])
+    assert r.status_code == 201, r.text
 
 
 async def test_tap_resolution_every_action_type(client: AsyncClient, redis) -> None:  # type: ignore[no-untyped-def]

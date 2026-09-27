@@ -96,6 +96,7 @@ const REFS: Record<string, string> = {
   insufficient_permissions: 'NFC-6003',
   profile_unavailable: 'NFC-6020',
   card_uid_exists: 'NFC-6011',
+  card_uid_taken: 'NFC-6026',
   invalid_action_config: 'NFC-6010',
   last_owner: 'NFC-6030',
   plan_limit_reached: 'NFC-7001',
