@@ -218,8 +218,27 @@ PY
 ok "API port: $API_PORT"
 
 # ── 6. permissions ──────────────────────────────────────────────────────────
-mkdir -p "$BACKEND_DIR/media" "$BACKEND_DIR/releases"
+mkdir -p "$BACKEND_DIR/media" "$BACKEND_DIR/releases" "$STATE_DIR/home"
 chown -R "$RUN_USER:$RUN_USER" "$BACKEND_DIR" "$STATE_DIR"
+# APK builds (Part 3) run `flutter build apk` as $RUN_USER inside mobile/ and need a usable Flutter SDK
+if [[ "$(envget APP_BUILD_ENABLED)" == "true" ]]; then
+  [[ -d "$APP_DIR/mobile" ]] && chown -R "$RUN_USER:$RUN_USER" "$APP_DIR/mobile"
+  FLUTTER_BIN="$(envget FLUTTER_BIN)"
+  if [[ "$FLUTTER_BIN" == /snap/* ]]; then
+    echo "   ! FLUTTER_BIN=$FLUTTER_BIN is a snap — it cannot run inside the $SERVICE service (as $RUN_USER, NoNewPrivileges)."
+    echo "     Install the Flutter tarball to /opt/flutter and set FLUTTER_BIN=/opt/flutter/bin/flutter (see deploy notes)."
+  elif [[ -x "$FLUTTER_BIN" ]]; then
+    chown -R "$RUN_USER:$RUN_USER" "$(dirname "$(dirname "$FLUTTER_BIN")")"   # flutter writes its own bin/cache
+    ok "flutter for APK builds: $FLUTTER_BIN"
+  else
+    echo "   ! FLUTTER_BIN=$FLUTTER_BIN not found — APK builds will fail (APP_BUILD_ENABLED=false to turn them off)"
+  fi
+  JH="$(envget JAVA_HOME)"; [[ -z "$JH" || -x "$JH/bin/java" ]] || echo "   ! JAVA_HOME=$JH has no bin/java — APK builds will fail"
+  SDK="$(envget ANDROID_SDK_ROOT)"
+  if [[ -z "$SDK" ]]; then echo "   ! ANDROID_SDK_ROOT is not set in backend/.env — APK builds need the Android SDK"
+  elif [[ -d "$SDK" ]]; then chown -R "$RUN_USER:$RUN_USER" "$SDK"   # gradle installs missing platforms / NDK into it
+  else echo "   ! ANDROID_SDK_ROOT=$SDK does not exist — APK builds will fail"; fi
+fi
 chmod -R u+rwX,go+rX,go-w "$BACKEND_DIR"; chmod 640 "$ENV_FILE"
 
 # ── 7. migrations + systemd service ─────────────────────────────────────────

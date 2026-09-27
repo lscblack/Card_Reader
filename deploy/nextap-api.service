@@ -14,6 +14,10 @@ Group=@USER@
 WorkingDirectory=@APP_DIR@/backend
 Environment=PATH=@VENV@/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONUNBUFFERED=1
+# APK builds (Part 3): flutter/gradle/pub caches live in a private, writable home
+Environment=HOME=@APP_DIR@/.deploy/home
+Environment=PUB_CACHE=@APP_DIR@/.deploy/home/.pub-cache
+Environment=GRADLE_USER_HOME=@APP_DIR@/.deploy/home/.gradle
 # apply pending database migrations before the workers start (idempotent)
 ExecStartPre=@VENV@/bin/alembic upgrade head
 ExecStart=@VENV@/bin/uvicorn app.main:app \
@@ -30,7 +34,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=read-only
-ReadWritePaths=@APP_DIR@/backend/media @APP_DIR@/backend/releases @APP_DIR@/.deploy
+ReadWritePaths=@APP_DIR@/backend/media @APP_DIR@/backend/releases @APP_DIR@/.deploy @APP_DIR@/mobile
 LimitNOFILE=65536
 
 [Install]
