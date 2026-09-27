@@ -189,7 +189,9 @@ else
     done
   fi
   [[ -n "$CONDA_BIN" ]] || die "conda not found — run from a conda shell or set CONDA_ENV=/path/to/envs/$CONDA_ENV"
-  PY_ENV="$("$CONDA_BIN" run -n "$CONDA_ENV" python -c 'import sys; print(sys.prefix)' 2>/dev/null | tail -n1)" || true
+  # `conda env list` rows are "<name> [*] <prefix>"; fall back to <base>/envs/<name>
+  PY_ENV="$("$CONDA_BIN" env list 2>/dev/null | awk -v n="$CONDA_ENV" '$1 == n { print $NF; exit }')" || true
+  [[ -n "$PY_ENV" ]] || { b="$("$CONDA_BIN" info --base 2>/dev/null)" && [[ -x "$b/envs/$CONDA_ENV/bin/python" ]] && PY_ENV="$b/envs/$CONDA_ENV"; } || true
   [[ -n "$PY_ENV" ]] || die "conda env '$CONDA_ENV' not found ($CONDA_BIN env list) — create it: conda create -n $CONDA_ENV python=3.13"
 fi
 PYTHON="$PY_ENV/bin/python"
