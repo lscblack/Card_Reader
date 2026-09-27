@@ -29,6 +29,7 @@ case "${1:-help}" in
   backend)           need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --backend-only --no-certbot ;;
   migrate)           need_root "$@"; cd "$APP_DIR/backend"; sudo -u "$RUN_USER" "$PY_ENV/bin/alembic" upgrade head ;;
   shell)             cd "$APP_DIR/backend"; exec "$PY_ENV/bin/python" ;;
+  apk-check|build-check) shift; bash "$APP_DIR/deploy/check-apk-build.sh" "$@" ;;
   psql)              sudo -u postgres psql "$DB_NAME" ;;
   where|info)        echo "app dir : $APP_DIR"; echo "service : $SERVICE"; echo "port    : ${API_PORT:-unknown}"; echo "python  : $PY_ENV (conda)"; echo "db      : $DB_NAME (role $DB_USER)"; echo "domains : $WEB_DOMAIN (web), $API_DOMAIN (api)" ;;
   env)               need_root "$@"; ${EDITOR:-nano} "$APP_DIR/backend/.env"; echo "run: nextap restart" ;;
@@ -46,6 +47,7 @@ nextap — nexTap service manager ($WEB_DOMAIN + $API_DOMAIN)
   nextap update              git pull (if repo) + full redeploy  | nextap deploy [opts] (run deploy.sh)
   nextap build               rebuild the frontend only           | nextap backend (python deps + service)
   nextap migrate             alembic upgrade head (idempotent)
+  nextap apk-check [--build] can the server build APKs from the admin page? (read-only; --build = real test build)
   nextap env                 edit backend/.env (then nextap restart) | nextap psql (database shell)
   nextap port                show the local API port            | nextap shell (python in the conda env)
   nextap where               show the deployed paths, port, database and domains
