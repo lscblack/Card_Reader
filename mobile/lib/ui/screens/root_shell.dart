@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/tap_links.dart';
 import '../../data/event_repository.dart';
 import '../../services/app_state.dart';
 import '../../services/background_reading.dart';
 import '../../services/digital_card_scanner.dart';
+import '../../services/guest_tap.dart';
 import '../../services/nfc_service.dart';
 import '../../services/nfc_writer.dart';
 import '../../services/personal_state.dart';
 import '../../services/reader_controller.dart';
+import '../../services/tag_dispatch.dart';
 import '../personal/contacts_screen.dart';
 import '../personal/my_card_screen.dart';
 import '../widgets/business_result.dart';
@@ -39,7 +42,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   ShellTab _tab = ShellTab.myCard;
   ReaderController? _reader;
   BackgroundReading? _background;
-  late final NfcWriter _writer = widget.writer ?? AndroidNfcWriter();
+  late final NfcWriter _writer = widget.writer ?? platformNfcWriter();
   late final AppState _app = context.read<AppState>();
   late final PersonalState _personal = context.read<PersonalState>();
   late final DigitalCardScanner _scanner = context.read<DigitalCardScanner>();
@@ -90,6 +93,8 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         handleCard: reader.handleCard,
         isRegistered: () => _app.terminalTakesDispatchedTags,
         flushRetries: () => _app.retryQueue?.kick(),
+        resolveTapLink: _resolveTapLink,
+        onForeignLink: _runForeignLink,
       )..start();
     } else if (!_terminal && _reader != null) {
       final r = _reader!;
@@ -101,6 +106,26 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     if (!_tabs.contains(_tab)) _tab = _tabs.first;
     _applyReaderSuspension();
     if (mounted) setState(() {});
+  }
+
+  /// iOS: a card tapped with the app closed arrives as its tap link. On a business terminal, a link on this
+  /// phone's server is looked up among the business's cards (null: not one of them).
+  Future<String?> _resolveTapLink(Uri link) async {
+    final api = _app.api;
+    final code = tapCodeOf(link);
+    if (api == null || code == null || !(_app.config?.isBusiness ?? false) || !mounted) return null;
+    final servers = context.read<GuestTapConfig?>()?.knownServers() ?? [_app.serverUrl];
+    if (classifyTapLink(link.toString(), servers)?.trusted != true) return null;
+    return api.cardUidForTapCode(code);
+  }
+
+  /// A tap link that isn't one of this business's cards: run it like on a phone without a terminal.
+  void _runForeignLink(DispatchedTag tag) {
+    final guest = mounted ? context.read<GuestTapConfig?>() : null;
+    if (guest == null) return;
+    unawaited(showGuestTag(context, GuestTag(uid: '', uris: tag.ndefUris, hasNdef: true),
+        knownServers: guest.knownServers(), opener: guest.opener, resolver: guest.resolver,
+        ussdLookup: guest.ussdLookup, dialer: guest.dialer));
   }
 
   /// With both spaces, terminal reader mode only runs on the Reader tab so the phone can

@@ -160,6 +160,7 @@ export const endpointGroups: EndpointGroup[] = [
       ['GET', '/device/business/cards?q=&programmed=', 'Business devices: list cards'],
       ['POST', '/device/business/cards', 'Business devices: register a card by UID'],
       ['POST', '/device/business/cards/{id}/programmed', 'Business devices: mark programmed, bind UID'],
+      ['GET', '/device/business/cards/by-code/{code}', 'Business devices (iPhone): UID of this business\'s card from its tap link code'],
     ],
   },
   {

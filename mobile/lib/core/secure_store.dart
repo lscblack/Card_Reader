@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Minimal key/value secret storage, abstracted for tests.
@@ -9,9 +11,28 @@ abstract class SecureStore {
 
 /// Android Keystore-backed storage (flutter_secure_storage 11: AES-GCM data
 /// encryption with a Keystore-wrapped key; the legacy Jetpack
-/// EncryptedSharedPreferences backend was removed upstream).
+/// EncryptedSharedPreferences backend was removed upstream). iOS: Keychain, "this device only" (never
+/// restored onto another phone from a backup, like Android's allowBackup=false).
 class FlutterSecureStore implements SecureStore {
-  FlutterSecureStore() : _storage = const FlutterSecureStorage();
+  FlutterSecureStore() : _storage = _storageInstance;
+
+  static const _storageInstance = FlutterSecureStorage(
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+  );
+
+  /// iOS keeps Keychain items when the app is deleted. A reinstalled app must start signed out (its
+  /// history and retry queue are gone, and the device may have been revoked meanwhile), so the first
+  /// launch after an install clears them. [markerDir] is app storage, which is deleted with the app.
+  static Future<void> clearAfterReinstall(String markerDir) async {
+    final marker = File('$markerDir/.nextap_installed');
+    try {
+      if (await marker.exists()) return;
+      await _storageInstance.deleteAll();
+      await marker.create(recursive: true);
+    } catch (_) {
+      // Never block startup on this.
+    }
+  }
 
   final FlutterSecureStorage _storage;
 

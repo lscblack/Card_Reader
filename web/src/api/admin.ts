@@ -9,6 +9,7 @@ import type {
   AdminRange,
   AdminSystem,
   Delivery,
+  Demographics,
   Device,
   Paginated,
   PlatformSettings,
@@ -23,7 +24,7 @@ export const adminConsoleApi = {
   overview: (range: AdminRange) => api.get<AdminOverview>('/admin/overview', { range }),
   requestLogs: (f: RequestLogFilters) => api.get<Paginated<RequestLog>>('/admin/request-logs', { ...f } as Q),
   requestLog: (id: string) => api.get<RequestLog>(`/admin/request-logs/${id}`),
-  accounts: (f: { type?: string; q?: string; status?: string; page?: number }) =>
+  accounts: (f: { type?: string; q?: string; status?: string; country?: string; page?: number }) =>
     api.get<Paginated<AdminAccount>>('/admin/accounts', f),
   account: (id: string) => api.get<AdminAccountDetail>(`/admin/accounts/${id}`),
   patchAccount: (id: string, body: AdminAccountPatch) => api.patch<AdminAccount>(`/admin/accounts/${id}`, body),
@@ -39,6 +40,7 @@ export const adminConsoleApi = {
   deliveries: (f: { success?: boolean; error_code?: string; page?: number; page_size?: number }) =>
     api.get<Paginated<Delivery>>('/admin/deliveries', f),
   system: () => api.get<AdminSystem>('/admin/system'),
+  demographics: () => api.get<Demographics>('/admin/demographics'),
   settings: () => api.get<PlatformSettings>('/admin/settings'),
   patchSettings: (body: Partial<PlatformSettings>) => api.patch<PlatformSettings>('/admin/settings', body),
 }

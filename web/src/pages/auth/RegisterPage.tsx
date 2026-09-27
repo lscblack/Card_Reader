@@ -1,19 +1,22 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Building2, Check, Code2, IdCard, Mail } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { authApi } from '@/api/auth'
 import { ApiError, request } from '@/api/client'
-import type { AccountType } from '@/api/types'
+import type { AccountType, RegisterRequest } from '@/api/types'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, PasswordInput, Select, Textarea } from '@/components/ui/Input'
+import { CountrySelect } from '@/components/CountrySelect'
+import { AvatarPicker } from '@/components/auth/AvatarPicker'
+import { useToast } from '@/components/ui/toastContext'
 import { ErrorAlert } from '@/components/ui/ErrorMeta'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { countries, guessCountry } from '@/lib/countries'
+import { guessCountry } from '@/lib/countries'
 import { cn } from '@/lib/cn'
 import { PasswordStrength } from './PasswordStrength'
 
@@ -95,7 +98,8 @@ function Footer() {
 
 export default function RegisterPage() {
   useDocumentTitle('Create account')
-  const { register } = useAuth()
+  const { register, setUser } = useAuth()
+  const toast = useToast()
   const [params] = useSearchParams()
   const inviteToken = params.get('invite') ?? ''
   const cardInvite = params.get('card_invite') ?? ''
@@ -109,13 +113,16 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [country, setCountry] = useState(guessCountry)
+  const [countryTouched, setCountryTouched] = useState(false)
+  const [avatar, setAvatar] = useState<File | null>(null)
   // Business fields
   const [bizName, setBizName] = useState('')
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
   const [bizEmail, setBizEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [country, setCountry] = useState(guessCountry)
+  const [bizCountry, setBizCountry] = useState<string | null>(null)
   const [website, setWebsite] = useState('')
   const [address, setAddress] = useState('')
 
@@ -123,7 +130,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(false)
 
-  const countryList = useMemo(() => countries(), [])
+  // The business location follows the account country until it is changed.
+  const businessCountry = bizCountry ?? country
   const categories = useQuery({
     queryKey: ['business-categories'],
     queryFn: authApi.businessCategories,
@@ -151,7 +159,7 @@ export default function RegisterPage() {
     {
       bizEmail: !EMAIL.test(bizEmail.trim()) ? 'Enter a valid business email.' : null,
       phone: !PHONE.test(phone.trim()) ? 'Enter a phone number, ideally with country code (+250…).' : null,
-      country: !country ? 'Choose a country.' : null,
+      country: !businessCountry ? 'Choose a country.' : null,
       website: websiteErr,
     },
   ]
@@ -161,6 +169,7 @@ export default function RegisterPage() {
     fullName: fullName.trim().length < 2 ? 'Enter your name.' : null,
     email: !EMAIL.test(loginEmail.trim()) ? 'Enter a valid email.' : null,
     password: password.length < 10 ? 'Use at least 10 characters.' : null,
+    country: !country ? 'Choose your country.' : null,
   }
   const show = (msg: string | null | undefined) => (touched ? msg : null)
 
@@ -170,6 +179,7 @@ export default function RegisterPage() {
     if (Object.values(stepErrors[step]).some(Boolean)) return
     setTouched(false)
     if (step === 1 && !email) setEmail(bizEmail.trim())
+    if (step === 1 && !countryTouched) setCountry(businessCountry)
     setStep((s) => s + 1)
   }
 
@@ -179,11 +189,21 @@ export default function RegisterPage() {
     if (Object.values(accountErrors).some(Boolean)) return
     setError(null)
     setLoading(true)
+    const create = async (body: RegisterRequest) => {
+      await register({ ...body, country })
+      // The account exists now: the photo is a best-effort extra and never blocks sign-up.
+      if (avatar) {
+        authApi
+          .uploadAvatar(avatar)
+          .then(setUser)
+          .catch((err) => toast.fromError(err, 'Your account is ready, but the photo couldn’t be uploaded'))
+      }
+    }
     try {
       if (type === 'business' && inviteToken) {
-        await register({ email: loginEmail.trim(), password, full_name: fullName.trim(), account_type: 'business', invite_token: inviteToken })
+        await create({ email: loginEmail.trim(), password, full_name: fullName.trim(), account_type: 'business', invite_token: inviteToken })
       } else if (type === 'business') {
-        await register({
+        await create({
           email: email.trim(),
           password,
           full_name: fullName.trim(),
@@ -192,7 +212,7 @@ export default function RegisterPage() {
             name: bizName.trim(),
             email: bizEmail.trim(),
             phone: phone.trim(),
-            country,
+            country: businessCountry,
             category,
             description: description.trim(),
             website: website.trim() || undefined,
@@ -200,7 +220,7 @@ export default function RegisterPage() {
           },
         })
       } else if (type === 'personal') {
-        await register({
+        await create({
           email: email.trim(),
           password,
           full_name: fullName.trim(),
@@ -209,7 +229,7 @@ export default function RegisterPage() {
           card_invite_token: cardInvite || undefined,
         })
       } else {
-        await register({ email: email.trim(), password, full_name: fullName.trim(), account_type: 'developer' })
+        await create({ email: email.trim(), password, full_name: fullName.trim(), account_type: 'developer' })
       }
       // <GuestOnly> redirects to the right home once authenticated.
     } catch (err) {
@@ -219,7 +239,7 @@ export default function RegisterPage() {
       if (err instanceof ApiError && type === 'business' && !inviteToken) {
         const keys = Object.keys(err.fieldErrors).map((k) => k.replace(/^business\./, ''))
         if (keys.some((k) => ['name', 'category', 'description'].includes(k))) setStep(0)
-        else if (keys.some((k) => ['phone', 'country', 'website', 'address'].includes(k))) setStep(1)
+        else if (keys.some((k) => ['phone', 'website', 'address'].includes(k) || k.startsWith('business.country'))) setStep(1)
       }
     }
   }
@@ -242,6 +262,25 @@ export default function RegisterPage() {
         {(p) => <PasswordInput {...p} inputSize="lg" placeholder="At least 10 characters" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
       </Field>
       <PasswordStrength password={password} />
+      <Field
+        label="Country"
+        hint={type === 'business' ? 'Where you are based. Your business location is set separately.' : 'Where you are based.'}
+        error={show(accountErrors.country) ?? serverFieldErrors.country}
+      >
+        {(p) => (
+          <CountrySelect
+            {...p}
+            size="lg"
+            value={country}
+            onChange={(c) => {
+              setCountry(c)
+              setCountryTouched(true)
+            }}
+            required
+          />
+        )}
+      </Field>
+      <AvatarPicker file={avatar} onChange={setAvatar} name={fullName} email={loginEmail} />
     </>
   )
 
@@ -447,17 +486,8 @@ export default function RegisterPage() {
             <Field label="Phone" error={show(stepErrors[1].phone) ?? fe('phone')}>
               {(p) => <Input {...p} inputSize="lg" type="tel" inputMode="tel" autoComplete="tel" placeholder="+250 788 000 000" value={phone} onChange={(e) => setPhone(e.target.value)} />}
             </Field>
-            <Field label="Country" error={show(stepErrors[1].country) ?? fe('country')}>
-              {(p) => (
-                <Select {...p} controlSize="lg" value={country} onChange={(e) => setCountry(e.target.value)}>
-                  <option value="">Choose…</option>
-                  {countryList.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
+            <Field label="Country" error={show(stepErrors[1].country) ?? serverFieldErrors['business.country']}>
+              {(p) => <CountrySelect {...p} size="lg" value={businessCountry} onChange={setBizCountry} required />}
             </Field>
           </div>
           <Field label="Website" optional error={show(stepErrors[1].website) ?? fe('website')}>

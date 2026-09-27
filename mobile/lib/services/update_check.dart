@@ -68,7 +68,7 @@ class UpdateChecker {
         client,
         method: 'GET',
         url: Uri.parse('$base${AppConfig.apiPrefix}/meta/app-release'),
-        headers: const {'Accept': 'application/json', 'User-Agent': AppConfig.apiUserAgent},
+        headers: {'Accept': 'application/json', 'User-Agent': AppConfig.apiUserAgent},
         timeout: const Duration(seconds: 15),
       );
       if (res.statusCode != 200) return null; // 404 no_release and anything else: silent

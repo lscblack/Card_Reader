@@ -9,7 +9,7 @@ API failures keep the server's `NFC-*` ref and `request_id`. Tapping the referen
 
 | Ref | Code | Title | When | Fix |
 |---|---|---|---|---|
-| MOB-1001 | `nfc_unsupported` | NFC not supported | This phone has no NFC hardware. | Use an NFC-capable Android phone. |
+| MOB-1001 | `nfc_unsupported` | NFC not supported | This phone has no NFC hardware. | Use an NFC-capable phone (Android, or iPhone 7 or newer). |
 | MOB-1002 | `nfc_disabled` | NFC is turned off | NFC is disabled in the system settings. | Turn on NFC in Settings → Connections. |
 | MOB-1003 | `tag_lost` | Card moved away | The card left the NFC field before the operation finished. | Hold the card still against the phone and retry. |
 | MOB-1004 | `uid_unavailable` | No usable card ID | The card returned an empty or invalid UID. | Try again; some cards/phones use random UIDs that cannot be used. |
@@ -25,9 +25,9 @@ API failures keep the server's `NFC-*` ref and `request_id`. Tapping the referen
 | MOB-1014 | `tag_read_only` | Card is read-only | The card is locked and cannot be written. | Use a new, writable card. |
 | MOB-1015 | `tag_too_small` | Card memory too small | The link does not fit in the card's NDEF memory. | Use a card with more memory (e.g. NTAG215/216). |
 | MOB-1016 | `notification_permission_denied` | Notifications not allowed | Background reads work, but their result cannot be shown as a notification. | Allow notifications for nexTap in the system settings. |
-| MOB-1017 | `tag_not_ndef` | Card cannot store a link | The card does not support NDEF and cannot be formatted for it (e.g. MIFARE Classic on many phones). | Use an NDEF-compatible card (NTAG21x, MIFARE Ultralight, DESFire). |
+| MOB-1017 | `tag_not_ndef` | Card cannot store a link | The card does not support NDEF and cannot be formatted for it (e.g. MIFARE Classic, which iPhones and many Android phones can't use). | Use an NDEF-compatible card (NTAG21x, MIFARE Ultralight, DESFire). |
 | MOB-1018 | `invalid_server_response` | Unexpected server response | The server answered with data the app does not understand. | Update the app/server; contact support with the request id. |
-| MOB-1019 | `programming_timeout` | No card presented | No card was held to the phone while programming. | Start again and hold the card to the back of the phone. |
+| MOB-1019 | `programming_timeout` | No card presented | No card was held to the phone while programming. | Start again and hold the card to the phone (the back of Android phones, the top of iPhones). |
 | MOB-1020 | `endpoint_unreachable` | Endpoint unreachable | Direct mode: the developer endpoint could not be reached. | Check the endpoint URL/host is reachable from the phone. |
 | MOB-1021 | `endpoint_not_configured` | Endpoint not configured | Direct mode: the application has no enabled endpoint. | Set and enable the endpoint in the dashboard. |
 | MOB-1022 | `not_a_digital_card` | Not a digital card | The tapped phone or card does not share an nexTap digital card. | Ask the other person to open My Card → Share, or scan their exchange QR code. |

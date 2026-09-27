@@ -78,7 +78,8 @@ def generate_reset_token() -> str:
 
 
 # ── JWT ──────────────────────────────────────────────────────────────────
-def create_access_token(user_id: uuid.UUID, role: str) -> tuple[str, int]:
+def create_access_token(user_id: uuid.UUID, role: str, session_id: uuid.UUID) -> tuple[str, int]:
+    """Dashboard JWT bound to a web session (`sid`): revoking the session (sign-in elsewhere, logout) ends it."""
     now = datetime.now(UTC)
     expires_in = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     payload = {
@@ -88,6 +89,7 @@ def create_access_token(user_id: uuid.UUID, role: str) -> tuple[str, int]:
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=expires_in)).timestamp()),
         "jti": uuid.uuid4().hex,
+        "sid": str(session_id),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=JWT_ALGORITHM), expires_in
 

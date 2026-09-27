@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/platform.dart';
 import '../../data/models/card_read.dart';
 import '../../services/card_registrar.dart';
 import '../personal/share_ripple.dart';
@@ -34,7 +35,8 @@ class _RegisterCardsScreenState extends State<RegisterCardsScreen> with WidgetsB
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     r.addListener(_changed);
-    unawaited(r.start().then((_) {
+    // A card read on the Reader opens its form first (the iOS scan sheet would cover it).
+    unawaited(r.start(listen: widget.initialUid == null).then((_) {
       final uid = widget.initialUid;
       if (uid != null && mounted) r.registerUid(uid);
     }));
@@ -166,7 +168,7 @@ class _RegisterCardsScreenState extends State<RegisterCardsScreen> with WidgetsB
         next,
         [
           const SizedBox(height: 4),
-          Text('Hold each new card or tag to the back of the phone.',
+          Text('Hold each new card or tag $nfcSpot.',
               textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
         ],
       ),
@@ -199,6 +201,15 @@ class _RegisterCardsScreenState extends State<RegisterCardsScreen> with WidgetsB
               ),
             ),
           ),
+          if (r.needsScanButton) ...[
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              key: const Key('registerScan'),
+              onPressed: r.scan,
+              icon: const Icon(Icons.contactless_outlined),
+              label: Text(r.registered.isEmpty ? 'Scan a card' : 'Scan the next card'),
+            ),
+          ],
           const SizedBox(height: 12),
           Text(
             'Taps are not sent as events while registering. Normal reading resumes when you leave.',

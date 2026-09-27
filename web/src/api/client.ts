@@ -95,6 +95,32 @@ export function errorMessage(err: unknown): string {
   return 'Something went wrong'
 }
 
+const CLIENT_ID_KEY = 'nfc.client_id'
+let memoryClientId: string | null = null
+
+function randomId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+}
+
+/** Stable id of this browser: the backend uses it to recognise "the same browser signing in again". */
+export function clientId(): string {
+  try {
+    const stored = localStorage.getItem(CLIENT_ID_KEY)
+    if (stored) return stored
+    const id = randomId()
+    localStorage.setItem(CLIENT_ID_KEY, id)
+    return id
+  } catch {
+    memoryClientId ??= randomId()
+    return memoryClientId
+  }
+}
+
+// The API only allow-lists a few request headers for cross-origin calls, so the id travels in sign-in
+// bodies (`client_id`) and as a header only when the API shares the page's origin.
+const sameOriginApi = typeof window !== 'undefined' && API_BASE_URL === window.location.origin
+
 type Query = Record<string, string | number | boolean | null | undefined>
 
 export interface RequestOptions {
@@ -103,11 +129,13 @@ export interface RequestOptions {
   /** Attach the dashboard JWT (default true). */
   auth?: boolean
   signal?: AbortSignal
+  /** Don't end the local session when this call returns 401 (e.g. the logout call itself). */
+  quiet?: boolean
 }
 
-let unauthorizedHandler: (() => void) | null = null
-/** Registered by the AuthProvider: called when an authenticated request returns 401. */
-export function onUnauthorized(handler: () => void): void {
+let unauthorizedHandler: ((code: string) => void) | null = null
+/** Registered by the AuthProvider: called with the error code when an authenticated request returns 401. */
+export function onUnauthorized(handler: (code: string) => void): void {
   unauthorizedHandler = handler
 }
 
@@ -130,6 +158,7 @@ export interface RawResponse {
 
 async function send(method: string, path: string, opts: RequestOptions): Promise<RawResponse> {
   const headers: Record<string, string> = { Accept: 'application/json' }
+  if (sameOriginApi) headers['X-Client-Id'] = clientId()
   const token = opts.auth === false ? null : getToken()
   if (token) headers.Authorization = `Bearer ${token}`
   const multipart = typeof FormData !== 'undefined' && opts.body instanceof FormData
@@ -199,9 +228,9 @@ export async function request<T>(method: string, path: string, opts: RequestOpti
   // `403 account_disabled` also ends the session.
   const sessionEnded =
     (status === 401 && err.code !== 'invalid_credentials') || (status === 403 && err.code === 'account_disabled')
-  if (sessionEnded && opts.auth !== false) {
+  if (sessionEnded && opts.auth !== false && !opts.quiet) {
     clearToken()
-    unauthorizedHandler?.()
+    unauthorizedHandler?.(err.code)
   }
   throw err
 }

@@ -507,7 +507,7 @@ async def test_admin_platform_settings(client: AsyncClient, user: dict, redis) -
                                                            "request_log_retention_days": 30}, headers=admin)
     assert r.json()["signups_enabled"] == {"developer": False, "business": True}
     assert r.json()["request_log_retention_days"] == 30
-    r = await client.post("/api/v1/auth/register", json={"email": "late@example.com", "password": "Sup3rSecretPass",
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "late@example.com", "password": "Sup3rSecretPass",
                                                          "full_name": "L"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "signups_disabled"
     assert (await client.get("/api/v1/meta/status")).json()["maintenance_message"] == "Upgrade tonight"

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/platform.dart';
 import '../../core/tap_links.dart';
 import '../../data/models/business.dart' show isOpenableActionUrl;
 import '../../data/models/card_read.dart';
@@ -25,7 +26,8 @@ typedef UssdDial = Future<bool> Function(String code);
 
 Future<bool> openExternally(Uri uri) async {
   try {
-    return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // iOS: tap links are this app's universal links; marked ones open in the browser instead of here.
+    return await launchUrl(isIos ? tapLinkForBrowser(uri) : uri, mode: LaunchMode.externalApplication);
   } catch (_) {
     return false;
   }
@@ -109,8 +111,13 @@ class _GuestTapHub with WidgetsBindingObserver {
   bool _foreground = true;
   Future<void> _chain = Future.value();
 
-  /// Reading is actually on (drives the "Tap a card" ripple).
+  /// Reading is actually on (drives the "Tap a card" ripple). iOS: armed, ready for [scan].
   final active = ValueNotifier<bool>(false);
+
+  /// iOS: each card is read by "Scan a card" ([scan]).
+  bool get manual => reader.manual;
+
+  Future<void> scan() => reader.scan();
   static final _hubs = Expando<_GuestTapHub>();
 
   static _GuestTapHub of(GuestTapReader r) => _hubs[r] ??= _GuestTapHub(r);
@@ -354,15 +361,18 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final l = _link;
-    final uid = 'Card ID ${CardUtils.formatUid(widget.tag.uid)}';
+    // iOS tap links opened into the app carry no chip ID.
+    final uid = widget.tag.uid.isEmpty ? null : 'Card ID ${CardUtils.formatUid(widget.tag.uid)}';
     final List<Widget> body;
     if (_looking) {
       body = [
         const SizedBox(height: 56, width: 56, child: CircularProgressIndicator()),
         const SizedBox(height: 12),
         Text('Looking up this card…', key: const Key('guestLookup'), style: t.titleLarge, textAlign: TextAlign.center),
-        const SizedBox(height: 8),
-        SelectableText(uid, textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontFamily: 'monospace')),
+        if (uid != null) ...[
+          const SizedBox(height: 8),
+          SelectableText(uid, textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontFamily: 'monospace')),
+        ],
       ];
     } else if (l == null) {
       body = [
@@ -376,8 +386,10 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
         ),
         const SizedBox(height: 6),
         Text('Ask the business to register it with nexTap.', textAlign: TextAlign.center, style: t.bodyMedium),
-        const SizedBox(height: 8),
-        SelectableText(uid, textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontFamily: 'monospace')),
+        if (uid != null) ...[
+          const SizedBox(height: 8),
+          SelectableText(uid, textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontFamily: 'monospace')),
+        ],
       ];
     } else {
       final ours = l.kind != TapLinkKind.other;
@@ -450,11 +462,11 @@ class TapACardPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final config = Provider.of<GuestTapConfig?>(context, listen: false);
     if (config == null) return const SizedBox.shrink();
-    final active = _GuestTapHub.of(config.reader).active;
-    return ValueListenableBuilder<bool>(valueListenable: active, builder: (context, on, _) => _panel(context, on));
+    final hub = _GuestTapHub.of(config.reader);
+    return ValueListenableBuilder<bool>(valueListenable: hub.active, builder: (context, on, _) => _panel(context, on, hub));
   }
 
-  Widget _panel(BuildContext context, bool on) {
+  Widget _panel(BuildContext context, bool on, _GuestTapHub hub) {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return Card(
@@ -462,18 +474,33 @@ class TapACardPanel extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(children: [
-          NfcRipple(color: scheme.primary, icon: Icons.contactless_outlined, size: 64, active: on),
+          // iOS isn't listening between scans: no ripple.
+          NfcRipple(color: scheme.primary, icon: Icons.contactless_outlined, size: 64, active: on && !hub.manual),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Tap a card', style: t.titleMedium),
               const SizedBox(height: 2),
               Text(
-                on
-                    ? 'Hold a nexTap card or tag to the phone to open it — no sign-in needed.'
-                    : 'Turn on NFC to open nexTap cards by tapping them — no sign-in needed.',
+                hub.manual
+                    ? (on
+                        ? 'Hold the top of your iPhone to a nexTap card to open it — even with the app closed. '
+                            'No sign-in needed.'
+                        : 'This iPhone can\'t read NFC cards.')
+                    : (on
+                        ? 'Hold a nexTap card or tag to the phone to open it — no sign-in needed.'
+                        : 'Turn on NFC to open nexTap cards by tapping them — no sign-in needed.'),
                 style: t.bodySmall,
               ),
+              if (hub.manual && on) ...[
+                const SizedBox(height: 8),
+                FilledButton.tonalIcon(
+                  key: const Key('guestScan'),
+                  onPressed: hub.scan,
+                  icon: const Icon(Icons.contactless_outlined, size: 18),
+                  label: const Text('Scan a card'),
+                ),
+              ],
             ]),
           ),
         ]),

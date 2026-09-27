@@ -4,14 +4,17 @@ import { areaOf, canEnter, homePathFor, type Area } from '@/api/auth'
 import { safeNext } from '@/lib/url'
 import { useAuth } from './context'
 import { SessionRestoring } from './SessionRestoring'
+import { CountryGate } from './CountryGate'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status } = useAuth()
+  const { status, user, endReason } = useAuth()
   const loc = useLocation()
   if (status === 'loading') return <SessionRestoring />
   if (status === 'anonymous') {
-    return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />
+    const reason = endReason ? `reason=${endReason}&` : ''
+    return <Navigate to={`/login?${reason}next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />
   }
+  if (user && !user.country) return <CountryGate />
   return <>{children}</>
 }
 

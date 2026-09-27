@@ -1,27 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { Smartphone } from 'lucide-react'
 import { useAuth } from '@/auth/context'
 import { authApi } from '@/api/auth'
 import { preferencesApi } from '@/api/platform'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { ConfirmDialog } from '@/components/ui/Modal'
 import { Field, Input, Switch } from '@/components/ui/Input'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { SkeletonRows } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/toastContext'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useNow } from '@/hooks/useNow'
-import { dateOnly, relativeTime } from '@/lib/format'
-import { BizErrorState, FormError } from '@/business/components/BizError'
+import { FormError } from '@/business/components/BizError'
 import { useErrorToast } from '@/business/hooks/useErrorToast'
-import type { PersonalSession, Visibility } from '../api/types'
-import { sessionsApi } from '../api/personal'
-import { usePMutation, useSessions } from '../hooks/queries'
+import type { Visibility } from '../api/types'
 import { VisibilityToggle } from '../components/editorBits'
 import { PasswordCard } from '@/components/PasswordCard'
+import { PasskeysCard, SignedInCard } from '@/components/AccountSecurity'
+import { CountrySelect } from '@/components/CountrySelect'
 
 interface PrivacyDefaults {
   phones: Visibility
@@ -51,6 +44,7 @@ function ProfileForm() {
   const toast = useToast()
   const [name, setName] = useState(user?.full_name ?? '')
   const [phone, setPhone] = useState((user as { phone?: string | null } | null)?.phone ?? '')
+  const [country, setCountry] = useState(user?.country ?? '')
   const [error, setError] = useState<unknown>(null)
   const [saving, setSaving] = useState(false)
   async function submit(e: FormEvent) {
@@ -58,7 +52,7 @@ function ProfileForm() {
     setError(null)
     setSaving(true)
     try {
-      setUser(await authApi.updateMe({ full_name: name.trim(), phone: phone.trim() || null }))
+      setUser(await authApi.updateMe({ full_name: name.trim(), phone: phone.trim() || null, country: country || undefined }))
       toast.success('Profile saved')
     } catch (err) {
       setError(err)
@@ -76,6 +70,7 @@ function ProfileForm() {
           <Field label="Phone" optional>
             {(p) => <Input {...p} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+14155550123" />}
           </Field>
+          <Field label="Country">{(p) => <CountrySelect {...p} value={country} onChange={setCountry} />}</Field>
           <Field label="Email" hint="Contact support to change the email address of your account.">
             {(p) => <Input {...p} value={user?.email ?? ''} disabled />}
           </Field>
@@ -87,66 +82,6 @@ function ProfileForm() {
         </CardFooter>
       </Card>
     </form>
-  )
-}
-
-function Sessions() {
-  const now = useNow()
-  const toast = useToast()
-  const onError = useErrorToast()
-  const sessions = useSessions()
-  const { error, isLoading, refetch } = sessions
-  // The API also lists revoked sessions (with `revoked_at`); only phones still signed in belong here.
-  const data = sessions.data?.filter((s) => !s.revoked_at)
-  const [target, setTarget] = useState<PersonalSession | null>(null)
-  const revoke = usePMutation((id: string) => sessionsApi.revoke(id))
-  return (
-    <Card>
-      <CardHeader title="Phones signed in" description="The nexTap app signs in as you to share your card. Revoke a phone you lost or no longer use — it stops sharing immediately." />
-      {error ? (
-        <BizErrorState error={error} onRetry={() => refetch()} />
-      ) : isLoading ? (
-        <SkeletonRows rows={2} cols={3} />
-      ) : !data?.length ? (
-        <EmptyState icon={Smartphone} title="No phones yet" description="Use “Sign in on your phone” on the Share page." />
-      ) : (
-        <ul className="divide-y divide-border">
-          {data.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-              <Smartphone className="h-5 w-5 shrink-0 text-subtle" />
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-2 text-[13.5px] font-medium">
-                  {s.device_name} {s.current && <Badge tone="accent">This device</Badge>}
-                </p>
-                <p className="truncate text-xs text-subtle">
-                  {[s.model, s.platform, s.app_version && `app ${s.app_version}`].filter(Boolean).join(' · ')} · signed in {dateOnly(s.created_at)} · last seen {relativeTime(s.last_seen_at, now)}
-                </p>
-              </div>
-              <Button size="sm" variant="danger-soft" onClick={() => setTarget(s)}>
-                Revoke
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <ConfirmDialog
-        open={!!target}
-        onClose={() => setTarget(null)}
-        title={`Sign out ${target?.device_name}?`}
-        description="The phone is signed out and stops sharing your card right away. Its sharing key stops validating."
-        confirmLabel="Revoke"
-        loading={revoke.isPending}
-        onConfirm={async () => {
-          try {
-            await revoke.mutateAsync(target!.id)
-            toast.success('Phone signed out')
-            setTarget(null)
-          } catch (e) {
-            onError(e)
-          }
-        }}
-      />
-    </Card>
   )
 }
 
@@ -214,11 +149,12 @@ export default function SettingsPage() {
   useDocumentTitle('Settings')
   return (
     <>
-      <PageHeader title="Settings" description="Your profile, password, signed-in phones and privacy defaults." />
+      <PageHeader title="Settings" description="Your profile, password, where you’re signed in and privacy defaults." />
       <div className="space-y-6">
         <ProfileForm />
         <PasswordCard />
-        <Sessions />
+        <SignedInCard />
+        <PasskeysCard />
         <Privacy />
       </div>
     </>

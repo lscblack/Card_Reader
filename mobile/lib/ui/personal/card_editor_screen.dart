@@ -56,6 +56,12 @@ Future<String?> pickAndCropImage(BuildContext context, String kind) async {
         cropStyle: kind == 'photo' ? CropStyle.circle : CropStyle.rectangle,
         lockAspectRatio: ratio != null,
       ),
+      IOSUiSettings(
+        title: 'Crop ${kind == 'cover' ? 'cover' : kind}',
+        cropStyle: kind == 'photo' ? CropStyle.circle : CropStyle.rectangle,
+        aspectRatioLockEnabled: ratio != null,
+        resetAspectRatioEnabled: ratio == null,
+      ),
     ],
   );
   return cropped?.path;

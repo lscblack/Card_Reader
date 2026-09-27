@@ -27,7 +27,7 @@ class SessionDevice {
 
   Map<String, Object?> toJson() => {
     'device_name': deviceName,
-    'platform': 'android',
+    'platform': AppConfig.platform,
     'model': model,
     'os_version': osVersion,
     'app_version': appVersion,
@@ -40,9 +40,24 @@ abstract class PersonalApi {
   String get baseUrl;
   String? sessionToken;
 
-  Future<SessionGrant> signIn({required String email, required String password, required SessionDevice device});
-  Future<SessionGrant> signInWithCode({required String loginCode, required SessionDevice device});
-  Future<void> registerAccount({required String fullName, required String email, required String password, String? phone});
+  Future<SignInResult> signIn({required String email, required String password, required SessionDevice device});
+  Future<SignInResult> signInWithCode({required String loginCode, required SessionDevice device});
+
+  /// Passwordless: [requestEmailCode] first, then this with the emailed code.
+  Future<SignInResult> signInWithEmailCode({required String challengeId, required String code, required SessionDevice device});
+  Future<EmailCodeChallenge> requestEmailCode(String email);
+
+  /// Finishes a `202 confirm` sign-in (emailed code and/or signing the other phone out).
+  Future<SessionGrant> confirmSignIn({required String challengeId, String? code});
+
+  /// Emails a new code; returns the dev code when the server exposes it.
+  Future<String?> resendSignInCode(String challengeId);
+  Future<void> registerAccount({required String fullName, required String email, required String password, String? phone, String? country});
+
+  Future<PersonalUser> account();
+  Future<PersonalUser> updateAccount(Map<String, Object?> patch);
+  Future<PersonalUser> uploadAvatar(String filePath);
+  Future<PersonalUser> deleteAvatar();
 
   Future<List<PersonalSession>> sessions();
   Future<void> revokeSession(String id);
@@ -153,23 +168,61 @@ class HttpPersonalApi implements PersonalApi {
     );
   }
 
+  SignInResult _result(Object? r) => r is Map && r['status'] == 'confirm'
+      ? NeedsConfirmation(SignInChallenge.fromJson(r))
+      : SignedIn(_grant(r));
+
   @override
-  Future<SessionGrant> signIn({required String email, required String password, required SessionDevice device}) async =>
-      _grant(await _call('POST', '/personal/sessions',
+  Future<SignInResult> signIn({required String email, required String password, required SessionDevice device}) async =>
+      _result(await _call('POST', '/personal/sessions',
           body: {'email': email.trim(), 'password': password, ...device.toJson()}, auth: false));
 
   @override
-  Future<SessionGrant> signInWithCode({required String loginCode, required SessionDevice device}) async =>
-      _grant(await _call('POST', '/personal/sessions', body: {'login_code': loginCode, ...device.toJson()}, auth: false));
+  Future<SignInResult> signInWithCode({required String loginCode, required SessionDevice device}) async =>
+      _result(await _call('POST', '/personal/sessions', body: {'login_code': loginCode, ...device.toJson()}, auth: false));
 
   @override
-  Future<void> registerAccount({required String fullName, required String email, required String password, String? phone}) =>
+  Future<SignInResult> signInWithEmailCode({required String challengeId, required String code, required SessionDevice device}) async =>
+      _result(await _call('POST', '/personal/sessions',
+          body: {'email_code_challenge_id': challengeId, 'email_code': code.trim(), ...device.toJson()}, auth: false));
+
+  @override
+  Future<EmailCodeChallenge> requestEmailCode(String email) async =>
+      EmailCodeChallenge.fromJson(await _call('POST', '/personal/email-code', body: {'email': email.trim()}, auth: false));
+
+  @override
+  Future<SessionGrant> confirmSignIn({required String challengeId, String? code}) async => _grant(await _call(
+      'POST', '/personal/sessions/confirm', body: {'challenge_id': challengeId, if (code != null) 'code': code.trim()}, auth: false));
+
+  @override
+  Future<String?> resendSignInCode(String challengeId) async {
+    final r = await _call('POST', '/personal/sessions/resend', body: {'challenge_id': challengeId}, auth: false);
+    return r is Map ? r['dev_code']?.toString() : null;
+  }
+
+  @override
+  Future<PersonalUser> account() async => PersonalUser.fromJson(await _call('GET', '/personal/account'));
+
+  @override
+  Future<PersonalUser> updateAccount(Map<String, Object?> patch) async =>
+      PersonalUser.fromJson(await _call('PATCH', '/personal/account', body: patch));
+
+  @override
+  Future<PersonalUser> uploadAvatar(String filePath) async =>
+      PersonalUser.fromJson(await _upload('/personal/account/avatar', null, filePath));
+
+  @override
+  Future<PersonalUser> deleteAvatar() async => PersonalUser.fromJson(await _call('DELETE', '/personal/account/avatar'));
+
+  @override
+  Future<void> registerAccount({required String fullName, required String email, required String password, String? phone, String? country}) =>
       _call('POST', '/auth/register', auth: false, body: {
         'account_type': 'personal',
         'full_name': fullName.trim(),
         'email': email.trim(),
         'password': password,
         if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'country': ?country,
       });
 
   @override
@@ -209,7 +262,13 @@ class HttpPersonalApi implements PersonalApi {
 
   @override
   Future<DigitalCard?> uploadImage(String id, String kind, String filePath) async {
-    final req = http.MultipartRequest('POST', _uri('/personal/cards/${Uri.encodeComponent(id)}/images', {'kind': kind}))
+    final j = await _upload('/personal/cards/${Uri.encodeComponent(id)}/images', {'kind': kind}, filePath);
+    return j is Map && j['id'] != null ? DigitalCard.fromJson(j) : null;
+  }
+
+  /// Multipart `file` upload; returns the decoded JSON (null when the body isn't JSON).
+  Future<Object?> _upload(String path, Map<String, String>? query, String filePath) async {
+    final req = http.MultipartRequest('POST', _uri(path, query))
       ..headers.addAll({
         'Accept': 'application/json',
         'User-Agent': AppConfig.apiUserAgent,
@@ -230,15 +289,13 @@ class HttpPersonalApi implements PersonalApi {
       throw NetworkException('Connection error (${e.message})');
     }
     final body = utf8.decode(res.bodyBytes, allowMalformed: true);
-    Log.d('personal', 'POST images -> ${res.statusCode}');
+    Log.d('personal', 'POST $path -> ${res.statusCode}');
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      Object? j;
       try {
-        j = body.isEmpty ? null : jsonDecode(body);
+        return body.isEmpty ? null : jsonDecode(body);
       } on FormatException {
-        j = null; // uploaded; the caller refreshes the card instead
+        return null; // uploaded; the caller refreshes instead
       }
-      return j is Map && j['id'] != null ? DigitalCard.fromJson(j) : null;
     }
     final e = ApiClient.parseError(res.statusCode, body, res.headers);
     // Same session handling as every other call: a revoked session signs this space out.

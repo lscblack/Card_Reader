@@ -222,7 +222,7 @@ async def submit_form(business_slug: str, profile_slug: str, section_id: str, bo
     notifications.notify(session, recipients, type_="business.form_response",
                          title=f"New response: {form.get('title') or profile.title}"[:200],
                          body=f"On the page “{profile.title}”" + (f" · rating {rating:g}/5" if rating else ""),
-                         link=f"/business/{business.id}/pages/{profile.id}/responses", severity="info")
+                         link=f"/business/{business.id}/responses?profile_id={profile.id}", severity="info")
     await session.commit()
     return {"status": "received", "message": form.get("success_message")}
 

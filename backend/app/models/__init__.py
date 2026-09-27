@@ -33,7 +33,16 @@ from app.models.personal import (
     PersonalSession,
 )
 from app.models.platform import PlatformSetting, RequestLog, SandboxEndpoint, SandboxRequest
-from app.models.user import EmailVerificationToken, PasswordResetToken, Plan, Subscription, User
+from app.models.user import (
+    EmailVerificationToken,
+    LoginChallenge,
+    Passkey,
+    PasswordResetToken,
+    Plan,
+    Subscription,
+    User,
+    WebSession,
+)
 
 __all__ = [
     "CardTemplate", "Contact", "DigitalCard", "DigitalCardInvite", "PersonalActivity", "PersonalLoginCode",

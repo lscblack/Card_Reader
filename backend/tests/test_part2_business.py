@@ -71,11 +71,11 @@ async def test_business_registration_creates_workspace(client: AsyncClient) -> N
 
 
 async def test_registration_validation_and_developer_default(client: AsyncClient) -> None:
-    r = await client.post("/api/v1/auth/register", json={"email": "b@example.com", "password": "Sup3rSecretPass",
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "b@example.com", "password": "Sup3rSecretPass",
                                                          "full_name": "B", "account_type": "business"})
     assert r.status_code == 422 and r.json()["error"]["details"][0]["field"] == "body.business"
     r = await client.post("/api/v1/auth/register", json={
-        "email": "b@example.com", "password": "Sup3rSecretPass", "full_name": "B", "account_type": "business",
+        "country": "RW", "email": "b@example.com", "password": "Sup3rSecretPass", "full_name": "B", "account_type": "business",
         "business": {"name": "X Co", "email": "x@example.com", "phone": "+15551234", "country": "US", "category": "nope"}})
     assert r.status_code == 422 and r.json()["error"]["details"][0]["field"] == "body.business.category"
 
@@ -515,7 +515,7 @@ async def test_invitation_flow_and_last_owner(client: AsyncClient) -> None:
     gone_token = token_from_url(r.json()["dev_invite_url"])
     await client.post(f"{base}/invitations/{r.json()['id']}/revoke", headers=owner["headers"])
     assert (await client.get(f"/api/v1/invitations/{gone_token}")).json()["status"] == "revoked"
-    r = await client.post("/api/v1/auth/register", json={"email": "gone@example.com", "password": "Sup3rSecretPass",
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "gone@example.com", "password": "Sup3rSecretPass",
                                                          "full_name": "G", "invite_token": gone_token})
     assert r.status_code == 410
 

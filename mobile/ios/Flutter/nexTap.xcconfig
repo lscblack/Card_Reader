@@ -1,0 +1,9 @@
+// nexTap iOS settings shared by Debug / Release / Profile.
+
+// Host of the tap links written on cards: the backend's PUBLIC_API_URL host (no scheme, no port), which must
+// serve https://<host>/.well-known/apple-app-site-association (set APPLE_TEAM_ID on the backend).
+// Universal links need HTTPS with a valid certificate: a LAN IP over http can't be used.
+NEXTAP_LINK_DOMAIN = tap.example.com
+
+// Your Apple Developer Team ID (Xcode → Signing & Capabilities also sets it). Must match the backend's APPLE_TEAM_ID.
+// DEVELOPMENT_TEAM = ABCDE12345

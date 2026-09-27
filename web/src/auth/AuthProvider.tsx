@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { ApiError, onUnauthorized } from '@/api/client'
-import type { TokenResponse, User } from '@/api/types'
+import type { LoginConfirm, LoginOut, TokenResponse, User } from '@/api/types'
 import { clearToken, getToken, setToken } from './tokenStore'
 import { AuthContext, type AuthState, type RestoreProblem } from './context'
 
@@ -11,10 +11,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null)
   const [status, setStatus] = useState<AuthState['status']>(() => (getToken() ? 'loading' : 'anonymous'))
   const [devVerificationUrl, setDevVerificationUrl] = useState<string | null>(null)
+  const [endReason, setEndReason] = useState<AuthState['endReason']>(null)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
   const logout = useCallback(() => {
+    if (getToken()) authApi.logout().catch(() => {})
     clearToken()
     qc.clear()
     setUserState(null)
@@ -22,15 +24,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate('/login', { replace: true })
   }, [navigate, qc])
 
-  // Any authenticated request returning 401 -> drop the session and go to /login.
+  // Any authenticated request returning 401 -> drop the session and go to /login (with the reason, if known).
   useEffect(() => {
-    onUnauthorized(() => {
+    onUnauthorized((code) => {
       qc.clear()
       setUserState(null)
       setStatus('anonymous')
       const here = window.location.pathname + window.location.search
+      const reason = code === 'session_replaced' ? 'replaced' : code === 'token_revoked' ? 'revoked' : null
+      setEndReason(reason)
       if (!window.location.pathname.startsWith('/login')) {
-        navigate(`/login?next=${encodeURIComponent(here)}`, { replace: true })
+        navigate(`/login?${reason ? `reason=${reason}&` : ''}next=${encodeURIComponent(here)}`, { replace: true })
       }
     })
   }, [navigate, qc])
@@ -81,11 +85,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const accept = useCallback((res: TokenResponse) => {
     setToken(res.access_token)
+    setEndReason(null)
     if (res.dev_verification_url) setDevVerificationUrl(res.dev_verification_url)
     setUserState(res.user)
     setStatus('authenticated')
     return res.user
   }, [])
+
+  const completeLogin = useCallback(
+    (res: LoginOut): LoginConfirm | null => {
+      if (res.status === 'confirm') return res
+      accept(res)
+      return null
+    },
+    [accept],
+  )
 
   const value = useMemo<AuthState>(
     () => ({
@@ -93,7 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       restoreProblem,
       retryRestore,
-      login: async (body) => accept(await authApi.login(body)),
+      login: async (body) => completeLogin(await authApi.login(body)),
+      completeLogin,
       register: async (body) => accept(await authApi.register(body)),
       logout,
       setUser: setUserState,
@@ -102,8 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       devVerificationUrl,
       setDevVerificationUrl,
+      endReason,
     }),
-    [user, status, restoreProblem, retryRestore, accept, logout, devVerificationUrl],
+    [user, status, restoreProblem, retryRestore, accept, completeLogin, logout, devVerificationUrl, endReason],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1372,12 +1372,14 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
     user.role = /admin/i.test(email) ? 'admin' : 'developer'
     user.account_type = business ? 'business' : personal ? 'personal' : 'developer'
     if (personal && typeof body.phone === 'string' && body.phone) user.phone = body.phone
+    if (registering && typeof body.country === 'string' && body.country) user.country = body.country
     user.email_verified = registering ? false : !/unverified/i.test(email)
     loggedIn = true
     savePersona()
     log(registering ? 'user.register' : 'user.login', 'user', user.id)
     return ok(
       {
+        status: 'ok',
         access_token: 'mock.' + urlsafe(24),
         token_type: 'bearer',
         expires_in: 3600,
@@ -1418,6 +1420,36 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
     for (const k of ['phone', 'company', 'country', 'job_title'] as const) if (k in body) user[k] = (body[k] as string | null) || null
     savePersona()
     return ok(withMemberships(token))
+  }
+  if (is('POST', '/auth/logout')) return ok(null, 204)
+  if (is('GET', '/auth/sessions')) {
+    return ok({ web: { id: 'mock-web', kind: 'web', device_name: 'This browser', via: 'password', created_at: now(), last_seen_at: now(), current: true }, mobile: null })
+  }
+  if (is('DELETE', '/auth/sessions/mobile')) return ok(null, 204)
+  if (is('GET', '/auth/passkeys')) return ok([])
+  if (path.startsWith('/auth/passkeys')) return fail(400, 'passkey_invalid', 'Passkeys are not available in mock mode')
+  if (is('GET', '/admin/demographics')) {
+    const by_country = [
+      { country: 'RW', users: 42, developer: 12, business: 10, personal: 20, active_30d: 30, new_30d: 6 },
+      { country: 'KE', users: 18, developer: 6, business: 4, personal: 8, active_30d: 11, new_30d: 3 },
+      { country: 'US', users: 9, developer: 7, business: 1, personal: 1, active_30d: 5, new_30d: 1 },
+      { country: null, users: 4, developer: 3, business: 1, personal: 0, active_30d: 1, new_30d: 0 },
+    ]
+    const sum = (k: 'users' | 'developer' | 'business' | 'personal' | 'active_30d' | 'new_30d') => by_country.reduce((s, r) => s + r[k], 0)
+    const d = new Date()
+    return ok({
+      total_users: sum('users'),
+      countries: 3,
+      without_country: 4,
+      active_30d: sum('active_30d'),
+      new_30d: sum('new_30d'),
+      by_account_type: { developer: sum('developer'), business: sum('business'), personal: sum('personal') },
+      by_country,
+      signups_by_month: Array.from({ length: 12 }, (_, i) => {
+        const m = new Date(d.getFullYear(), d.getMonth() - 11 + i, 1)
+        return { month: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`, users: (i * 7) % 11 }
+      }),
+    })
   }
   if (is('POST', '/auth/change-password')) {
     if (String(body.current_password ?? '').length < 10) return fail(401, 'invalid_credentials', 'Current password is incorrect')

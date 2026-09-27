@@ -230,6 +230,39 @@ def _account_row(user: User, business: Business | None, stats: dict[str, Any]) -
     return data
 
 
+@router.get("/demographics", summary="People by country, account type and sign-up month")
+async def demographics(admin: AdminUser, session: SessionDep) -> dict[str, Any]:
+    now = datetime.now(UTC)
+    d30 = now - timedelta(days=30)
+    kind = lambda t: func.count().filter(User.account_type == t)  # noqa: E731
+    rows = (await session.execute(
+        select(User.country, func.count(), kind("developer"), kind("business"), kind("personal"),
+               func.count().filter(User.last_login_at >= d30), func.count().filter(User.created_at >= d30))
+        .group_by(User.country).order_by(func.count().desc())
+    )).all()
+    by_country = [{"country": c, "users": n, "developer": dev, "business": biz, "personal": per,
+                   "active_30d": act, "new_30d": new} for c, n, dev, biz, per, act, new in rows]
+    total = sum(r["users"] for r in by_country)
+    start = (now.replace(day=1) - timedelta(days=334)).replace(day=1)
+    month = func.date_trunc("month", User.created_at)
+    signups = {m.strftime("%Y-%m"): n for m, n in (await session.execute(
+        select(month, func.count()).where(User.created_at >= start).group_by(month))).all()}
+    months, cur = [], start
+    for _ in range(12):
+        months.append({"month": cur.strftime("%Y-%m"), "users": signups.get(cur.strftime("%Y-%m"), 0)})
+        cur = (cur + timedelta(days=32)).replace(day=1)
+    return {
+        "total_users": total,
+        "countries": sum(1 for r in by_country if r["country"]),
+        "without_country": next((r["users"] for r in by_country if r["country"] is None), 0),
+        "active_30d": sum(r["active_30d"] for r in by_country),
+        "new_30d": sum(r["new_30d"] for r in by_country),
+        "by_account_type": {t: sum(r[t] for r in by_country) for t in ("developer", "business", "personal")},
+        "by_country": [r for r in by_country if r["country"]],
+        "signups_by_month": months,
+    }
+
+
 @router.get("/accounts", summary="All accounts with stats")
 async def list_accounts(admin: AdminUser, session: SessionDep, pagination: PaginationDep,
                         type: Literal["developer", "business", "personal"] | None = None,
@@ -237,8 +270,13 @@ async def list_accounts(admin: AdminUser, session: SessionDep, pagination: Pagin
                         status: Literal["active", "inactive"] | None = None,
                         role: Literal["developer", "admin"] | None = None,
                         email_verified: bool | None = None,
-                        plan_code: str | None = Query(default=None, max_length=32)) -> dict[str, Any]:
+                        plan_code: str | None = Query(default=None, max_length=32),
+                        country: str | None = Query(default=None, max_length=7,
+                                                    description="ISO code, or `none` for accounts without one")
+                        ) -> dict[str, Any]:
     conds = []
+    if country:
+        conds.append(User.country.is_(None) if country.lower() == "none" else User.country == country.upper())
     if type:
         conds.append(User.account_type == type)
     if role:

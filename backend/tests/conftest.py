@@ -104,14 +104,14 @@ def redis(clean_state: fakeredis.FakeAsyncRedis) -> fakeredis.FakeAsyncRedis:
 @pytest.fixture
 async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as c:
+    async with AsyncClient(transport=transport, base_url="http://testserver", headers={"X-Client-Id": "pytest-browser"}) as c:
         yield c
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 async def register(client: AsyncClient, email: str | None = None, password: str = "Sup3rSecretPass") -> dict[str, Any]:
     email = email or f"dev-{uuid.uuid4().hex[:8]}@example.com"
-    r = await client.post("/api/v1/auth/register", json={"email": email, "password": password, "full_name": "Dev"})
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": email, "password": password, "full_name": "Dev"})
     assert r.status_code == 201, r.text
     return r.json()
 

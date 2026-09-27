@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ScrollText } from 'lucide-react'
 import { authApi } from '@/api/auth'
 import { ApiError } from '@/api/client'
@@ -8,10 +8,10 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { dateTime, shortId } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui/Card'
-import { Field, Input, Select } from '@/components/ui/Input'
+import { Field, Input } from '@/components/ui/Input'
+import { CountrySelect } from '@/components/CountrySelect'
 import { ErrorAlert } from '@/components/ui/ErrorMeta'
 import { AvatarUploader } from '@/components/AvatarUploader'
-import { countries } from '@/lib/countries'
 import { Button } from '@/components/ui/Button'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { EmptyState, ErrorState } from '@/components/ui/EmptyState'
@@ -20,11 +20,11 @@ import { Pagination } from '@/components/ui/Pagination'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/Table'
 import { useToast } from '@/components/ui/toastContext'
 import { PasswordCard } from '@/components/PasswordCard'
+import { AccountSecurity } from '@/components/AccountSecurity'
 
 function ProfileCard() {
   const { user, setUser } = useAuth()
   const toast = useToast()
-  const countryList = useMemo(() => countries(), [])
   const initial = {
     full_name: user?.full_name ?? '',
     phone: user?.phone ?? '',
@@ -51,7 +51,7 @@ function ProfileCard() {
           full_name: form.full_name.trim(),
           phone: form.phone.trim() || null,
           company: form.company.trim() || null,
-          country: form.country || null,
+          country: form.country || undefined,
           job_title: form.job_title.trim() || null,
         }),
       )
@@ -115,17 +115,8 @@ function ProfileCard() {
             <Field label="Phone" optional error={fe.phone}>
               {(p) => <Input {...p} type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" maxLength={40} />}
             </Field>
-            <Field label="Country" optional error={fe.country}>
-              {(p) => (
-                <Select {...p} value={form.country} onChange={set('country')}>
-                  <option value="">—</option>
-                  {countryList.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
+            <Field label="Country" error={fe.country}>
+              {(p) => <CountrySelect {...p} value={form.country} onChange={(country) => setForm((f) => ({ ...f, country }))} />}
             </Field>
           </div>
           <div className="flex flex-wrap gap-2 text-[13px] text-muted">
@@ -211,12 +202,13 @@ export default function SettingsPage() {
   useDocumentTitle('Account Settings')
   return (
     <>
-      <PageHeader title="Account Settings" description="Your profile, password and account activity." />
+      <PageHeader title="Account Settings" description="Your profile, password, sign-in and account activity." />
       <div className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-2">
           <ProfileCard />
           <PasswordCard />
         </div>
+        <AccountSecurity />
         <AuditLogCard />
         <Card className="border-red-200 dark:border-red-900/50">
           <CardHeader title="Danger zone" />

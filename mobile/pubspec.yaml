@@ -54,6 +54,14 @@ dependencies:
   # Part 5 card renderer: Code-128 badges and SVG path layers (pure Dart).
   barcode: ^2.2.9
   path_parsing: ^1.1.0
+  # iOS: universal links (tap links /t/{code}) and nfcterminal:// links (Android uses MainActivity).
+  # 7.1+ needs a newer Flutter than this project's 3.41.
+  app_links: ^7.0.0
+
+# iOS scan-sheet fixes (see third_party/nfc_manager/NEXTAP_PATCHES.md); Android code is unchanged.
+dependency_overrides:
+  nfc_manager:
+    path: third_party/nfc_manager
 
 dev_dependencies:
   flutter_test:

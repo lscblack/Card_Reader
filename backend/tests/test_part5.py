@@ -310,7 +310,7 @@ async def test_business_badge_issue_accept_lock_and_expired_reads(client: AsyncC
         "email": "kim@example.com", "template_id": "fixture_badge", "badge": {"valid_until": yesterday}})
     assert r.status_code == 201, r.text
     token = token_from_url(r.json()["dev_invite_url"])
-    reg = await client.post("/api/v1/auth/register", json={"email": "kim@example.com", "password": "Sup3rSecretPass",
+    reg = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "kim@example.com", "password": "Sup3rSecretPass",
                                                            "full_name": "Kim Lee", "card_invite_token": token})
     assert reg.status_code == 201, reg.text
     kim = {"headers": bearer(reg.json()["access_token"]), "email": "kim@example.com"}

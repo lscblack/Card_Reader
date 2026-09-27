@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter, File, Query, Request, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Query, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import Field
@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.errors import AppError, not_found, validation_error
 from app.core.rate_limit import client_ip, hit
 from app.core.security import sha256_hex, verify_password
+from app.core.countries import normalize_country
 from app.core.useragent import is_bot
 from app.models import (
     CardTemplate,
@@ -32,7 +33,8 @@ from app.models import (
     User,
 )
 from app.schemas.common import Schema
-from app.services import audit, card_invites, media, notifications, personal
+from app.services import audit, auth_sessions, card_invites, media, notifications, personal
+from app.services import email as email_service
 from app.services.request_logs import set_actor
 from app.services.serializers import user_out
 
@@ -61,6 +63,22 @@ class SessionCreateIn(DeviceFields):
     email: str | None = Field(default=None, max_length=320)
     password: str | None = Field(default=None, max_length=128)
     login_code: str | None = Field(default=None, max_length=64)
+    # Passwordless: POST /personal/email-code first, then send its challenge id + the emailed code here.
+    email_code_challenge_id: uuid.UUID | None = None
+    email_code: str | None = Field(default=None, max_length=12)
+
+
+class PhoneConfirmIn(Schema):
+    challenge_id: uuid.UUID
+    code: str | None = Field(default=None, max_length=12)
+
+
+class PhoneChallengeIn(Schema):
+    challenge_id: uuid.UUID
+
+
+class PhoneEmailCodeIn(Schema):
+    email: str = Field(max_length=320)
 
 
 async def _cards_of(session: SessionDep, user_id: uuid.UUID) -> list[DigitalCard]:
@@ -70,13 +88,45 @@ async def _cards_of(session: SessionDep, user_id: uuid.UUID) -> list[DigitalCard
                  ).scalars().unique())
 
 
-@router.post("/sessions", status_code=201, summary="Sign the app in (email+password or QR login code)",
-             description="Returns a `nfcs_` session token (shown once) and the session's share key used to sign "
-                         "digital-card tokens (§3). Re-login with the same `installation_id` revokes the previous session.")
-async def create_session(body: SessionCreateIn, session: SessionDep, client: ClientDep, request: Request) -> dict[str, Any]:
+async def _sign_phone_in(session: SessionDep, user: User, device: dict[str, Any], *, via: str,
+                         client: ClientDep, request: Request, login_code_id: Any = None) -> dict[str, Any]:
+    """Creates the phone session; any other phone of the account is signed out ("replaced") — one phone per account."""
+    now = datetime.now(UTC)
+    if device.get("installation_id"):  # this same phone signing in again
+        await session.execute(update(PersonalSession).where(
+            PersonalSession.user_id == user.id, PersonalSession.installation_id == device["installation_id"],
+            PersonalSession.revoked_at.is_(None)).values(revoked_at=now, revoked_reason="relogin"))
+    await auth_sessions.revoke_phone_sessions(session, user.id, "replaced")
+    row, token, secret = await personal.create_session(session, user, device)
+    if login_code_id is not None:
+        await session.execute(update(PersonalLoginCode).where(PersonalLoginCode.id == login_code_id)
+                              .values(session_id=row.id))
+    user.last_login_at = now
+    user.login_count = (user.login_count or 0) + 1
+    set_actor(request, "personal_session", row.id, user_id=user.id)
+    audit.record(session, action="personal.session_create", user_id=user.id, client=client,
+                 resource_type="personal_session", resource_id=row.id,
+                 metadata={"device_name": row.device_name, "via": via})
+    await session.commit()
+    user = (await session.execute(select(User).where(User.id == user.id)
+                                  .execution_options(populate_existing=True))).scalar_one()
+    return {"status": "ok", "session_token": token, "session": personal.session_out(row),
+            "user": user_out(user).model_dump(mode="json"), "share_key": {"key_id": row.key_id, "secret": secret},
+            "cards": [personal.card_out(c) for c in await _cards_of(session, user.id)]}
+
+
+@router.post("/sessions", status_code=201, summary="Sign the app in (email + password, emailed code or QR login code)",
+             description="`201 {status: ok}` returns a `nfcs_` session token (shown once) and the share key. One phone "
+                         "per account: when another phone is signed in — or an emailed code is required (production) — "
+                         "the answer is `202 {status: confirm, challenge_id, otp_required, existing_session}`; finish "
+                         "with `POST /personal/sessions/confirm`. The same `installation_id` signing in again needs no "
+                         "confirmation.")
+async def create_session(body: SessionCreateIn, session: SessionDep, client: ClientDep, request: Request,
+                         response: Response, background: BackgroundTasks) -> dict[str, Any]:
     now = datetime.now(UTC)
     user: User | None = None
     code_row = None
+    via = "password"
     if body.login_code:
         code_row = (await session.execute(
             update(PersonalLoginCode).where(PersonalLoginCode.code_hash == sha256_hex(body.login_code),
@@ -85,6 +135,18 @@ async def create_session(body: SessionCreateIn, session: SessionDep, client: Cli
         if code_row is None:
             raise AppError(401, "invalid_login_code", "This login code is invalid, used or expired")
         user = await session.get(User, code_row[1])
+        via = "login_code"
+    elif body.email_code_challenge_id:
+        ch = await auth_sessions.load_challenge(session, body.email_code_challenge_id, kind="mobile",
+                                                purposes=("email_code",))
+        if ch.user_id is None:
+            ch.attempts += 1
+            await session.commit()
+            raise AppError(401, "invalid_login_code", "This code is invalid or has expired — request a new one")
+        await auth_sessions.check_code(session, ch, body.email_code)
+        ch.used_at = now
+        user = await session.get(User, ch.user_id)
+        via = "email_code"
     elif body.email and body.password:
         from app.api.v1.routes.auth import ensure_login_allowed
         from app.core.rate_limit import clear_login_failures, record_login_failure
@@ -98,31 +160,125 @@ async def create_session(body: SessionCreateIn, session: SessionDep, client: Cli
             raise AppError(401, "invalid_credentials", "Invalid email or password")
         await clear_login_failures(email)
     else:
-        raise validation_error("body", "provide email + password, or login_code")
+        raise validation_error("body", "provide email + password, an emailed code, or login_code")
     if user is None or not user.is_active:
         raise AppError(403, "account_disabled", "This account has been disabled")
     if user.account_type != "personal":
         raise AppError(403, "personal_account_required", "Sign in with a personal (digital card) account")
-    if body.installation_id:
-        await session.execute(update(PersonalSession).where(
-            PersonalSession.user_id == user.id, PersonalSession.installation_id == body.installation_id,
-            PersonalSession.revoked_at.is_(None)).values(revoked_at=now))
-    row, token, secret = await personal.create_session(session, user, body.model_dump())
-    if code_row is not None:
-        await session.execute(update(PersonalLoginCode).where(PersonalLoginCode.id == code_row[0])
-                              .values(session_id=row.id))
-    user.last_login_at = now
-    user.login_count = (user.login_count or 0) + 1
-    set_actor(request, "personal_session", row.id, user_id=user.id)
-    audit.record(session, action="personal.session_create", user_id=user.id, client=client,
-                 resource_type="personal_session", resource_id=row.id,
-                 metadata={"device_name": row.device_name, "via": "login_code" if code_row else "password"})
+    device = body.model_dump(include=set(DeviceFields.model_fields))
+    existing = await auth_sessions.active_phone_session(session, user.id)
+    same_phone = bool(existing and body.installation_id and existing.installation_id == body.installation_id)
+    otp = settings.login_otp_required and via == "password"
+    if not otp and (existing is None or same_phone):
+        return await _sign_phone_in(session, user, device, via=via, client=client, request=request,
+                                    login_code_id=code_row[0] if code_row else None)
+    ch, code = await auth_sessions.start_challenge(
+        session, user, kind="mobile", purpose="login", via=via, otp_required=otp,
+        payload={"device": device, "login_code_id": str(code_row[0]) if code_row else None})
     await session.commit()
-    user = (await session.execute(select(User).where(User.id == user.id)
-                                  .execution_options(populate_existing=True))).scalar_one()
-    return {"session_token": token, "session": personal.session_out(row), "user": user_out(user).model_dump(mode="json"),
-            "share_key": {"key_id": row.key_id, "secret": secret},
-            "cards": [personal.card_out(c) for c in await _cards_of(session, user.id)]}
+    if code:
+        background.add_task(email_service.send_login_code, user.email, user.full_name, code,
+                            device_name=device.get("device_name"),
+                            signs_out=existing.device_name if existing and not same_phone else None)
+    response.status_code = 202
+    return auth_sessions.challenge_out(ch, user, auth_sessions.phone_session_out(existing)
+                                       if existing and not same_phone else None, code)
+
+
+@router.post("/sessions/confirm", status_code=201, summary="Finish a phone sign-in step (code / sign out the other phone)")
+async def confirm_session(body: PhoneConfirmIn, session: SessionDep, client: ClientDep, request: Request) -> dict[str, Any]:
+    ch = await auth_sessions.load_challenge(session, body.challenge_id, kind="mobile", purposes=("login",))
+    await auth_sessions.check_code(session, ch, body.code)
+    user = await session.get(User, ch.user_id) if ch.user_id else None
+    if user is None or not user.is_active:
+        raise AppError(403, "account_disabled", "This account has been disabled")
+    ch.used_at = datetime.now(UTC)
+    code_id = ch.payload.get("login_code_id")
+    return await _sign_phone_in(session, user, dict(ch.payload.get("device") or {}), via=ch.via, client=client,
+                                request=request, login_code_id=uuid.UUID(code_id) if code_id else None)
+
+
+@router.post("/sessions/resend", summary="Email a new sign-in code for a pending phone sign-in")
+async def resend_session_code(body: PhoneChallengeIn, session: SessionDep, background: BackgroundTasks) -> dict[str, Any]:
+    ch = await auth_sessions.load_challenge(session, body.challenge_id, kind="mobile", purposes=("login", "email_code"))
+    user = await session.get(User, ch.user_id) if ch.user_id else None
+    code = await auth_sessions.resend_code(session, ch)
+    await session.commit()
+    if user is not None and user.is_active:
+        background.add_task(email_service.send_login_code, user.email, user.full_name, code)
+    out: dict[str, Any] = {"status": "sent"}
+    if email_service.expose_dev_links():
+        out["dev_code"] = code
+    return out
+
+
+@router.post("/email-code", summary="Passwordless phone sign-in: email a 6-digit code",
+             description="Same answer whether or not the account exists. Then `POST /personal/sessions` with "
+                         "`email_code_challenge_id` + `email_code`.")
+async def phone_email_code(body: PhoneEmailCodeIn, session: SessionDep, background: BackgroundTasks) -> dict[str, Any]:
+    from app.api.v1.routes.auth import ensure_login_allowed
+
+    email = body.email.strip().lower()
+    await ensure_login_allowed(email)
+    user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    target = user if user is not None and user.is_active and user.account_type == "personal" else None
+    ch, code = await auth_sessions.start_challenge(session, target, kind="mobile", purpose="email_code",
+                                                   via="email_code", otp_required=True)
+    await session.commit()
+    if target is not None and code:
+        background.add_task(email_service.send_login_code, target.email, target.full_name, code)
+    out: dict[str, Any] = {"challenge_id": str(ch.id), "sent_to": auth_sessions.mask_email(email)}
+    if code and target is not None and email_service.expose_dev_links():
+        out["dev_code"] = code
+    return out
+
+
+class AccountUpdateIn(Schema):
+    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+    country: str | None = Field(default=None, max_length=2)
+    phone: str | None = Field(default=None, max_length=40)
+
+
+@router.get("/account", summary="The signed-in account (name, email, country, photo)")
+async def get_account(ctx: PersonalAuth) -> dict[str, Any]:
+    return user_out(ctx.user).model_dump(mode="json")
+
+
+@router.patch("/account", summary="Update name, country or phone (country can be changed, never cleared)")
+async def update_account(body: AccountUpdateIn, ctx: PersonalAuth, session: SessionDep) -> dict[str, Any]:
+    data = body.model_dump(exclude_unset=True)
+    if "country" in data:
+        try:
+            country = normalize_country(data["country"])
+        except ValueError as exc:
+            raise validation_error("body.country", str(exc)) from None
+        if country is None:
+            raise validation_error("body.country", "country is required and cannot be cleared")
+        ctx.user.country = country
+    if data.get("full_name"):
+        ctx.user.full_name = data["full_name"].strip()
+    if "phone" in data:
+        ctx.user.phone = (data["phone"] or "").strip() or None
+    await session.commit()
+    return user_out(ctx.user).model_dump(mode="json")
+
+
+@router.post("/account/avatar", summary="Upload a profile photo (optional; resized to 256×256)")
+async def upload_account_avatar(ctx: PersonalAuth, session: SessionDep, file: UploadFile = File(...)) -> dict[str, Any]:
+    data = await file.read(settings.MEDIA_MAX_UPLOAD_BYTES + 1)
+    path = await run_in_threadpool(media.save_avatar, data, str(ctx.user.id))
+    old, ctx.user.avatar_path = ctx.user.avatar_path, path
+    await session.commit()
+    media.delete_file(old)
+    return user_out(ctx.user).model_dump(mode="json")
+
+
+@router.delete("/account/avatar", summary="Remove the profile photo")
+async def delete_account_avatar(ctx: PersonalAuth, session: SessionDep) -> dict[str, Any]:
+    old, ctx.user.avatar_path = ctx.user.avatar_path, None
+    await session.commit()
+    media.delete_file(old)
+    return user_out(ctx.user).model_dump(mode="json")
 
 
 @router.get("/sessions", summary="Signed-in phones")

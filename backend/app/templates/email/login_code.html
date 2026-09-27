@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}<p style="margin:0 0 16px 0;">Use this code to sign in to {{ brand.product_name }}{% if device_name %} on <strong>{{ device_name }}</strong>{% endif %}:</p>
+<p style="margin:0 0 16px 0;font-size:32px;font-weight:700;letter-spacing:8px;font-family:'SFMono-Regular',Consolas,monospace;">{{ code }}</p>
+<p style="margin:0;">It expires in {{ expires_minutes }} minutes.{% if signs_out %} Signing in will sign you out of <strong>{{ signs_out }}</strong>.{% endif %}</p>{% endblock %}
+{% block after %}<p class="fg-muted" style="margin:20px 0 0 0;font-size:13px;color:#6b6b76;">Didn't try to sign in? Someone may know your password — change it now and contact {{ brand.support_email or "support" }}. Never share this code.</p>{% endblock %}

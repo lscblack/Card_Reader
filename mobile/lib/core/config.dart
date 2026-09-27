@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Static, build-time configuration and protocol constants.
 ///
 /// Nothing in here is secret.
@@ -18,7 +20,10 @@ class AppConfig {
   static const String terminalUserAgent = 'nexTap-Terminal/1.0';
 
   /// User-Agent used for calls to the platform API.
-  static const String apiUserAgent = 'NFCTerminal-Android/1.0';
+  static final String apiUserAgent = Platform.isIOS ? 'NFCTerminal-iOS/1.0' : 'NFCTerminal-Android/1.0';
+
+  /// `ios` or `android`: the platform reported when registering a device or signing in.
+  static final String platform = Platform.isIOS ? 'ios' : 'android';
 
   static const Duration heartbeatInterval = Duration(seconds: 60);
   static const Duration configSyncInterval = Duration(minutes: 5);

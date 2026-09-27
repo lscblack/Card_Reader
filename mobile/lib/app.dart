@@ -17,6 +17,7 @@ import 'services/nfc_service.dart';
 import 'services/personal_state.dart';
 import 'services/tag_dispatch.dart';
 import 'services/ussd_dialer.dart';
+import 'ui/personal/country_gate_screen.dart';
 import 'ui/personal/exchange_flow.dart';
 import 'ui/personal/personal_auth_screen.dart';
 import 'ui/personal/welcome_screen.dart';
@@ -65,9 +66,9 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
   StreamSubscription<String>? _linkSub;
   String? _pendingLink;
   late final PersonalState _personal;
-  late final DigitalCardScanner _scanner = widget.scanner ?? AndroidDigitalCardScanner();
+  late final DigitalCardScanner _scanner = widget.scanner ?? platformDigitalCardScanner();
   late final GuestTapConfig _guest = GuestTapConfig(
-    reader: widget.guestTap ?? AndroidGuestTapReader(),
+    reader: widget.guestTap ?? platformGuestTapReader(),
     opener: widget.linkOpener ?? openExternally,
     knownServers: () => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl],
     resolver: widget.cardResolver ??
@@ -96,6 +97,25 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     widget.deepLinks.initialLink().then((l) {
       if (l != null) _onLink(l);
     });
+    UssdDialer.iosCopiedNotice = _ussdCopied;
+  }
+
+  /// iOS can't dial USSD codes from an app: the code was copied, tell the user what to do with it.
+  Future<void> _ussdCopied(String code) async {
+    final ctx = _navigator.currentContext;
+    if (ctx == null) return;
+    await showDialog<void>(
+      context: ctx,
+      builder: (c) => AlertDialog(
+        key: const Key('ussdCopied'),
+        title: Text('Dial $code'),
+        content: const Text(
+          'iPhones don\'t let apps dial codes with * or #, so the code was copied.\n\n'
+          'Open the Phone app, go to Keypad, paste the code (touch and hold) and tap Call.',
+        ),
+        actions: [FilledButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
+      ),
+    );
   }
 
   final _lightTheme = AppTheme.light();
@@ -230,6 +250,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
     _personal.removeListener(_tryPendingLink);
     _linkSub?.cancel();
     _tagSub?.cancel();
+    if (UssdDialer.iosCopiedNotice == _ussdCopied) UssdDialer.iosCopiedNotice = null;
     widget.appState.removeListener(_takePendingTags);
     _personal.removeListener(_takePendingTags);
     super.dispose();
@@ -265,6 +286,7 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
               return const Scaffold(body: Center(child: CircularProgressIndicator()));
             }
             if (app.phase != AppPhase.ready && !personal.signedIn) return const WelcomeScreen();
+            if (personal.needsCountry) return const CountryGateScreen();
             return RootShell(nfc: widget.nfc);
           },
         ),

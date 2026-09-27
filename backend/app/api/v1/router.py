@@ -6,6 +6,7 @@ from app.api.v1.routes import (
     admin_console,
     admin_part3,
     api_keys,
+    apple,
     applications,
     auth,
     businesses,
@@ -18,6 +19,7 @@ from app.api.v1.routes import (
     live_notifications,
     releases,
     pairing,
+    passkeys,
     personal,
     people,
     profiles,
@@ -31,6 +33,7 @@ api_router = APIRouter(prefix="/api/v1")
 for module in (health, auth, account, applications, api_keys, devices, events, admin, admin_console, admin_part3, pairing,
                device_api, request_logs, sandbox, businesses, people, cards, profiles, forms, team, public):
     api_router.include_router(module.router)
+api_router.include_router(passkeys.router)
 api_router.include_router(team.public_router)
 api_router.include_router(profiles.public_router)
 api_router.include_router(live_notifications.router)
@@ -43,3 +46,4 @@ api_router.include_router(releases.admin_router)
 root_router = APIRouter()
 root_router.include_router(public.root_router)
 root_router.include_router(releases.root_router)
+root_router.include_router(apple.root_router)

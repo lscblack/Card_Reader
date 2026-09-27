@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/app_error.dart';
 import '../../core/error_catalog.dart';
 import '../../data/models/personal.dart';
 import '../../services/personal_state.dart';
 import '../widgets/common.dart';
+import '../widgets/country_picker.dart';
+import 'card_editor_screen.dart' show ImageSourcePicker, pickAndCropImage;
 import 'exchange_flow.dart';
 
 /// Personal space settings: sharing toggles, sessions, sign out.
 class PersonalSettingsScreen extends StatefulWidget {
-  const PersonalSettingsScreen({super.key});
+  const PersonalSettingsScreen({super.key, this.imagePicker = pickAndCropImage});
+
+  final ImageSourcePicker imagePicker;
 
   @override
   State<PersonalSettingsScreen> createState() => _PersonalSettingsScreenState();
@@ -17,6 +22,7 @@ class PersonalSettingsScreen extends StatefulWidget {
 
 class _PersonalSettingsScreenState extends State<PersonalSettingsScreen> {
   List<PersonalSession>? _sessions;
+  bool _avatarBusy = false;
 
   @override
   void initState() {
@@ -39,6 +45,72 @@ class _PersonalSettingsScreenState extends State<PersonalSettingsScreen> {
     if (err != null) messenger.showSnackBar(SnackBar(content: Text(err.toString())));
   }
 
+  Future<void> _report(Future<AppError?> op, String ok) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final err = await op;
+    messenger.showSnackBar(SnackBar(content: Text(err?.toString() ?? ok)));
+  }
+
+  Future<void> _changeCountry(PersonalState p) async {
+    final c = await showCountryPicker(context, selected: p.user?.country);
+    if (c == null || c == p.user?.country || !mounted) return;
+    await _report(p.setCountry(c), 'Country saved ✓');
+  }
+
+  Future<void> _changeAvatar(PersonalState p) async {
+    final path = await widget.imagePicker(context, 'photo');
+    if (path == null || !mounted) return;
+    setState(() => _avatarBusy = true);
+    await _report(p.uploadAvatar(path), 'Profile photo updated ✓');
+    if (mounted) setState(() => _avatarBusy = false);
+  }
+
+  Future<void> _removeAvatar(PersonalState p) async {
+    setState(() => _avatarBusy = true);
+    await _report(p.deleteAvatar(), 'Profile photo removed');
+    if (mounted) setState(() => _avatarBusy = false);
+  }
+
+  Widget _avatarRow(PersonalState p) {
+    final url = p.user?.avatarUrl;
+    final name = p.user?.fullName ?? '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          CircleAvatar(
+            key: const Key('accountAvatar'),
+            radius: 32,
+            foregroundImage: url == null ? null : NetworkImage(url),
+            onForegroundImageError: url == null ? null : (_, _) {},
+            child: Text(name.isEmpty ? '?' : name.characters.first.toUpperCase(), style: const TextStyle(fontSize: 24)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                if (_avatarBusy)
+                  const Padding(padding: EdgeInsets.all(8), child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                else ...[
+                  OutlinedButton.icon(
+                    key: const Key('changeAvatar'),
+                    onPressed: () => _changeAvatar(p),
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                    label: Text(url == null ? 'Add photo' : 'Change photo'),
+                  ),
+                  if (url != null)
+                    TextButton(key: const Key('removeAvatar'), onPressed: () => _removeAvatar(p), child: const Text('Remove')),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<PersonalState>();
@@ -52,8 +124,17 @@ class _PersonalSettingsScreenState extends State<PersonalSettingsScreen> {
           SectionCard(
             title: 'Account',
             children: [
+              _avatarRow(p),
               InfoRow('Name', p.user?.fullName ?? '—'),
               InfoRow('Email', p.user?.email ?? '—'),
+              ListTile(
+                key: const Key('accountCountry'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Country'),
+                subtitle: CountryLabel(p.user?.country, placeholder: 'Not set'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _changeCountry(p),
+              ),
               InfoRow('Server', p.serverUrl ?? '—', mono: true),
               InfoRow('NFC sharing', p.hceSupported ? 'Supported' : 'Not supported (${MobError.hceUnsupported.ref})'),
             ],

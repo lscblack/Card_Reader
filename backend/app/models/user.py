@@ -9,7 +9,9 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
+    LargeBinary,
     String,
     Uuid,
 )
@@ -136,3 +138,59 @@ class EmailVerificationToken(UUIDPk, CreatedAt, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WebSession(UUIDPk, CreatedAt, Base):
+    """A signed-in browser. One live web session per user: signing in elsewhere revokes it (reason "replaced")."""
+
+    __tablename__ = "web_sessions"
+    __table_args__ = (Index("ix_web_sessions_user", "user_id", "created_at"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    device_name: Mapped[str] = mapped_column(String(120), nullable=False, default="Browser")
+    user_agent: Mapped[str | None] = mapped_column(String(400))
+    ip_hash: Mapped[str | None] = mapped_column(String(64))
+    via: Mapped[str] = mapped_column(String(16), nullable=False, default="password")
+    # Random id the browser keeps (localStorage): signing in again on the same browser needs no confirmation.
+    client_id: Mapped[str | None] = mapped_column(String(64))
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_reason: Mapped[str | None] = mapped_column(String(16))  # replaced | logout | admin
+
+
+class LoginChallenge(UUIDPk, CreatedAt, Base):
+    """A pending sign-in step: an emailed code and/or the "this signs out your other device" confirmation."""
+
+    __tablename__ = "login_challenges"
+    __table_args__ = (
+        CheckConstraint("kind IN ('web','mobile')", name="kind"),
+        CheckConstraint("purpose IN ('login','email_code','passkey')", name="purpose"),
+        Index("ix_login_challenges_user", "user_id", "created_at"),
+    )
+
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False)
+    code_hash: Mapped[str | None] = mapped_column(String(64))
+    otp_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Passkey ceremonies: the WebAuthn challenge bytes (base64url) to verify against.
+    webauthn_challenge: Mapped[str | None] = mapped_column(String(200))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    via: Mapped[str] = mapped_column(String(16), nullable=False, default="password")
+    # Mobile sign-in: the device fields to create the session with once confirmed.
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Passkey(UUIDPk, CreatedAt, Base):
+    __tablename__ = "passkeys"
+    __table_args__ = (Index("ix_passkeys_user", "user_id"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    credential_id: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)  # base64url
+    public_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    sign_count: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    transports: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    name: Mapped[str] = mapped_column(String(80), nullable=False, default="Passkey")
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

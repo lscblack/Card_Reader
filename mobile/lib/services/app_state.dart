@@ -39,6 +39,7 @@ class AppState extends ChangeNotifier {
     required this.repository,
     DeviceApiFactory? apiFactory,
     this.tagDispatch = const NoTagDispatch(),
+    this.apkUpdates = true,
     AppSettings? settings,
   }) : settings = settings ?? AppSettings(credentials.store),
        _apiFactory = apiFactory ??
@@ -56,6 +57,9 @@ class AppState extends ChangeNotifier {
   final DeviceApiFactory _apiFactory;
   final TagDispatch tagDispatch;
   final AppSettings settings;
+
+  /// Android: look for newer APKs published on the server. iOS updates come from the App Store.
+  final bool apkUpdates;
 
   /// "Read cards when app is closed": background taps on a terminal are delivered as events
   /// (off: they only run the card's action, like on an unregistered phone).
@@ -331,6 +335,7 @@ class AppState extends ChangeNotifier {
 
   /// Checks for an app update now if due (start, daily, resume). Never throws.
   Future<void> checkForUpdate({bool force = false}) async {
+    if (!apkUpdates) return;
     final updates = _updates ??= UpdateChecker(client: httpClient, installedBuild: device?.buildNumber ?? 0);
     if (!force && !updates.isDue) return;
     final release = await updates.check(serverUrl ?? AppConfig.defaultServerUrl);

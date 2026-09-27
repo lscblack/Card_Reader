@@ -629,15 +629,101 @@ class PersonalSession {
 }
 
 class PersonalUser {
-  const PersonalUser({required this.id, required this.email, this.fullName = ''});
+  const PersonalUser({required this.id, required this.email, this.fullName = '', this.country, this.avatarUrl});
   final String id, email, fullName;
+
+  /// ISO-3166 alpha-2; required on every account (picked after sign-in when missing).
+  final String? country;
+  final String? avatarUrl;
 
   factory PersonalUser.fromJson(Object? json) {
     final j = _map(json);
-    return PersonalUser(id: j['id']?.toString() ?? '', email: j['email']?.toString() ?? '', fullName: j['full_name']?.toString() ?? '');
+    String? opt(String k) => (j[k]?.toString() ?? '').isEmpty ? null : j[k].toString();
+    return PersonalUser(
+      id: j['id']?.toString() ?? '',
+      email: j['email']?.toString() ?? '',
+      fullName: j['full_name']?.toString() ?? '',
+      country: opt('country')?.toUpperCase(),
+      avatarUrl: opt('avatar_url'),
+    );
   }
 
-  Map<String, Object?> toJson() => {'id': id, 'email': email, 'full_name': fullName};
+  Map<String, Object?> toJson() => {'id': id, 'email': email, 'full_name': fullName, 'country': country, 'avatar_url': avatarUrl};
+}
+
+/// The other phone a sign-in would sign out.
+class ExistingSession {
+  const ExistingSession({this.kind = 'mobile', this.deviceName, this.lastSeenAt});
+  final String kind;
+  final String? deviceName, lastSeenAt;
+
+  factory ExistingSession.fromJson(Object? json) {
+    final j = _map(json);
+    return ExistingSession(
+      kind: j['kind']?.toString() ?? 'mobile',
+      deviceName: j['device_name']?.toString(),
+      lastSeenAt: j['last_seen_at']?.toString(),
+    );
+  }
+}
+
+/// `202 {status: confirm}` of `POST /personal/sessions`: finish with `POST /personal/sessions/confirm`.
+class SignInChallenge {
+  const SignInChallenge({required this.challengeId, this.otpRequired = false, this.otpSentTo, this.existingSession, this.devCode});
+  final String challengeId;
+  final bool otpRequired;
+  final String? otpSentTo;
+  final ExistingSession? existingSession;
+
+  /// Development only (email disabled on the server).
+  final String? devCode;
+
+  factory SignInChallenge.fromJson(Object? json) {
+    final j = _map(json);
+    return SignInChallenge(
+      challengeId: j['challenge_id']?.toString() ?? '',
+      otpRequired: j['otp_required'] == true,
+      otpSentTo: j['otp_sent_to']?.toString(),
+      existingSession: j['existing_session'] is Map ? ExistingSession.fromJson(j['existing_session']) : null,
+      devCode: j['dev_code']?.toString(),
+    );
+  }
+
+  SignInChallenge withDevCode(String? code) => SignInChallenge(
+    challengeId: challengeId, otpRequired: otpRequired, otpSentTo: otpSentTo, existingSession: existingSession, devCode: code);
+}
+
+/// `POST /personal/email-code` answer (same for unknown emails).
+class EmailCodeChallenge {
+  const EmailCodeChallenge({required this.challengeId, required this.sentTo, this.devCode});
+  final String challengeId, sentTo;
+  final String? devCode;
+
+  factory EmailCodeChallenge.fromJson(Object? json) {
+    final j = _map(json);
+    return EmailCodeChallenge(
+      challengeId: j['challenge_id']?.toString() ?? '',
+      sentTo: j['sent_to']?.toString() ?? '',
+      devCode: j['dev_code']?.toString(),
+    );
+  }
+
+  EmailCodeChallenge withDevCode(String? code) => EmailCodeChallenge(challengeId: challengeId, sentTo: sentTo, devCode: code);
+}
+
+/// Answer of a sign-in call: signed in, or one more step is needed.
+sealed class SignInResult {
+  const SignInResult();
+}
+
+class SignedIn extends SignInResult {
+  const SignedIn(this.grant);
+  final SessionGrant grant;
+}
+
+class NeedsConfirmation extends SignInResult {
+  const NeedsConfirmation(this.challenge);
+  final SignInChallenge challenge;
 }
 
 /// Result of `POST /personal/sessions`.

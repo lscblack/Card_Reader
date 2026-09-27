@@ -47,6 +47,7 @@ class PersonalSession(UUIDPk, CreatedAt, Base):
     internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)  # server-side key for web QR codes
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_reason: Mapped[str | None] = mapped_column(String(16))  # replaced | logout | admin
 
 
 class PersonalLoginCode(UUIDPk, CreatedAt, Base):

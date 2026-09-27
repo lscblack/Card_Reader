@@ -12,7 +12,8 @@ import { Alert } from '@/components/ui/Alert'
 import { useToast } from '@/components/ui/toastContext'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useDebounced } from '@/hooks/useDebounce'
-import { countries } from '@/lib/countries'
+import { CountrySelect } from '@/components/CountrySelect'
+import { AccountSecurity } from '@/components/AccountSecurity'
 import { checkEndpointUrl } from '@/lib/url'
 import { ApiError } from '@/api/client'
 import type { Business, UpdateBusinessRequest } from '../api/types'
@@ -190,14 +191,7 @@ function InfoForm() {
             </Field>
             <Field label="Country" error={errs.country}>
               {(p) => (
-                <Select {...p} value={f.country} onChange={(e) => set('country', e.target.value)}>
-                  <option value="">Select a country…</option>
-                  {countries().map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
+                <CountrySelect {...p} value={f.country} onChange={(c) => set('country', c)} disabled={!manage} />
               )}
             </Field>
             <Field label="Category" error={errs.category}>
@@ -356,6 +350,10 @@ export default function SettingsPage() {
         {!can('settings.manage') && <Alert tone="info">You can view these settings. Changing them requires the “Manage business settings” permission.</Alert>}
         <InfoForm key={JSON.stringify(toForm(business))} />
         <DeviceSettings />
+        <div className="space-y-3">
+          <h2 className="text-[13px] font-semibold tracking-wider text-subtle uppercase">Your sign-in</h2>
+          <AccountSecurity />
+        </div>
         <DangerZone />
       </div>
     </>

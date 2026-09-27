@@ -31,16 +31,21 @@ from app.models import (
 )
 from app.schemas.business import VerifyEmailIn
 from app.schemas.auth import (
+    ChallengeIdIn,
     ChangePasswordIn,
+    EmailCodeStartIn,
+    EmailCodeStartOut,
     ForgotPasswordIn,
+    LoginConfirmIn,
     LoginIn,
+    LoginOut,
     RegisterIn,
     ResetPasswordIn,
     TokenOut,
     UpdateMeIn,
     UserOut,
 )
-from app.services import audit, email, media, platform_settings
+from app.services import audit, auth_sessions, email, media, platform_settings
 from app.services import business as business_service
 from app.services import sandbox as sandbox_service
 from app.services import team as team_service
@@ -50,9 +55,54 @@ from app.services.serializers import user_out
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-def _token_response(user: User) -> TokenOut:
-    token, expires_in = create_access_token(user.id, user.role)
+def _token_response(user: User, web_session_id: uuid.UUID) -> TokenOut:
+    token, expires_in = create_access_token(user.id, user.role, web_session_id)
     return TokenOut(access_token=token, expires_in=expires_in, user=user_out(user))
+
+
+def client_id_of(request: Request, value: str | None) -> str | None:
+    """The browser's stable id: from the body, else the `X-Client-Id` header the web app sends on every request."""
+    cid = value or request.headers.get("x-client-id")
+    return cid[:64] if cid and len(cid) >= 8 else None
+
+
+def _ua_ip(request: Request, client: ClientDep) -> tuple[str | None, str | None]:
+    return request.headers.get("user-agent"), client.ip
+
+
+async def _complete_web_login(session: SessionDep, user: User, request: Request, client: ClientDep, *, via: str,
+                              client_id: str | None) -> dict[str, object]:
+    """Signs this browser in (every other browser of the account is signed out) and records the login."""
+    ua, ip = _ua_ip(request, client)
+    row = await auth_sessions.create_web_session(session, user, ua=ua, ip=ip, via=via, client_id=client_id)
+    user.last_login_at = datetime.now(UTC)
+    user.login_count = (user.login_count or 0) + 1
+    audit.record(session, action="user.login", user_id=user.id, client=client, resource_type="user",
+                 resource_id=user.id, metadata={"via": via, "session_id": str(row.id)})
+    await session.commit()
+    user = await load_user(session, user.id)
+    return _token_response(user, row.id).model_dump(mode="json")
+
+
+async def web_sign_in(session: SessionDep, user: User, request: Request, client: ClientDep,
+                      background: BackgroundTasks, *, via: str, client_id: str | None, strong: bool) -> dict[str, object]:
+    """Password (`strong=False`) needs the emailed code when LOGIN_OTP_REQUIRED; email codes and passkeys already
+    proved it. Another live browser → a confirmation step first (unless it's this same browser signing in again)."""
+    if not user.is_active:
+        raise AppError(403, "account_disabled", "This account has been disabled")
+    existing = await auth_sessions.active_web_session(session, user.id)
+    otp = settings.login_otp_required and not strong
+    if not otp and (existing is None or auth_sessions.same_browser(existing, client_id)):
+        return await _complete_web_login(session, user, request, client, via=via, client_id=client_id)
+    row, code = await auth_sessions.start_challenge(session, user, kind="web", purpose="login", via=via,
+                                                    otp_required=otp, payload={"client_id": client_id})
+    await session.commit()
+    ua, _ = _ua_ip(request, client)
+    if code:
+        background.add_task(email.send_login_code, user.email, user.full_name, code,
+                            device_name=auth_sessions.browser_label(ua),
+                            signs_out=existing.device_name if existing else None)
+    return auth_sessions.challenge_out(row, user, auth_sessions.web_session_out(existing) if existing else None, code)
 
 
 async def load_user(session: SessionDep, user_id: uuid.UUID) -> User:
@@ -118,6 +168,9 @@ async def register(
             if not await business_service.valid_category(session, body.business.category):
                 raise validation_error("body.business.category", "unknown category (see /meta/business-categories)")
 
+    country = body.country or (body.business.country.upper() if body.business is not None else None)
+    if not country:
+        raise validation_error("body.country", "country is required")
     exists = (await session.execute(select(User.id).where(User.email == body.email))).first()
     if exists:
         raise AppError(409, "email_taken", "An account with this email already exists")
@@ -129,6 +182,7 @@ async def register(
         is_active=True,
         account_type=account_type,
         phone=(body.phone or "").strip() or None,
+        country=country,
         email_verified=invitation is not None,  # the invitation link proved the address
         email_verified_at=datetime.now(UTC) if invitation is not None else None,
     )
@@ -170,11 +224,14 @@ async def register(
     else:
         session.add(sandbox_service.new_endpoint(user.id, "Default sandbox"))
     token = None if user.email_verified else await issue_verification(session, user)
+    ua = request.headers.get("user-agent")
+    web = await auth_sessions.create_web_session(session, user, ua=ua, ip=client.ip, via="register",
+                                                 client_id=client_id_of(request, body.client_id))
     await session.commit()
     user = await load_user(session, user.id)
     if token:
         background.add_task(email.send_verification, user.email, user.full_name, token)
-    out = _token_response(user)
+    out = _token_response(user, web.id)
     if token and email.expose_dev_links():
         out.dev_verification_url = email.verification_link(token)
     return out
@@ -234,8 +291,13 @@ async def ensure_login_allowed(email: str) -> None:
                        {"retry_after": wait}, headers={"Retry-After": str(wait)})
 
 
-@router.post("/login", response_model=TokenOut, summary="Sign in and obtain a dashboard JWT")
-async def login(body: LoginIn, session: SessionDep, client: ClientDep) -> TokenOut:
+@router.post("/login", response_model=LoginOut, response_model_exclude_none=True,
+             summary="Sign in (email + password)",
+             description="`status: ok` → signed in. `status: confirm` → an emailed code is needed (production) and/or "
+                         "another browser will be signed out: finish with `POST /auth/login/confirm`. One browser per "
+                         "account; the same browser (`client_id`) signing in again needs no confirmation.")
+async def login(body: LoginIn, session: SessionDep, client: ClientDep, request: Request,
+                background: BackgroundTasks) -> dict[str, object]:
     await ensure_login_allowed(body.email)
     user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
     ok = await run_in_threadpool(verify_password, body.password, user.password_hash if user else None)
@@ -243,14 +305,109 @@ async def login(body: LoginIn, session: SessionDep, client: ClientDep) -> TokenO
         await record_login_failure(body.email)
         raise AppError(401, "invalid_credentials", "Invalid email or password")
     await clear_login_failures(body.email)
-    if not user.is_active:
+    return await web_sign_in(session, user, request, client, background, via="password",
+                             client_id=client_id_of(request, body.client_id), strong=False)
+
+
+@router.post("/login/confirm", response_model=LoginOut, response_model_exclude_none=True,
+             summary="Finish a sign-in step (emailed code and/or sign out the other browser)")
+async def login_confirm(body: LoginConfirmIn, session: SessionDep, client: ClientDep, request: Request) -> dict[str, object]:
+    row = await auth_sessions.load_challenge(session, body.challenge_id, kind="web", purposes=("login",))
+    await auth_sessions.check_code(session, row, body.code)
+    user = await session.get(User, row.user_id) if row.user_id else None
+    if user is None or not user.is_active:
         raise AppError(403, "account_disabled", "This account has been disabled")
-    user.last_login_at = datetime.now(UTC)
-    user.login_count = (user.login_count or 0) + 1
-    audit.record(session, action="user.login", user_id=user.id, client=client,
-                 resource_type="user", resource_id=user.id)
+    row.used_at = datetime.now(UTC)
+    return await _complete_web_login(session, user, request, client, via=row.via,
+                                     client_id=row.payload.get("client_id"))
+
+
+@router.post("/login/resend", summary="Email a new sign-in code for a pending step")
+async def login_resend(body: ChallengeIdIn, session: SessionDep, request: Request, client: ClientDep,
+                       background: BackgroundTasks) -> dict[str, object]:
+    row = await auth_sessions.load_challenge(session, body.challenge_id, kind="web", purposes=("login", "email_code"))
+    user = await session.get(User, row.user_id) if row.user_id else None
+    code = await auth_sessions.resend_code(session, row)
     await session.commit()
-    return _token_response(user)
+    if user is not None and user.is_active:
+        background.add_task(email.send_login_code, user.email, user.full_name, code,
+                            device_name=auth_sessions.browser_label(request.headers.get("user-agent")))
+    out: dict[str, object] = {"status": "sent", "expires_at": auth_sessions._iso(row.expires_at)}
+    if email.expose_dev_links():
+        out["dev_code"] = code
+    return out
+
+
+@router.post("/email-code", response_model=EmailCodeStartOut, response_model_exclude_none=True,
+             summary="Sign in without a password: email a 6-digit code",
+             description="Always answers the same way (no account enumeration); the code only works for an existing, "
+                         "active account. Finish with `POST /auth/email-code/verify`.")
+async def email_code_start(body: EmailCodeStartIn, session: SessionDep, request: Request,
+                           background: BackgroundTasks) -> dict[str, object]:
+    await ensure_login_allowed(body.email)
+    user = (await session.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
+    target = user if user is not None and user.is_active else None
+    row, code = await auth_sessions.start_challenge(session, target, kind="web", purpose="email_code",
+                                                    via="email_code", otp_required=True,
+                                                    payload={"client_id": client_id_of(request, body.client_id)})
+    await session.commit()
+    if target is not None and code:
+        background.add_task(email.send_login_code, target.email, target.full_name, code,
+                            device_name=auth_sessions.browser_label(request.headers.get("user-agent")))
+    out: dict[str, object] = {"challenge_id": str(row.id), "sent_to": auth_sessions.mask_email(body.email),
+                              "expires_at": auth_sessions._iso(row.expires_at)}
+    if code and target is not None and email.expose_dev_links():
+        out["dev_code"] = code
+    return out
+
+
+@router.post("/email-code/verify", response_model=LoginOut, response_model_exclude_none=True,
+             summary="Finish an email-code sign-in (may still ask to confirm signing out another browser)")
+async def email_code_verify(body: LoginConfirmIn, session: SessionDep, client: ClientDep, request: Request,
+                            background: BackgroundTasks) -> dict[str, object]:
+    row = await auth_sessions.load_challenge(session, body.challenge_id, kind="web", purposes=("email_code",))
+    if row.user_id is None:
+        row.attempts += 1
+        await session.commit()
+        raise AppError(401, "invalid_login_code", "This code is invalid or has expired — request a new one")
+    await auth_sessions.check_code(session, row, body.code)
+    user = await session.get(User, row.user_id)
+    if user is None:
+        raise AppError(401, "invalid_login_code", "This code is invalid or has expired — request a new one")
+    row.used_at = datetime.now(UTC)
+    if not user.email_verified:  # the code reached the inbox: that proves the address
+        await mark_email_verified(session, user, datetime.now(UTC))
+    return await web_sign_in(session, user, request, client, background, via="email_code",
+                             client_id=row.payload.get("client_id"), strong=True)
+
+
+@router.post("/logout", status_code=204, summary="Sign this browser out")
+async def logout(user: CurrentUser, session: SessionDep, request: Request) -> Response:
+    sid = getattr(request.state, "web_session_id", None)
+    if sid is not None:
+        await auth_sessions.revoke_web_sessions(session, user.id, "logout")
+        await session.commit()
+    return Response(status_code=204)
+
+
+@router.get("/sessions", summary="Where this account is signed in (one browser + one phone)")
+async def my_sessions(user: CurrentUser, session: SessionDep, request: Request) -> dict[str, object]:
+    web = await auth_sessions.active_web_session(session, user.id)
+    phone = await auth_sessions.active_phone_session(session, user.id)
+    return {
+        "web": auth_sessions.web_session_out(web) | {"current": web.id == getattr(request.state, "web_session_id", None)}
+        if web else None,
+        "mobile": auth_sessions.phone_session_out(phone) if phone else None,
+    }
+
+
+@router.delete("/sessions/mobile", status_code=204, summary="Sign the phone out from the web")
+async def sign_out_phone(user: CurrentUser, session: SessionDep, client: ClientDep) -> Response:
+    await auth_sessions.revoke_phone_sessions(session, user.id, "logout")
+    audit.record(session, action="personal.session_revoke", user_id=user.id, client=client,
+                 resource_type="user", resource_id=user.id, metadata={"from": "web"})
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.get("/me", response_model=UserOut, summary="Current user")
@@ -338,8 +495,9 @@ async def revoke_personal_sessions(session: SessionDep, user: User, now: datetim
     await session.execute(
         update(PersonalSession)
         .where(PersonalSession.user_id == user.id, PersonalSession.revoked_at.is_(None))
-        .values(revoked_at=now)
+        .values(revoked_at=now, revoked_reason="password")
     )
+    await auth_sessions.revoke_web_sessions(session, user.id, "password")
 
 
 @router.post("/change-password", status_code=204, summary="Change password (invalidates existing JWTs)")

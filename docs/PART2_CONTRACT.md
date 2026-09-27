@@ -336,6 +336,11 @@ by `status: "logged"` (new allowed value, business apps only) and `business` car
 - `POST /device/business/cards` `{ uid, name?, kind }` → `201 Card` (needs `cards.register`; `409 card_uid_exists`)
 - `POST /device/business/cards/{id}/programmed` `{ uid }` → binds the UID if not set (`409 card_uid_exists` if used
   by another card) and marks programmed (needs `cards.program`).
+- `GET /device/business/cards/by-code/{code}` → `{ uid, card_id, name }` for **this business's** card with that tap
+  link code; `404` for unknown codes, other businesses' cards and cards without a UID. iPhones get a card tapped
+  with the app closed as its tap link `/t/{code}` (universal link), not its UID; the app then sends the event as
+  usual. `GET /.well-known/apple-app-site-association` (root, served when `APPLE_TEAM_ID` is set) makes `/t/*`
+  open the app, except links carrying `?via=app` (opened in the browser by the app itself; `/t/` ignores it).
 - Programming = writing an NDEF URI record with `tap_url` (and optionally a Wi-Fi record for `wifi` actions).
   The app never makes a tag read-only.
 

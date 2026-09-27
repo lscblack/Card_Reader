@@ -23,9 +23,13 @@ class RecordingNfc extends FakeNfcService {
   final log = <String>[];
 
   @override
-  Future<void> startReading({required void Function(CardRead) onCard, required void Function(Object) onError}) async {
+  Future<void> startReading({
+    required void Function(CardRead) onCard,
+    required void Function(Object) onError,
+    void Function()? onSessionEnd,
+  }) async {
     log.add('start');
-    await super.startReading(onCard: onCard, onError: onError);
+    await super.startReading(onCard: onCard, onError: onError, onSessionEnd: onSessionEnd);
   }
 
   @override

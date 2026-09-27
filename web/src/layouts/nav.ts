@@ -8,6 +8,7 @@ import {
   TicketPercent,
   Building2,
   Globe2,
+  Earth,
   HeartPulse,
   Send,
   SlidersHorizontal,
@@ -64,6 +65,7 @@ export const adminNav: ShellNavSection[] = [
     items: [
       { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true, tour: 'nav-admin-overview' },
       { to: '/admin/accounts', label: 'Accounts', icon: Users, tour: 'nav-admin-accounts' },
+      { to: '/admin/demographics', label: 'Demographics', icon: Earth },
       { to: '/admin/businesses', label: 'Businesses', icon: Building2 },
       { to: '/admin/devices', label: 'Devices', icon: Smartphone },
       { to: '/admin/emails', label: 'Emails', icon: Mail, tour: 'nav-admin-emails' },

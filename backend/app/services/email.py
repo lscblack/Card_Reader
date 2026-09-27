@@ -173,6 +173,13 @@ async def send_welcome(to_email: str, full_name: str, account_type: str) -> None
         "action_url": f"{settings.public_web_url}/dashboard"})
 
 
+async def send_login_code(to_email: str, full_name: str, code: str, *, device_name: str | None = None,
+                          signs_out: str | None = None) -> None:
+    await deliver_templated("login_code", to_email, {
+        "recipient_name": full_name or None, "code": code, "expires_minutes": settings.LOGIN_CODE_TTL_MINUTES,
+        "device_name": device_name, "signs_out": signs_out}, secrets=[code])
+
+
 async def send_password_changed(to_email: str, full_name: str) -> None:
     await deliver_templated("password_changed", to_email, {
         "recipient_name": full_name or None, "email": to_email,

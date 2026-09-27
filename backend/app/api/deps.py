@@ -92,8 +92,31 @@ async def get_current_user(
         raise AppError(403, "account_disabled", "This account has been disabled")
     if user.password_changed_at is not None and payload["iat"] < int(user.password_changed_at.timestamp()):
         raise _unauthorized("token_revoked", "Access token is no longer valid; please sign in again")
+    await _check_web_session(request, session, user, payload.get("sid"))
     set_actor(request, "user", user.id, user_id=user.id)
     return user
+
+
+async def _check_web_session(request: Request, session: AsyncSession, user: User, sid: str | None) -> None:
+    """One browser per account: tokens die with their web session (signed in elsewhere, or signed out)."""
+    from app.models import WebSession
+
+    try:
+        row = await session.get(WebSession, uuid.UUID(sid)) if sid else None
+    except ValueError:
+        row = None
+    if row is None or row.user_id != user.id:
+        raise _unauthorized("token_revoked", "Access token is no longer valid; please sign in again")
+    if row.revoked_at is not None:
+        if row.revoked_reason == "replaced":
+            raise _unauthorized("session_replaced",
+                                "You were signed out because your account signed in on another browser")
+        raise _unauthorized("token_revoked", "You were signed out; please sign in again")
+    request.state.web_session_id = row.id
+    now = datetime.now(UTC)
+    if row.last_seen_at is None or now - row.last_seen_at > _LAST_USED_RESOLUTION:
+        row.last_seen_at = now
+        await session.commit()
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
@@ -370,6 +393,9 @@ async def get_personal_context(
         if row is None or not constant_time_equals(row.token_hash, digest) or row.internal:
             raise _unauthorized("invalid_session_token", "Invalid session token")
         if row.revoked_at is not None:
+            if row.revoked_reason == "replaced":
+                raise _unauthorized("session_replaced",
+                                    "You were signed out because your account signed in on another phone")
             raise _unauthorized("invalid_session_token", "This session was signed out")
         user = await session.get(User, row.user_id)
         if user is None:

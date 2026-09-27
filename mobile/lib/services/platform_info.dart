@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 class DeviceDetails {
@@ -16,11 +19,11 @@ class DeviceDetails {
   final String manufacturer;
   final String model;
 
-  /// e.g. `Android 15`.
+  /// e.g. `Android 15`, `iOS 18.2`.
   final String osVersion;
   final String appVersion;
 
-  /// Android versionCode (compared with the published release's build_number).
+  /// Android versionCode / iOS CFBundleVersion (compared with the published release's build_number).
   final int buildNumber;
 
   String get suggestedName {
@@ -49,14 +52,22 @@ class DefaultPlatformInfo implements PlatformInfo {
 
   @override
   Future<DeviceDetails> deviceDetails() async {
-    String manufacturer = '', model = 'Android device', os = 'Android';
+    final ios = Platform.isIOS;
+    String manufacturer = ios ? 'Apple' : '', model = ios ? 'iPhone' : 'Android device', os = ios ? 'iOS' : 'Android';
     String appVersion = '1.0.0';
     var buildNumber = 0;
     try {
-      final a = await DeviceInfoPlugin().androidInfo;
-      manufacturer = a.manufacturer;
-      model = a.model;
-      os = 'Android ${a.version.release}';
+      if (ios) {
+        final i = await DeviceInfoPlugin().iosInfo;
+        // "iPhone 15 Pro" (the user-given device name is not used: it often holds a person's name).
+        model = i.modelName.isNotEmpty ? i.modelName : i.model;
+        os = 'iOS ${i.systemVersion}';
+      } else {
+        final a = await DeviceInfoPlugin().androidInfo;
+        manufacturer = a.manufacturer;
+        model = a.model;
+        os = 'Android ${a.version.release}';
+      }
     } catch (_) {}
     try {
       final p = await PackageInfo.fromPlatform();
@@ -98,6 +109,8 @@ class DefaultPlatformInfo implements PlatformInfo {
   @override
   Future<bool> openAppSettings() async {
     try {
+      // iOS: this app's page in Settings (UIApplication.openSettingsURLString).
+      if (Platform.isIOS) return await launchUrl(Uri.parse('app-settings:'));
       return await _settings.invokeMethod<bool>('openAppSettings') ?? false;
     } catch (_) {
       return false;

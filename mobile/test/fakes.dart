@@ -123,9 +123,19 @@ class FakePlatformInfo implements PlatformInfo {
 }
 
 class FakeNfcService implements NfcService {
+  FakeNfcService({this.sessionBased = false});
   NfcState state = NfcState.enabled;
   void Function(CardRead)? onCard;
+  void Function()? onSessionEnd;
   final _states = StreamController<NfcState>.broadcast();
+  int starts = 0;
+
+  /// iOS-style: reading happens in a scan sheet ([endSession] = the sheet closed by itself).
+  @override
+  final bool sessionBased;
+
+  /// Texts shown on the (iOS) scan sheet.
+  final sheetMessages = <String>[];
 
   @override
   Future<NfcState> checkAvailability() async => state;
@@ -134,12 +144,31 @@ class FakeNfcService implements NfcService {
   Stream<NfcState> get stateChanges => _states.stream;
 
   @override
-  Future<void> startReading({required void Function(CardRead) onCard, required void Function(Object) onError}) async {
+  Future<void> startReading({
+    required void Function(CardRead) onCard,
+    required void Function(Object) onError,
+    void Function()? onSessionEnd,
+  }) async {
+    starts++;
     this.onCard = onCard;
+    this.onSessionEnd = onSessionEnd;
   }
 
   @override
-  Future<void> stopReading() async => onCard = null;
+  Future<void> stopReading() async {
+    onCard = null;
+    endSession();
+  }
+
+  /// The iOS sheet closed (Cancel / timeout / stopped): like the real service, onSessionEnd runs once.
+  void endSession() {
+    final end = onSessionEnd;
+    onSessionEnd = null;
+    if (sessionBased) end?.call();
+  }
+
+  @override
+  Future<void> setSessionMessage(String message) async => sheetMessages.add(message);
 
   @override
   Future<bool> openNfcSettings() async => true;
@@ -190,6 +219,16 @@ class FakeDeviceApi implements DeviceApi {
   Future<void> markCardProgrammed({required String cardId, required String uid}) async {
     if (programmedError != null) throw programmedError!;
     programmed.add({'id': cardId, 'uid': uid});
+  }
+
+  /// Tap code → UID of this business's cards (iOS universal links).
+  final tapCodes = <String, String>{};
+  final tapCodeLookups = <String>[];
+
+  @override
+  Future<String?> cardUidForTapCode(String code) async {
+    tapCodeLookups.add(code);
+    return tapCodes[code];
   }
   Future<EventSubmitResult> Function(EventSubmission s)? onSubmit;
   Future<DeviceConfig> Function()? onGetConfig;

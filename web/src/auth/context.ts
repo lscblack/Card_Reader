@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { LoginRequest, RegisterRequest, User } from '@/api/types'
+import type { LoginConfirm, LoginOut, LoginRequest, RegisterRequest, User } from '@/api/types'
 
 export interface RestoreProblem {
   /** Human-readable reason (rate limited, server error, offline…). */
@@ -19,7 +19,10 @@ export interface AuthState {
   restoreProblem: RestoreProblem | null
   /** Retry restoring the session immediately. */
   retryRestore: () => void
-  login: (body: LoginRequest) => Promise<User>
+  /** Signs in, or returns the confirmation step (emailed code / "sign out the other browser"). */
+  login: (body: LoginRequest) => Promise<LoginConfirm | null>
+  /** Finishes any sign-in answer: stores the token when `status: ok`, else returns the confirmation step. */
+  completeLogin: (res: LoginOut) => LoginConfirm | null
   register: (body: RegisterRequest) => Promise<User>
   logout: () => void
   setUser: (u: User) => void
@@ -28,6 +31,8 @@ export interface AuthState {
   /** Development only: verification link returned by register/resend (never persisted). */
   devVerificationUrl: string | null
   setDevVerificationUrl: (url: string | null) => void
+  /** Why the last session ended on its own (another browser signed in, or it was revoked). */
+  endReason: 'replaced' | 'revoked' | null
 }
 
 export const AuthContext = createContext<AuthState | null>(null)

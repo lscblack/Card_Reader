@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # ── Auth ─────────────────────────────────────────────────────
     JWT_SECRET: str = PLACEHOLDER_JWT_SECRET
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
+    # Emailed sign-in code on every new sign-in (web and phone). Blank = on everywhere except development.
+    LOGIN_OTP_REQUIRED: bool | None = None
+    LOGIN_CODE_TTL_MINUTES: int = 10
+    LOGIN_CODE_MAX_ATTEMPTS: int = 5
+    # Passkeys (WebAuthn). RP ID defaults to the PUBLIC_WEB_URL host; origins to PUBLIC_WEB_URL + CORS_ORIGINS.
+    WEBAUTHN_RP_ID: str = ""
+    WEBAUTHN_RP_NAME: str = ""
 
     # ── API keys ─────────────────────────────────────────────────
     API_KEY_PREFIX: str = "nfc_"
@@ -117,6 +124,10 @@ class Settings(BaseSettings):
     MEDIA_ROOT: str = "./media"
     # Built APKs: private (never under MEDIA_ROOT, which /media serves publicly); served only by /downloads/*.
     RELEASES_ROOT: str = "./releases"
+    # iOS app: tap links /t/{code} open it as universal links. /.well-known/apple-app-site-association is served
+    # (on the PUBLIC_API_URL host) only when APPLE_TEAM_ID is set.
+    APPLE_TEAM_ID: str = ""
+    IOS_BUNDLE_ID: str = "net.nexventures.nfc-terminal"
     # Part 5: card design v2 templates (relative paths are resolved from the backend directory).
     CARD_TEMPLATES_V2_PATH: str = "app/data/card_templates_v2.json"
     # Part 6: system page templates (relative paths are resolved from the backend directory).
@@ -147,7 +158,7 @@ class Settings(BaseSettings):
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
 
-    @field_validator("ENFORCE_HTTPS", "LOG_JSON", mode="before")
+    @field_validator("ENFORCE_HTTPS", "LOG_JSON", "LOGIN_OTP_REQUIRED", mode="before")
     @classmethod
     def _blank_is_none(cls, v: object) -> object:
         return None if isinstance(v, str) and v.strip() == "" else v
@@ -203,6 +214,22 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT == "development"
+
+    @property
+    def login_otp_required(self) -> bool:
+        if self.LOGIN_OTP_REQUIRED is None:
+            return not self.is_development
+        return self.LOGIN_OTP_REQUIRED
+
+    @property
+    def webauthn_rp_id(self) -> str:
+        from urllib.parse import urlsplit
+
+        return self.WEBAUTHN_RP_ID or (urlsplit(self.public_web_url).hostname or "localhost")
+
+    @property
+    def webauthn_origins(self) -> list[str]:
+        return list(dict.fromkeys([self.public_web_url.rstrip("/"), *(o.rstrip("/") for o in self.CORS_ORIGINS)]))
 
     @property
     def enforce_https(self) -> bool:

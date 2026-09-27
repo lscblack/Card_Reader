@@ -16,8 +16,16 @@ import 'fakes.dart';
 import 'part2_test.dart' show part1Config;
 
 class FakeGuestTap implements GuestTapReader {
+  FakeGuestTap({this.manual = false});
   void Function(GuestTag)? onTag;
-  int starts = 0, stops = 0;
+  int starts = 0, stops = 0, scans = 0;
+
+  /// iOS-style reader: cards only come after "Scan a card".
+  @override
+  final bool manual;
+
+  @override
+  Future<void> scan() async => scans++;
 
   @override
   Future<bool> start(void Function(GuestTag tag) onTag) async {

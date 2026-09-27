@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Mail, MailCheck, Pencil, Trash2 } from 'lucide-react'
@@ -13,7 +13,8 @@ import { Avatar } from './ui/Avatar'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { ErrorAlert } from './ui/ErrorMeta'
-import { Field, Input, Select } from './ui/Input'
+import { Field, Input } from './ui/Input'
+import { CountrySelect } from './CountrySelect'
 import { ConfirmDialog, Drawer } from './ui/Modal'
 import { useToast } from './ui/toastContext'
 
@@ -23,7 +24,6 @@ type F = (typeof FIELDS)[number]
 function EditDrawer({ a, open, onClose }: { a: AdminAccountDetail; open: boolean; onClose: () => void }) {
   const { patchAccount } = useAdminMutations()
   const toast = useToast()
-  const countryList = useMemo(() => countries(), [])
   const init = Object.fromEntries(FIELDS.map((k) => [k, (a[k] as string | null | undefined) ?? ''])) as Record<F, string>
   const [f, setF] = useState(init)
   const [err, setErr] = useState<unknown>(null)
@@ -67,14 +67,7 @@ function EditDrawer({ a, open, onClose }: { a: AdminAccountDetail; open: boolean
           <Field key={k} label={label[k]} optional={k !== 'full_name'} error={fe[k]}>
             {(p) =>
               k === 'country' ? (
-                <Select {...p} value={f.country} onChange={(e) => setF({ ...f, country: e.target.value })}>
-                  <option value="">—</option>
-                  {countryList.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
+                <CountrySelect {...p} value={f.country} onChange={(country) => setF({ ...f, country })} allowEmpty />
               ) : (
                 <Input {...p} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} maxLength={120} />
               )

@@ -82,7 +82,7 @@ def test_admin_markdown_is_safe() -> None:
 async def test_one_time_links_sent_but_not_stored(client: AsyncClient, outbox: list[EmailMessage],
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "ENVIRONMENT", "development")
-    r = await client.post("/api/v1/auth/register", json={"email": "links@example.com", "password": "Sup3rSecretPass",
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "links@example.com", "password": "Sup3rSecretPass",
                                                          "full_name": "Link Tester"})
     assert r.status_code == 201 and r.json()["dev_verification_url"] is None  # email enabled → no dev link
     await client.post("/api/v1/auth/forgot-password", json={"email": "links@example.com"})
@@ -222,7 +222,7 @@ async def test_admin_email_preview_templates_and_access(client: AsyncClient, use
     assert r.status_code == 200 and "Title" in r.json()["html"] and "Go: https://x.example.com" in r.json()["text"]
     names = {t["name"] for t in (await client.get("/api/v1/admin/email-templates", headers=admin)).json()}
     assert names == {"verify_email", "password_reset", "invitation", "welcome", "admin_message", "password_changed",
-                     "digital_card_invite"}  # Part 4 §6 added digital_card_invite
+                     "digital_card_invite", "login_code"}  # Part 4 §6 added digital_card_invite; sign-in codes
     for name in names:
         p = (await client.get(f"/api/v1/admin/email-templates/{name}/preview", headers=admin)).json()
         assert p["html"].startswith("<!DOCTYPE html>") and p["text"] and p["subject"]
@@ -278,7 +278,11 @@ async def test_profile_fields_and_avatar(client: AsyncClient, user: dict) -> Non
     assert (await client.delete("/api/v1/auth/me/avatar", headers=h)).json()["avatar_url"] is None
 
     # login bookkeeping + admin view
-    await client.post("/api/v1/auth/login", json={"email": user["user"]["email"], "password": "Sup3rSecretPass"})
+    # Signing in again replaces this browser's session: the old token stops working, the new one is used.
+    r = await client.post("/api/v1/auth/login", json={"email": user["user"]["email"], "password": "Sup3rSecretPass"})
+    assert r.json()["status"] == "ok"
+    assert (await client.get("/api/v1/auth/me", headers=h)).status_code == 401
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
     admin = await _admin(client)
     await client.post("/api/v1/auth/me/avatar", headers=h,
                       files={"file": ("me.png", io.BytesIO(_image("PNG", (300, 300))), "image/png")})

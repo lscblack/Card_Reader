@@ -84,6 +84,9 @@ TEMPLATES: dict[str, TemplateSpec] = {
     "digital_card_invite": TemplateSpec("digital_card_invite", "A business issued the recipient an employee digital card.",
                                         "Your digital business card", "Accept your card",
                                         "You're receiving this because a business invited this email address."),
+    "login_code": TemplateSpec("login_code", "One-time sign-in code (new device / email-code sign-in, valid 10 minutes).",
+                               "Your sign-in code", None,
+                               "You're receiving this because someone is signing in to your account."),
     "password_changed": TemplateSpec("password_changed", "Security notice after a password change or reset.",
                                      "Your password was changed", None,
                                      "You're receiving this security notice because your account password changed."),
@@ -95,6 +98,7 @@ SUBJECTS = {
     "invitation": "You're invited to {business_name} on {product}",
     "welcome": "Welcome to {product}",
     "password_changed": "Your {product} password was changed",
+    "login_code": "{code} is your {product} sign-in code",
     "digital_card_invite": "{business_name} issued you a digital business card",
 }
 
@@ -152,6 +156,7 @@ def render(name: str, context: dict[str, Any], branding: dict[str, Any], subject
             "invitation": f"Join {context.get('business_name', 'the team')}.",
             "welcome": "Your account is ready — here's how to get started.",
             "password_changed": "Security notice about your account.",
+            "login_code": f"Your code is {context.get('code', '')}. It expires in {context.get('expires_minutes', 10)} minutes.",
             "digital_card_invite": f"Accept your {context.get('business_name', 'company')} digital card.",
         }.get(name, ctx.get("body_text", "")[:120])
     html = _html_env.get_template(f"{name}.html").render(**ctx)
@@ -190,6 +195,8 @@ def sample_context(name: str) -> dict[str, Any]:
                           "cta": {"label": "View status page", "url": f"{web}/status"}},
         "digital_card_invite": {"recipient_name": None, "business_name": "Acme Café", "employee_name": "John Doe",
                                 "action_url": f"{web}/register?card_invite=SAMPLE_TOKEN"},
+        "login_code": {"recipient_name": "Alex", "code": "482913", "expires_minutes": 10, "device_name": "Chrome on Computer",
+                       "signs_out": "Safari on iPhone"},
         "password_changed": {"recipient_name": "Alex", "email": "alex@example.com",
                              "changed_at": "2026-09-25 08:30 UTC", "reset_url": f"{web}/forgot-password"},
     }[name]

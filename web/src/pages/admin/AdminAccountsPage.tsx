@@ -19,6 +19,10 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/toastContext'
 import { adminEmailsApi } from '@/api/emails'
+import { CountrySelect } from '@/components/CountrySelect'
+import { Flag } from '@/components/Flag'
+
+const NO_COUNTRY = [{ value: 'none', label: 'No country' }]
 
 export default function AdminAccountsPage() {
   useDocumentTitle('Admin · Accounts')
@@ -29,8 +33,9 @@ export default function AdminAccountsPage() {
   const dq = useDebounced(q.trim(), 350)
   const type = params.get('type') ?? ''
   const status = params.get('status') ?? ''
+  const country = params.get('country') ?? ''
   const [page, setPage] = useState(1)
-  const { data, isLoading, error, refetch } = useAdminAccounts({ q: dq || undefined, type: type || undefined, status: status || undefined, page })
+  const { data, isLoading, error, refetch } = useAdminAccounts({ q: dq || undefined, type: type || undefined, status: status || undefined, country: country || undefined, page })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmVerify, setConfirmVerify] = useState(false)
   const [sending, setSending] = useState(false)
@@ -91,6 +96,15 @@ export default function AdminAccountsPage() {
             <option value="active">Active</option>
             <option value="inactive">Disabled</option>
           </Select>
+          <CountrySelect
+            aria-label="Country"
+            value={country}
+            onChange={(c) => set('country', c)}
+            allowEmpty
+            emptyLabel="All countries"
+            extraOptions={NO_COUNTRY}
+            className="sm:w-52"
+          />
         </div>
         {selected.size > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border bg-accent-soft/40 px-4 py-2.5 sm:px-5" role="region" aria-label="Bulk actions">
@@ -115,7 +129,7 @@ export default function AdminAccountsPage() {
         ) : (
           <>
             <TableWrap>
-              <Table className="min-w-[900px]">
+              <Table className="min-w-[980px]">
                 <THead>
                   <tr>
                     <TH className="w-10">
@@ -123,6 +137,7 @@ export default function AdminAccountsPage() {
                     </TH>
                     <TH>Account</TH>
                     <TH>Type</TH>
+                    <TH>Country</TH>
                     <TH>Plan</TH>
                     <TH>Status</TH>
                     <TH className="text-right">Req 24h</TH>
@@ -163,6 +178,15 @@ export default function AdminAccountsPage() {
                           {u.role === 'admin' && <Badge tone="accent">admin</Badge>}
                         </div>
                         {u.business && <p className="mt-0.5 truncate text-xs text-subtle">{u.business.name}</p>}
+                      </TD>
+                      <TD>
+                        {u.country ? (
+                          <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-muted">
+                            <Flag code={u.country} /> {u.country}
+                          </span>
+                        ) : (
+                          <span className="text-subtle">—</span>
+                        )}
                       </TD>
                       <TD className="text-muted capitalize">{u.plan}</TD>
                       <TD>

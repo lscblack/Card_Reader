@@ -31,6 +31,8 @@ interface Opt {
   value: string
   label: string
   disabled: boolean
+  /** `<option hidden>`: a placeholder shown in the trigger but never listed. */
+  hidden?: boolean
   group?: string
 }
 
@@ -46,10 +48,10 @@ function textOf(node: ReactNode): string {
 function readOptions(children: ReactNode, group?: string, out: Opt[] = []): Opt[] {
   Children.forEach(children, (child) => {
     if (!isValidElement(child)) return
-    const el = child as ReactElement<{ value?: unknown; disabled?: boolean; label?: string; children?: ReactNode }>
+    const el = child as ReactElement<{ value?: unknown; disabled?: boolean; hidden?: boolean; label?: string; children?: ReactNode }>
     if (el.type === 'option') {
       const label = textOf(el.props.children)
-      out.push({ value: el.props.value != null ? String(el.props.value) : label, label, disabled: !!el.props.disabled, group })
+      out.push({ value: el.props.value != null ? String(el.props.value) : label, label, disabled: !!el.props.disabled, hidden: !!el.props.hidden, group })
     } else if (el.type === 'optgroup') {
       readOptions(el.props.children, el.props.label, out)
     } else if (el.props.children) {
@@ -79,6 +81,8 @@ export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   searchPlaceholder?: string
   /** `lg` matches `<Input inputSize="lg">`. */
   controlSize?: 'md' | 'lg'
+  /** Rich rendering of an option (list and trigger) in the searchable list, e.g. a flag before the name. */
+  renderOption?: (option: { value: string; label: string }) => ReactNode
 }
 
 /**
@@ -87,7 +91,7 @@ export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
  * clipped. A hidden native select keeps form semantics (name, required, onChange events).
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { searchable, searchPlaceholder, className, children, multiple, size, controlSize = 'md', ...rest },
+  { searchable, searchPlaceholder, className, children, multiple, size, controlSize = 'md', renderOption, ...rest },
   ref,
 ) {
   const options = useMemo(() => readOptions(children), [children])
@@ -100,7 +104,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     )
   }
   return (
-    <SearchableSelect ref={ref} options={options} controlSize={controlSize} className={className} searchPlaceholder={searchPlaceholder} {...rest}>
+    <SearchableSelect ref={ref} options={options} controlSize={controlSize} className={className} searchPlaceholder={searchPlaceholder} renderOption={renderOption} {...rest}>
       {children}
     </SearchableSelect>
   )
@@ -108,8 +112,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
 
 const SearchableSelect = forwardRef<
   HTMLSelectElement,
-  SelectHTMLAttributes<HTMLSelectElement> & { options: Opt[]; searchPlaceholder?: string; controlSize?: 'md' | 'lg' }
->(function SearchableSelect({ options, searchPlaceholder = 'Search…', controlSize = 'md', className, children, id, style, ...rest }, ref) {
+  SelectHTMLAttributes<HTMLSelectElement> & { options: Opt[]; searchPlaceholder?: string; controlSize?: 'md' | 'lg'; renderOption?: SelectProps['renderOption'] }
+>(function SearchableSelect({ options, searchPlaceholder = 'Search…', controlSize = 'md', renderOption, className, children, id, style, ...rest }, ref) {
   const nativeRef = useRef<HTMLSelectElement>(null)
   useImperativeHandle(ref, () => nativeRef.current as HTMLSelectElement)
   const anchorRef = useRef<HTMLButtonElement>(null)
@@ -131,7 +135,11 @@ const SearchableSelect = forwardRef<
 
   const filtered = useMemo(() => {
     const q = fold(query.trim())
-    return q ? options.filter((o) => fold(o.label).includes(q) || fold(o.value).includes(q)) : options
+    const listed = options.filter((o) => !o.hidden)
+    if (!q) return listed
+    const hits = listed.filter((o) => fold(o.label).includes(q) || fold(o.value).includes(q))
+    // An exact value match (e.g. a country code) comes first.
+    return [...hits.filter((o) => fold(o.value) === q), ...hits.filter((o) => fold(o.value) !== q)]
   }, [options, query])
 
   const close = useCallback(() => {
@@ -143,7 +151,7 @@ const SearchableSelect = forwardRef<
   const openList = () => {
     if (rest.disabled) return
     setOpen(true)
-    const i = options.findIndex((o) => o.value === current)
+    const i = options.filter((o) => !o.hidden).findIndex((o) => o.value === current)
     setActive(Math.max(0, i))
   }
 
@@ -233,7 +241,11 @@ const SearchableSelect = forwardRef<
         onKeyDown={onTriggerKey}
         className={cn(selectControl, 'relative flex items-center pr-8 text-left', controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9')}
       >
-        <span className={cn('min-w-0 flex-1 truncate', !selected?.label && 'text-subtle')}>{selected?.label || 'Select…'}</span>
+        {selected && renderOption ? (
+          <span className="flex min-w-0 flex-1 items-center gap-2 truncate">{renderOption(selected)}</span>
+        ) : (
+          <span className={cn('min-w-0 flex-1 truncate', !selected?.label && 'text-subtle')}>{selected?.label || 'Select…'}</span>
+        )}
         <ChevronDown
           className={cn('pointer-events-none absolute right-2.5 h-4 w-4 text-subtle transition-transform', open && 'rotate-180')}
           aria-hidden="true"
@@ -283,7 +295,11 @@ const SearchableSelect = forwardRef<
                     o.disabled && 'cursor-not-allowed opacity-50',
                   )}
                 >
-                  <span className="min-w-0 flex-1 truncate">{o.label || <span className="text-subtle">—</span>}</span>
+                  {renderOption ? (
+                    <span className="flex min-w-0 flex-1 items-center gap-2 truncate">{renderOption(o)}</span>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate">{o.label || <span className="text-subtle">—</span>}</span>
+                  )}
                   {isSel && <Check className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />}
                 </div>
               </li>

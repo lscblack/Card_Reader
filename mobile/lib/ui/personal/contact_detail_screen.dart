@@ -7,7 +7,7 @@ import '../../services/personal_state.dart';
 import '../digital_card/any_card_view.dart';
 import 'exchange_flow.dart';
 
-/// Hands a vCard to the Contacts app / share sheet (Kotlin FileProvider).
+/// Hands a vCard to the Contacts app / share sheet (Kotlin FileProvider; iOS: AppDelegate.swift).
 class VcardIntents {
   static const _ch = MethodChannel('net.nexventures.nfc_terminal/contacts');
 

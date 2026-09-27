@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform.dart';
 import '../../core/error_catalog.dart';
 import '../../core/links.dart';
 import '../../data/models/personal.dart';
@@ -211,6 +212,10 @@ class _SharePanel extends StatelessWidget {
     if (!card.isActive) {
       title = 'Card inactive';
       body = 'This card was deactivated (e.g. by your company). It can\'t be shared.';
+    } else if (!canHce && isIos) {
+      title = 'Share with QR';
+      body = 'iPhones can\'t act as an NFC card. Show your QR code — or, if you have a nexTap card, '
+          'let them tap it.';
     } else if (!canHce) {
       title = 'Share with QR';
       body = 'This phone can\'t act as an NFC card (${MobError.hceUnsupported.ref}). Show your QR code instead.';

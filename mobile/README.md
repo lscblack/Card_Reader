@@ -1,6 +1,7 @@
-# nexTap (Android)
+# nexTap (Android and iPhone)
 
-A generic NFC terminal: it turns an NFC-capable Android phone into a card reader.
+A generic NFC terminal: it turns an NFC-capable Android phone or iPhone into a card reader. One Flutter
+code base; see [iPhone (iOS)](#iphone-ios) for what works differently there.
 
 **Tap a card → read its UID → deliver the event to the developer's endpoint.**
 
@@ -95,6 +96,79 @@ which cannot run on JDK 25 (the JDK bundled with recent Android Studio). You hav
 - Point Flutter at JDK 17 or 21: `flutter config --jdk-dir=/usr/lib/jvm/java-17-openjdk-amd64`
 - Or build with Gradle directly:
   `cd android && JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ./gradlew assembleDebug`
+
+## iPhone (iOS)
+
+The iOS app is the same app with the same features, adapted to what iOS allows. Build it on a Mac
+(Xcode 16+, CocoaPods); the project was prepared on Linux and has not been built with Xcode yet.
+
+### Build
+
+```bash
+cd mobile
+flutter pub get
+open ios/Runner.xcworkspace   # after the first `flutter build ios` / `pod install`
+```
+
+1. Xcode → Runner → Signing & Capabilities: pick your team. The capabilities come from
+   `ios/Runner/Runner.entitlements`: **NFC Tag Reading** and **Associated Domains**. With automatic
+   signing, Xcode adds them to the App ID.
+2. `ios/Flutter/nexTap.xcconfig`: set `NEXTAP_LINK_DOMAIN` to the host of the tap links (the backend's
+   `PUBLIC_API_URL` host, e.g. `api.nextap.example`). It must be HTTPS with a valid certificate.
+3. Backend: set `APPLE_TEAM_ID` (and `IOS_BUNDLE_ID` if you change it). The backend then serves
+   `https://<host>/.well-known/apple-app-site-association`, and tap links open the app.
+   Check it before installing the app (iOS fetches it through Apple's CDN when the app is installed, and
+   caches it):
+
+   ```bash
+   curl -i https://<host>/.well-known/apple-app-site-association            # 200, application/json, no redirect
+   curl -s https://app-site-association.cdn-apple.com/a/v1/<host>           # what iPhones actually get
+   ```
+
+   It must answer directly on that host over HTTPS, without redirects (a proxy in front of the API must
+   pass `/.well-known/` through). It isn't rate-limited. After changing it, reinstall the app, or wait
+   for Apple's CDN to refresh (up to a day).
+4. Run on a real iPhone: `flutter run --dart-define=API_BASE_URL=https://api.example.com`. The
+   simulator has no NFC.
+
+Bundle ID: `net.nexventures.nfc-terminal`. iOS doesn't allow `_`, so it can't match the Android
+`net.nexventures.nfc_terminal`. Minimum iOS 15. NFC needs an iPhone 7 or newer; reading cards with the
+app closed needs an iPhone XS or newer.
+
+### What works differently from Android
+
+| Feature | Android | iPhone |
+|---|---|---|
+| Terminal reader | Always on while the Reader tab is open | **Scan cards** opens the iOS scan sheet. It reads card after card (the result shows on the sheet) until it times out (~60 s) or is cancelled. It never opens on its own. |
+| Card tapped with the app closed | Tag dispatch opens the app, which sends the UID | iOS shows a banner for the card's link. Tapping it opens nexTap (universal link). The app gets the card's UID from the server (`GET /device/business/cards/by-code/{code}`, own business's cards only) and sends the event. Other cards run as a guest tap. |
+| Guest tap (not signed in) | Any card tapped while the app is open | **Scan a card** on the welcome screen, or tap a card with the app closed (banner) |
+| Register / program cards | Continuous | Same screens. The scan sheet closes while you fill in the form and reopens after **Save**. |
+| Phone as a card (HCE) | Yes | No. iOS doesn't let apps emulate cards, so My Card offers the QR code instead. An iPhone **can read** an Android phone that shares a card. |
+| USSD actions | Dialed directly | iOS blocks `*`/`#` codes from apps: the code is copied and the app explains how to paste it in the Phone app |
+| App updates | APK from the server | App Store / TestFlight (the update banner is hidden) |
+| MIFARE Classic cards | On most phones | Not readable (iOS limitation) |
+
+Tap links the app opens in the browser itself get `?via=app`. The AASA file excludes those, so iOS
+doesn't hand them straight back to the app. The server ignores the parameter.
+
+### Where the iOS code lives
+
+- `lib/services/ios_nfc.dart`: the scan sheet (one at a time, like `ReaderModeLease` on Android) and
+  iOS tag parsing (UIDs in Android byte order, including ISO 15693).
+- `IosNfcService`, `IosNfcWriter`, `IosDigitalCardScanner` and `IosGuestTapReader` sit next to their
+  Android counterparts. `lib/services/ios_links.dart` routes `nfcterminal://` links and tap links.
+- `ios/Runner/AppDelegate.swift`: the vCard "Add to Contacts" / share channel.
+- `third_party/nfc_manager`: nfc_manager 4.2.1 with two iOS fixes (see `NEXTAP_PATCHES.md`).
+
+### Before the first TestFlight build
+
+- Test on an iPhone: Scan cards (NTAG and DESFire cards), Register + write the link, Program a card,
+  tapping a card with the app closed (terminal and guest), reading an Android phone that shares a card,
+  QR pairing and sign-in links, photo pick + crop, "Add to Contacts".
+- ISO 15693 tags: check that the UID matches the one read on Android. iOS returns it the other way
+  round, and the app reverses it.
+- App Store review: say that NFC is used to read and program the business's own cards, and give a
+  demo account and card, or a video.
 
 ## First-time setup on the phone
 
@@ -326,7 +400,9 @@ lib/
              signing.dart, retry_queue.dart (RetryPolicy + RetryQueue), config_sync.dart,
              app_state.dart (session), reader_controller.dart, platform_info.dart
   ui/        screens/, widgets/, theme.dart (Material 3, light/dark)
-android/app/src/main/kotlin/.../MainActivity.kt   MethodChannel to open the system NFC settings
+android/app/src/main/kotlin/.../MainActivity.kt   tag dispatch, HCE, dialer, settings and vCard channels
+ios/Runner/                                       Info.plist, Runner.entitlements, AppDelegate.swift (vCard channel)
+third_party/nfc_manager/                          nfc_manager with iOS scan-sheet fixes
 ```
 
 ## Tests

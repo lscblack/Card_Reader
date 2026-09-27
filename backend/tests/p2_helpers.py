@@ -38,7 +38,7 @@ async def register_business(client: AsyncClient, *, verify: bool = True, name: s
                             email: str | None = None) -> dict[str, Any]:
     email = email or f"owner-{uuid.uuid4().hex[:8]}@example.com"
     r = await client.post("/api/v1/auth/register", json={
-        "email": email, "password": "Sup3rSecretPass", "full_name": "Owner One",
+        "country": "RW", "email": email, "password": "Sup3rSecretPass", "full_name": "Owner One",
         "account_type": "business", "business": business_payload(name)})
     assert r.status_code == 201, r.text
     data = r.json()
@@ -59,7 +59,7 @@ async def add_member(client: AsyncClient, owner: dict[str, Any], role: str) -> d
                           json={"email": email, "role": role}, headers=owner["headers"])
     assert r.status_code == 201, r.text
     token = token_from_url(r.json()["dev_invite_url"])
-    r = await client.post("/api/v1/auth/register", json={"email": email, "password": "Sup3rSecretPass",
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": email, "password": "Sup3rSecretPass",
                                                          "full_name": role.title(), "invite_token": token})
     assert r.status_code == 201, r.text
     data = r.json()

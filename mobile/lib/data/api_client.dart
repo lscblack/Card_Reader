@@ -30,7 +30,7 @@ class DeviceRegistration {
 
   Map<String, Object?> toJson() => {
     'device_name': deviceName,
-    'platform': 'android',
+    'platform': AppConfig.platform,
     'model': model,
     'os_version': osVersion,
     'app_version': appVersion,
@@ -58,6 +58,11 @@ abstract class DeviceApi {
     String? note,
   });
   Future<void> markCardProgrammed({required String cardId, required String uid});
+
+  /// iOS: a card tapped with the app closed opens its tap link `/t/{code}` in the app (universal link),
+  /// without its UID. Returns the UID of this business's card with that code, or null when the card isn't
+  /// this business's (or has no UID yet). Network failures throw.
+  Future<String?> cardUidForTapCode(String code);
 }
 
 /// HTTP implementation of [DeviceApi] (`{baseUrl}/api/v1/device/*`).
@@ -176,6 +181,19 @@ class ApiClient implements DeviceApi {
   @override
   Future<void> markCardProgrammed({required String cardId, required String uid}) async {
     await _request('POST', '/device/business/cards/${Uri.encodeComponent(cardId)}/programmed', body: {'uid': uid});
+  }
+
+  @override
+  Future<String?> cardUidForTapCode(String code) async {
+    try {
+      final j = await _request('GET', '/device/business/cards/by-code/${Uri.encodeComponent(code)}');
+      final uid = j['uid'];
+      return uid is String && uid.isNotEmpty ? uid : null;
+    } on ApiException catch (e) {
+      // 404 not ours / unknown, 403 not a business device.
+      if (e.statusCode == 404 || e.statusCode == 403) return null;
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> _request(

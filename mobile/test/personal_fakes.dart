@@ -1,3 +1,4 @@
+import 'package:nfc_terminal/data/models/api_models.dart';
 import 'package:nfc_terminal/data/models/design_presets.dart';
 import 'package:nfc_terminal/data/models/personal.dart';
 import 'package:nfc_terminal/data/personal_api.dart';
@@ -56,30 +57,95 @@ class FakePersonalApi implements PersonalApi {
   SessionDevice? lastDevice;
   final revoked = <String>[];
 
+  PersonalUser user = const PersonalUser(id: 'u1', email: 'jane@example.com', fullName: 'Jane', country: 'RW');
+
+  /// When set, sign-in answers `202 confirm` with this challenge.
+  SignInChallenge? confirmChallenge;
+  String emailedCode = '123456';
+  Object? confirmError;
+  String? lastEmailCodeEmail;
+  String? lastConfirmCode;
+  int resends = 0;
+  final accountPatches = <Map<String, Object?>>[];
+
+  SignInResult _result() {
+    final c = confirmChallenge;
+    return c == null ? SignedIn(_grant()) : NeedsConfirmation(c);
+  }
+
+  static const _wrongCode = ApiException(statusCode: 401, code: 'invalid_login_code', message: 'x', ref: 'NFC-1020');
+
   SessionGrant _grant() => SessionGrant(
     token: 'nfcs_testtoken',
     session: const PersonalSession(id: 'sess-1', deviceName: 'Pixel 8'),
-    user: const PersonalUser(id: 'u1', email: 'jane@example.com', fullName: 'Jane'),
+    user: user,
     shareKey: const ShareKey(keyId: 7, secret: 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8'),
     cards: serverCards,
   );
 
   @override
-  Future<SessionGrant> signIn({required String email, required String password, required SessionDevice device}) async {
+  Future<SignInResult> signIn({required String email, required String password, required SessionDevice device}) async {
     if (signInError != null) throw signInError!;
     lastDevice = device;
-    return _grant();
+    return _result();
   }
 
   @override
-  Future<SessionGrant> signInWithCode({required String loginCode, required SessionDevice device}) async {
+  Future<SignInResult> signInWithCode({required String loginCode, required SessionDevice device}) async {
     if (signInError != null) throw signInError!;
     lastLoginCode = loginCode;
+    return _result();
+  }
+
+  @override
+  Future<EmailCodeChallenge> requestEmailCode(String email) async {
+    lastEmailCodeEmail = email;
+    return const EmailCodeChallenge(challengeId: 'ec-1', sentTo: 'ja••@example.com', devCode: '123456');
+  }
+
+  @override
+  Future<SignInResult> signInWithEmailCode({required String challengeId, required String code, required SessionDevice device}) async {
+    if (code != emailedCode) throw _wrongCode;
+    lastDevice = device;
+    return _result();
+  }
+
+  @override
+  Future<SessionGrant> confirmSignIn({required String challengeId, String? code}) async {
+    if (confirmError != null) throw confirmError!;
+    lastConfirmCode = code;
+    if ((confirmChallenge?.otpRequired ?? false) && code != emailedCode) throw _wrongCode;
     return _grant();
   }
 
   @override
-  Future<void> registerAccount({required String fullName, required String email, required String password, String? phone}) async {}
+  Future<String?> resendSignInCode(String challengeId) async {
+    resends++;
+    return '654321';
+  }
+
+  @override
+  Future<PersonalUser> account() async => user;
+
+  @override
+  Future<PersonalUser> updateAccount(Map<String, Object?> patch) async {
+    accountPatches.add(patch);
+    user = PersonalUser(id: user.id, email: user.email, fullName: user.fullName,
+        country: patch['country'] as String? ?? user.country, avatarUrl: user.avatarUrl);
+    return user;
+  }
+
+  @override
+  Future<PersonalUser> uploadAvatar(String filePath) async =>
+      user = PersonalUser(id: user.id, email: user.email, fullName: user.fullName, country: user.country,
+          avatarUrl: 'https://img.example/avatar.jpg');
+
+  @override
+  Future<PersonalUser> deleteAvatar() async =>
+      user = PersonalUser(id: user.id, email: user.email, fullName: user.fullName, country: user.country);
+
+  @override
+  Future<void> registerAccount({required String fullName, required String email, required String password, String? phone, String? country}) async {}
   @override
   Future<List<PersonalSession>> sessions() async => const [PersonalSession(id: 'sess-1'), PersonalSession(id: 'sess-2', deviceName: 'Laptop')];
   @override

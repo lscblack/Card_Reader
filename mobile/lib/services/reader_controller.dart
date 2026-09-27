@@ -10,6 +10,7 @@ import '../data/models/business.dart';
 import '../data/models/card_read.dart';
 import '../data/models/device_config.dart';
 import '../data/models/event_record.dart';
+import 'background_reading.dart' show backgroundResultText;
 import 'delivery_service.dart';
 import 'nfc_service.dart';
 import 'platform_info.dart';
@@ -56,8 +57,12 @@ class ReaderController extends ChangeNotifier {
   NfcState nfcState = NfcState.enabled;
   ReaderPhase phase = ReaderPhase.checking;
 
-  /// User wants the reader running (survives pause/resume).
+  /// User wants the reader running (survives pause/resume). With a session-based reader (iOS) it is only
+  /// true while the scan sheet is open: the sheet is never reopened without the user asking.
   bool active = false;
+
+  /// iOS: cards are read in a scan sheet the user opens with "Scan cards" ([NfcService.sessionBased]).
+  bool get sessionBased => nfc.sessionBased;
   CardRead? lastCard;
   EventRecord? lastEvent;
   String? lastMessage;
@@ -105,8 +110,9 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> init({bool autoStart = true}) async {
-    // "active" is the user's intent; reader mode only runs while NFC is on.
-    active = autoStart;
+    // "active" is the user's intent; reader mode only runs while NFC is on. The iOS sheet would cover the
+    // app right at launch: it waits for "Scan cards".
+    active = autoStart && !nfc.sessionBased;
     _stateSub = nfc.stateChanges.listen((s) async {
       nfcState = s;
       if (s != NfcState.enabled) {
@@ -142,9 +148,10 @@ class ReaderController extends ChangeNotifier {
     _notify();
   }
 
+  /// "Start reader" / iOS "Scan cards" (user action).
   Future<void> start() async {
     active = true;
-    await _enable();
+    await _enable(user: true);
     _notify();
   }
 
@@ -157,18 +164,32 @@ class ReaderController extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> _enable() async {
+  /// Starts reading. The iOS scan sheet only opens on a user action ([user]); resume, unsuspend etc.
+  /// never reopen it.
+  Future<void> _enable({bool user = false}) async {
     if (nfcState != NfcState.enabled || !_foreground || programming || suspended) return;
+    if (nfc.sessionBased && !user) return;
     try {
-      await nfc.startReading(onCard: _onCard, onError: _onReadError);
+      await nfc.startReading(onCard: _onCard, onError: _onReadError, onSessionEnd: _onSessionEnd);
       await platform.keepScreenOn(true);
       phase = ReaderPhase.ready;
       lastMessage = null;
     } catch (e) {
       Log.e('reader', 'cannot start reader mode', e);
+      if (nfc.sessionBased) active = false;
       phase = ReaderPhase.failed;
       lastMessage = 'Could not start the NFC reader';
     }
+    _notify();
+  }
+
+  /// iOS: the scan sheet closed (Cancel, timeout, app backgrounded, or stopped here). The last result
+  /// stays on screen; "Scan cards" opens a new sheet.
+  void _onSessionEnd() {
+    if (!active) return;
+    active = false;
+    unawaited(platform.keepScreenOn(false));
+    if (phase == ReaderPhase.ready || phase == ReaderPhase.reading) phase = ReaderPhase.stopped;
     _notify();
   }
 
@@ -193,6 +214,7 @@ class ReaderController extends ChangeNotifier {
     Log.e('reader', 'read failed', error);
     phase = ReaderPhase.failed;
     lastMessage = 'Card read failed, hold the card still and try again';
+    _sheetError('Card read failed.');
     _scheduleBackToReady();
     _notify();
   }
@@ -243,9 +265,17 @@ class ReaderController extends ChangeNotifier {
 
     phase = ReaderPhase.sending;
     _notify();
+    if (nfc.sessionBased) unawaited(nfc.setSessionMessage('Sending…'));
     final result = await delivery.deliver(record, config) ?? record;
     // A newer card may have been read meanwhile; only show the latest.
-    if (lastEvent?.eventId == record.eventId) _showResult(result);
+    if (lastEvent?.eventId == record.eventId) {
+      _showResult(result);
+      // iOS: the sheet covers the reader screen, so the result goes on the sheet too.
+      if (nfc.sessionBased) {
+        final text = backgroundResultText(card.uid, result);
+        unawaited(nfc.setSessionMessage('${text.title}\nHold the next card near the top of the iPhone.'));
+      }
+    }
     final b = result.business;
     final run = runAction;
     if (run != null && b != null && b.isRecognized && b.actionUrl != null) {
@@ -278,6 +308,11 @@ class ReaderController extends ChangeNotifier {
         _notify();
       }
     });
+  }
+
+  /// Text for the iOS sheet after a failed read.
+  void _sheetError(String message) {
+    if (nfc.sessionBased) unawaited(nfc.setSessionMessage('$message\nHold the next card near the top of the iPhone.'));
   }
 
   void _notify() {

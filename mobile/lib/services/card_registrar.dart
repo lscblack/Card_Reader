@@ -89,17 +89,29 @@ class CardRegistrar extends ChangeNotifier {
 
   bool get canProgram => programmer != null;
 
+  /// iOS: the scan sheet is closed (it covers the registration form, times out, can be cancelled), so
+  /// the screen offers "Scan a card" ([scan]).
+  bool get needsScanButton => nfc.sessionBased && _active && !_listening && !_busy;
+
   String suggestedName(String k) => k == 'tag' ? 'Tag $_nextTag' : 'Card $_nextCard';
 
   void _notify() {
     if (!_disposed) notifyListeners();
   }
 
-  /// Enters the mode: pauses event delivery and starts reading.
-  Future<void> start() async {
+  /// Enters the mode: pauses event delivery and starts reading ([listen] false: not yet, e.g. a card read
+  /// on the Reader opens its form first).
+  Future<void> start({bool listen = true}) async {
     if (_active) return;
     _active = true;
     await reader.pauseForProgramming();
+    if (listen) await _listen();
+    _notify();
+  }
+
+  /// iOS "Scan a card": opens the scan sheet again.
+  Future<void> scan() async {
+    if (!_active || _busy) return;
     await _listen();
     _notify();
   }
@@ -125,17 +137,25 @@ class CardRegistrar extends ChangeNotifier {
     await reader.resumeAfterProgramming();
   }
 
-  /// App paused/resumed (reader mode only works in the foreground).
+  /// App paused/resumed (reader mode only works in the foreground). The iOS sheet is not reopened.
   Future<void> onPaused() => _unlisten();
   Future<void> onResumed() async {
-    if (_active && phase != RegisterPhase.writing) await _listen();
+    if (_active && phase != RegisterPhase.writing && !nfc.sessionBased) await _listen();
   }
 
   Future<void> _listen() async {
     if (_listening) return;
     _listening = true;
     try {
-      await nfc.startReading(onCard: (c) => unawaited(onTap(c)), onError: (e) => Log.e('register', 'read failed', e));
+      await nfc.startReading(
+        onCard: (c) => unawaited(onTap(c)),
+        onError: (e) => Log.e('register', 'read failed', e),
+        onSessionEnd: () {
+          if (!_listening) return;
+          _listening = false;
+          _notify();
+        },
+      );
     } catch (e) {
       _listening = false;
       notice = 'Could not start the NFC reader';
@@ -160,16 +180,22 @@ class CardRegistrar extends ChangeNotifier {
     if (card.isDigitalCard) {
       notice = 'That\'s a phone sharing a digital card — only physical cards and tags can be registered.';
       phase = RegisterPhase.notice;
+      if (nfc.sessionBased) unawaited(nfc.setSessionMessage('That\'s a phone, not a card.\nHold the next card.'));
       return _notify();
     }
     final known = _known[card.uid];
     if (known != null) {
       alreadyName = known.isEmpty ? null : known;
       phase = RegisterPhase.already;
+      if (nfc.sessionBased) {
+        unawaited(nfc.setSessionMessage('Already registered${known.isEmpty ? '' : ' as $known'}.\nHold the next card.'));
+      }
       return _notify();
     }
     pendingUid = card.uid;
     phase = RegisterPhase.sheet;
+    // iOS: the scan sheet would cover the registration form.
+    if (nfc.sessionBased) await _unlisten();
     _notify();
   }
 
@@ -237,6 +263,11 @@ class CardRegistrar extends ChangeNotifier {
     } else {
       phase = RegisterPhase.success;
       _notify();
+      // iOS: straight on to the next card (the user just saved this one).
+      if (nfc.sessionBased && _active) {
+        await _listen();
+        unawaited(nfc.setSessionMessage('Registered · ${item.name} ✓\nHold the next card.'));
+      }
     }
     return null;
   }
@@ -253,7 +284,8 @@ class CardRegistrar extends ChangeNotifier {
     entry.programmed = out.ok;
     entry.writeError = out.error;
     phase = RegisterPhase.success;
-    if (_active) await _listen();
+    // iOS: after a failed write the error (and "Write the link again") must stay visible, not the sheet.
+    if (_active && (out.ok || !nfc.sessionBased)) await _listen();
     _debouncer.reset();
     _notify();
   }

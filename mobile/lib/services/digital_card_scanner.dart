@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 
 import '../core/digital_card_token.dart';
 import '../core/error_catalog.dart';
 import 'guest_tap.dart';
+import 'ios_nfc.dart';
 import 'nfc_service.dart';
 
 class ScanException implements Exception {
@@ -41,6 +44,9 @@ abstract class DigitalCardScanner {
   /// can safely start its own reader session afterwards.
   Future<void> cancel();
 }
+
+/// The scanner for this phone's platform.
+DigitalCardScanner platformDigitalCardScanner() => Platform.isIOS ? IosDigitalCardScanner() : AndroidDigitalCardScanner();
 
 class AndroidDigitalCardScanner implements DigitalCardScanner {
   Completer<String>? _pending;
@@ -97,5 +103,60 @@ class AndroidDigitalCardScanner implements DigitalCardScanner {
     final p = _pending;
     if (p != null && !p.isCompleted) p.completeError(const ScanException(MobError.programmingTimeout));
     await _released;
+  }
+}
+
+/// iOS: one scan sheet. An Android phone sharing a card answers the SELECT; an iPhone can't share by
+/// NFC (no card emulation), so iPhone-to-iPhone exchanges use the QR code.
+class IosDigitalCardScanner implements DigitalCardScanner {
+  Completer<String>? _pending;
+  IosScanHandle? _sheet;
+
+  @override
+  Future<String> scanToken({Duration timeout = const Duration(seconds: 60)}) async {
+    await cancel();
+    final c = _pending = Completer<String>();
+    unawaited(c.future.then((_) {}, onError: (_) {}));
+    try {
+      if (await NfcManager.instance.checkAvailability() != NfcAvailability.enabled) {
+        throw const ScanException(MobError.nfcUnsupported);
+      }
+      _sheet = await IosScanSheet.instance.open(
+        prompt: 'Hold your iPhone near the other phone or card.',
+        onTag: (tag, sheet) async {
+          if (c.isCompleted) return;
+          final token = await iosProbeDigitalCard(tag);
+          if (c.isCompleted) return;
+          if (token != null) {
+            c.complete(token);
+            await sheet.close(message: 'Card received ✓');
+          } else {
+            c.completeError(ScanException(MobError.notADigitalCard, guestTag: guestTagFrom(tag)));
+            await sheet.close();
+          }
+        },
+        // Cancel / timeout: same as Android's timeout (no error message shown).
+        onEnd: (_) {
+          if (!c.isCompleted) c.completeError(const ScanException(MobError.programmingTimeout));
+        },
+      );
+      return await c.future.timeout(timeout, onTimeout: () => throw const ScanException(MobError.programmingTimeout));
+    } on PlatformException {
+      throw const ScanException(MobError.nfcUnsupported);
+    } finally {
+      if (identical(_pending, c)) _pending = null;
+      final sheet = _sheet;
+      _sheet = null;
+      await sheet?.close();
+    }
+  }
+
+  @override
+  Future<void> cancel() async {
+    final p = _pending;
+    if (p != null && !p.isCompleted) p.completeError(const ScanException(MobError.programmingTimeout));
+    final sheet = _sheet;
+    _sheet = null;
+    await sheet?.close();
   }
 }

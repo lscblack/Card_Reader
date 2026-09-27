@@ -49,8 +49,27 @@ class TapLink {
   bool get autoOpen => kind != TapLinkKind.other && trusted;
 }
 
-final _tapPath = RegExp(r'^/t/[A-Za-z0-9_-]{8,16}/?$');
+final _tapPath = RegExp(r'^/t/([A-Za-z0-9_-]{8,16})/?$');
 final _cardPath = RegExp(r'^/p/[A-Za-z0-9_-]{1,80}/?$');
+
+/// The card's public code of a tap link `http(s)://host/t/{code}`, else null.
+String? tapCodeOf(Uri uri) {
+  final scheme = uri.scheme.toLowerCase();
+  if (scheme != 'https' && scheme != 'http') return null;
+  return _tapPath.firstMatch(uri.path)?.group(1);
+}
+
+/// The iOS app claims tap links as universal links (apple-app-site-association), except those carrying
+/// this query parameter: the app adds it when it opens a tap link in the browser itself, so iOS doesn't
+/// hand the link straight back to the app. The server ignores it.
+const iosBrowserMarker = 'via';
+const iosBrowserMarkerValue = 'app';
+
+/// [uri] with [iosBrowserMarker] added when it is a tap link (other links unchanged).
+Uri tapLinkForBrowser(Uri uri) {
+  if (tapCodeOf(uri) == null) return uri;
+  return uri.replace(queryParameters: {...uri.queryParameters, iosBrowserMarker: iosBrowserMarkerValue});
+}
 
 /// Classifies an NDEF URI. [knownServers] are the configured server URLs (and the build default);
 /// a link is trusted when its host (ignoring the port: API and web often differ only by port)

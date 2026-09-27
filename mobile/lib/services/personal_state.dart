@@ -76,7 +76,21 @@ class PersonalState extends ChangeNotifier {
   PersonalApi? api;
   bool _signingOut = false;
 
+  /// A sign-in waiting for its confirmation step (emailed code and/or signing the other phone out).
+  SignInChallenge? challenge;
+
+  /// A passwordless sign-in waiting for the emailed code.
+  EmailCodeChallenge? emailCode;
+  PersonalApi? _pendingApi;
+  String? _pendingBase;
+
+  /// [user] comes from the server (or a cache that knows the country), so a null country is real.
+  bool _userFresh = false;
+
   bool get signedIn => api?.sessionToken != null;
+
+  /// Country is required: signed-in accounts without one pick it before using My Card.
+  bool get needsCountry => signedIn && _userFresh && user != null && user!.country == null;
 
   DigitalCard? get primary {
     for (final c in cards) {
@@ -145,7 +159,11 @@ class PersonalState extends ChangeNotifier {
         final sk = await store.read(_kShareKey);
         if (sk != null) shareKey = ShareKey.fromJson(jsonDecode(sk));
         final u = await store.read(_kUser);
-        if (u != null) user = PersonalUser.fromJson(jsonDecode(u));
+        if (u != null) {
+          final j = jsonDecode(u);
+          user = PersonalUser.fromJson(j);
+          _userFresh = j is Map && j.containsKey('country');
+        }
         final cached = await store.read(_kCards);
         if (cached != null) cards = (jsonDecode(cached) as List).map(DigitalCard.fromJson).toList();
       } catch (e) {
@@ -177,7 +195,96 @@ class PersonalState extends ChangeNotifier {
 
   /// Web "Sign in on your phone" QR (the login code is single-use and never stored).
   Future<AppError?> signInWithCode(LoginPayload p) =>
-      _signIn(p.serverUrl, (a, d) => a.signInWithCode(loginCode: p.code, device: d));
+      _signIn(p.serverUrl, (a, d) => a.signInWithCode(loginCode: p.code, device: d), qr: true);
+
+  /// Passwordless sign-in, step 1: email a 6-digit code (then [signInWithEmailCode]).
+  Future<AppError?> requestEmailCode({required String server, required String email}) async {
+    final urlError = ServerUrl.validate(server);
+    if (urlError != null) return AppError(urlError);
+    final base = ServerUrl.normalize(server);
+    try {
+      final a = _factory(base, null, _onUnauthorized);
+      final c = await a.requestEmailCode(email);
+      _clearPending();
+      _pendingApi = a;
+      _pendingBase = base;
+      emailCode = c;
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return _signInError(e);
+    } on NetworkException catch (e) {
+      return AppError.network(e, 'Cannot reach the server: ');
+    }
+  }
+
+  /// Passwordless sign-in, step 2 (may still need the "sign the other phone out" confirmation).
+  Future<AppError?> signInWithEmailCode(String code) async {
+    final c = emailCode;
+    final base = _pendingBase;
+    if (c == null || base == null) return _expired();
+    return _signIn(base, (a, d) => a.signInWithEmailCode(challengeId: c.challengeId, code: code, device: d), api: _pendingApi);
+  }
+
+  /// Finishes a sign-in that answered `202 confirm`.
+  Future<AppError?> confirmSignIn({String? code}) async {
+    final c = challenge;
+    final a = _pendingApi;
+    final base = _pendingBase;
+    if (c == null || a == null || base == null) return _expired();
+    try {
+      final grant = await a.confirmSignIn(challengeId: c.challengeId, code: c.otpRequired ? code : null);
+      await _complete(a, base, grant);
+      return null;
+    } on ApiException catch (e) {
+      return _signInError(e);
+    } on NetworkException catch (e) {
+      return AppError.network(e, 'Cannot reach the server: ');
+    }
+  }
+
+  /// Emails a new code for the pending step (confirmation or passwordless).
+  Future<AppError?> resendSignInCode() async {
+    final a = _pendingApi;
+    final id = challenge?.challengeId ?? emailCode?.challengeId;
+    if (a == null || id == null) return _expired();
+    try {
+      final dev = await a.resendSignInCode(id);
+      if (challenge != null) {
+        challenge = challenge!.withDevCode(dev);
+      } else {
+        emailCode = emailCode?.withDevCode(dev);
+      }
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return _signInError(e);
+    } on NetworkException catch (e) {
+      return AppError.network(e, 'Cannot reach the server: ');
+    }
+  }
+
+  /// Back to the first sign-in step.
+  void cancelSignIn() {
+    _clearPending();
+    notifyListeners();
+  }
+
+  /// Forgets a pending step without notifying (the sign-in screen is closing).
+  void discardPendingSignIn() => _clearPending();
+
+  void _clearPending() {
+    challenge = null;
+    emailCode = null;
+    _pendingApi = null;
+    _pendingBase = null;
+  }
+
+  AppError _expired() {
+    _clearPending();
+    notifyListeners();
+    return const AppError('This sign-in step expired. Please sign in again.', code: 'login_challenge_expired');
+  }
 
   Future<AppError?> createAccount({
     required String server,
@@ -185,12 +292,13 @@ class PersonalState extends ChangeNotifier {
     required String email,
     required String password,
     String? phone,
+    String? country,
   }) async {
     final urlError = ServerUrl.validate(server);
     if (urlError != null) return AppError(urlError);
     try {
       await _factory(ServerUrl.normalize(server), null, (_) {})
-          .registerAccount(fullName: fullName, email: email, password: password, phone: phone);
+          .registerAccount(fullName: fullName, email: email, password: password, phone: phone, country: country);
     } on ApiException catch (e) {
       return AppError.api(e, switch (e.code) {
         'email_taken' || 'email_exists' || 'email_already_registered' => 'An account with this email already exists. Sign in instead.',
@@ -203,40 +311,98 @@ class PersonalState extends ChangeNotifier {
     return signIn(server: server, email: email, password: password);
   }
 
-  Future<AppError?> _signIn(String server, Future<SessionGrant> Function(PersonalApi, SessionDevice) call) async {
+  Future<AppError?> _signIn(String server, Future<SignInResult> Function(PersonalApi, SessionDevice) call,
+      {PersonalApi? api, bool qr = false}) async {
     final urlError = ServerUrl.validate(server);
     if (urlError != null) return AppError(urlError);
     final base = ServerUrl.normalize(server);
     try {
-      final a = _factory(base, null, _onUnauthorized);
-      final grant = await call(a, await _device());
-      a.sessionToken = grant.token;
-      await store.write(_kToken, grant.token);
-      await store.write(_kServer, base);
-      await store.write(_kShareKey, jsonEncode(grant.shareKey.toJson()));
-      await store.write(_kUser, jsonEncode(grant.user.toJson()));
-      await store.write(_kSessionId, grant.session.id);
-      api = a;
-      serverUrl = base;
-      user = grant.user;
-      shareKey = grant.shareKey;
-      sessionId = grant.session.id;
-      cards = grant.cards;
-      notice = null;
-      await _saveCards();
-      await syncHce();
-      notifyListeners();
-      unawaited(refresh());
+      final a = api ?? _factory(base, null, _onUnauthorized);
+      switch (await call(a, await _device())) {
+        case SignedIn(:final grant):
+          await _complete(a, base, grant);
+        case NeedsConfirmation(challenge: final c):
+          _clearPending();
+          _pendingApi = a;
+          _pendingBase = base;
+          challenge = c;
+          notifyListeners();
+      }
       return null;
     } on ApiException catch (e) {
-      return AppError.api(e, switch (e.code) {
-        'invalid_credentials' => 'Wrong email or password.',
-        'invalid_login_code' => 'This sign-in code was already used or has expired — create a new one on the web.',
-        'personal_account_required' =>
-          'This is a developer/business account. Create a personal account for My Card (you can use another email).',
-        'account_disabled' => 'This account is disabled.',
-        _ => e.message,
-      });
+      return _signInError(e, qr: qr);
+    } on NetworkException catch (e) {
+      return AppError.network(e, 'Cannot reach the server: ');
+    }
+  }
+
+  /// Stores the new session (same path for every way of signing in).
+  Future<void> _complete(PersonalApi a, String base, SessionGrant grant) async {
+    a.sessionToken = grant.token;
+    await store.write(_kToken, grant.token);
+    await store.write(_kServer, base);
+    await store.write(_kShareKey, jsonEncode(grant.shareKey.toJson()));
+    await store.write(_kUser, jsonEncode(grant.user.toJson()));
+    await store.write(_kSessionId, grant.session.id);
+    _clearPending();
+    api = a;
+    serverUrl = base;
+    user = grant.user;
+    _userFresh = true;
+    shareKey = grant.shareKey;
+    sessionId = grant.session.id;
+    cards = grant.cards;
+    notice = null;
+    await _saveCards();
+    await syncHce();
+    notifyListeners();
+    unawaited(refresh());
+  }
+
+  AppError _signInError(ApiException e, {bool qr = false}) {
+    // These end the pending step: the user starts again from the first screen.
+    if (e.code == 'login_challenge_expired' || e.code == 'too_many_attempts') _clearPending();
+    notifyListeners();
+    return AppError.api(e, switch (e.code) {
+      'invalid_credentials' => 'Wrong email or password.',
+      'invalid_login_code' when qr => 'This sign-in code was already used or has expired — create a new one on the web.',
+      'invalid_login_code' => 'That code is not right. Check the email and try again.',
+      'login_challenge_expired' => 'This sign-in step expired. Please sign in again.',
+      'too_many_attempts' => 'Too many wrong codes. Please sign in again.',
+      'rate_limited' => 'Please wait a few seconds before asking for another code.',
+      'personal_account_required' =>
+        'This is a developer/business account. Create a personal account for My Card (you can use another email).',
+      'account_disabled' => 'This account is disabled.',
+      _ => e.message,
+    });
+  }
+
+  Future<void> _setUser(PersonalUser u) async {
+    user = u;
+    _userFresh = true;
+    await store.write(_kUser, jsonEncode(u.toJson()));
+  }
+
+  /// `PATCH /personal/account` (e.g. `{country: "RW"}`).
+  Future<AppError?> updateAccount(Map<String, Object?> patch) => _account((a) => a.updateAccount(patch));
+
+  Future<AppError?> setCountry(String code) => updateAccount({'country': code});
+
+  Future<AppError?> uploadAvatar(String filePath) => _account((a) => a.uploadAvatar(filePath));
+
+  Future<AppError?> deleteAvatar() => _account((a) => a.deleteAvatar());
+
+  Future<AppError?> _account(Future<PersonalUser> Function(PersonalApi a) op) async {
+    final a = api;
+    if (a == null) return AppError.mob(MobError.sessionExpired);
+    try {
+      final u = await op(a);
+      if (api != a) return null;
+      await _setUser(u);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return AppError.api(e, e.code == 'validation_error' ? 'Please check: ${e.message}' : e.message);
     } on NetworkException catch (e) {
       return AppError.network(e, 'Cannot reach the server: ');
     }
@@ -256,6 +422,13 @@ class PersonalState extends ChangeNotifier {
     } catch (e) {
       Log.d('personal', 'refresh failed: ${e.runtimeType}');
     }
+    try {
+      final u = await a.account();
+      if (api == a) {
+        await _setUser(u);
+        notifyListeners();
+      }
+    } catch (_) {}
     try {
       await a.heartbeat(); // POST /personal/sessions/current/heartbeat (start + resume)
     } catch (_) {}
@@ -408,11 +581,15 @@ class PersonalState extends ChangeNotifier {
     return _guard((a) async => _replace(await a.updateCard(p.id, {'share_settings': s.toJson()})));
   }
 
+  static const replacedNotice = 'You were signed out because your account signed in on another phone.';
+
   void _onUnauthorized(ApiException e) {
     if (_signingOut) return;
     unawaited(signOut(
       remote: false,
-      notice: 'Your session on this phone was revoked or expired. Sign in again. (${e.ref ?? MobError.sessionExpired.ref})',
+      notice: e.code == 'session_replaced'
+          ? replacedNotice
+          : 'Your session on this phone was revoked or expired. Sign in again. (${e.ref ?? MobError.sessionExpired.ref})',
     ));
   }
 
@@ -431,6 +608,8 @@ class PersonalState extends ChangeNotifier {
       }
       api = null;
       user = null;
+      _userFresh = false;
+      _clearPending();
       shareKey = null;
       sessionId = null;
       cards = const [];

@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
+import 'package:nfc_manager/nfc_manager_ios.dart';
 
 import '../core/config.dart';
 import '../core/logger.dart';
 import '../data/models/card_read.dart';
 import 'digital_card_scanner.dart';
+import 'ios_nfc.dart';
 
 enum NfcState { unsupported, disabled, enabled }
 
@@ -18,14 +20,24 @@ abstract class NfcService {
   /// Adapter state changes (user toggling NFC in system settings).
   Stream<NfcState> get stateChanges;
 
-  /// Enables Android reader mode. [onCard] is called for every detected card
-  /// (debouncing is the caller's job, see [UidDebouncer]).
+  /// iOS: cards are read only inside a system scan sheet that the user opens (never automatically) and
+  /// that closes by itself (about 60 s, Cancel, app sent to the background). Android: reader mode runs
+  /// until stopped.
+  bool get sessionBased;
+
+  /// Enables Android reader mode, or opens the iOS scan sheet. [onCard] is called for every detected
+  /// card (debouncing is the caller's job, see [UidDebouncer]). [onSessionEnd] runs when the iOS sheet
+  /// closes, whatever the reason (never on Android).
   Future<void> startReading({
     required void Function(CardRead card) onCard,
     required void Function(Object error) onError,
+    void Function()? onSessionEnd,
   });
 
   Future<void> stopReading();
+
+  /// iOS: text on the open scan sheet (e.g. the last card's result). No-op on Android.
+  Future<void> setSessionMessage(String message);
 
   /// Opens the system NFC settings screen.
   Future<bool> openNfcSettings();
@@ -95,9 +107,16 @@ class AndroidNfcService implements NfcService {
       .map((s) => s == NfcAdapterStateAndroid.on ? NfcState.enabled : NfcState.disabled);
 
   @override
+  bool get sessionBased => false;
+
+  @override
+  Future<void> setSessionMessage(String message) async {}
+
+  @override
   Future<void> startReading({
     required void Function(CardRead card) onCard,
     required void Function(Object error) onError,
+    void Function()? onSessionEnd,
   }) {
     _lease = ReaderModeLease.take();
     return NfcManagerAndroid.instance.enableReaderMode(
@@ -190,4 +209,79 @@ class AndroidNfcService implements NfcService {
       return false;
     }
   }
+}
+
+/// iOS implementation: the terminal reader runs in the system scan sheet ([IosScanSheet]), reading card
+/// after card until it times out or the user closes it.
+class IosNfcService implements NfcService {
+  IosScanHandle? _sheet;
+
+  @override
+  bool get sessionBased => true;
+
+  @override
+  Future<NfcState> checkAvailability() async {
+    try {
+      // iOS has no NFC switch: readable (iPhone 7 or newer) or not.
+      return await NfcManager.instance.checkAvailability() == NfcAvailability.enabled
+          ? NfcState.enabled
+          : NfcState.unsupported;
+    } catch (e) {
+      Log.e('nfc', 'availability check failed', e);
+      return NfcState.unsupported;
+    }
+  }
+
+  @override
+  Stream<NfcState> get stateChanges => const Stream.empty();
+
+  @override
+  Future<void> startReading({
+    required void Function(CardRead card) onCard,
+    required void Function(Object error) onError,
+    void Function()? onSessionEnd,
+  }) async {
+    _sheet = await IosScanSheet.instance.open(
+      prompt: 'Hold a card near the top of your iPhone.',
+      onTag: (tag, sheet) async {
+        try {
+          onCard(await _read(tag));
+        } catch (e) {
+          onError(e);
+        }
+        await sheet.nextTag();
+      },
+      onEnd: (_) => onSessionEnd?.call(),
+    );
+  }
+
+  Future<CardRead> _read(NfcTag tag) async {
+    final detectedAt = DateTime.now().toUtc();
+    // Part 4 §3 reader side: an Android phone sharing a digital card answers the SELECT.
+    if (Iso7816Ios.from(tag) != null) {
+      final token = await iosProbeDigitalCard(tag);
+      if (token != null) {
+        final digital = digitalCardRead(token, iosTagInfo(tag).technologies, detectedAt);
+        if (digital != null) return digital;
+      }
+    }
+    final info = iosTagInfo(tag, productType: await iosType2ProductType(tag));
+    final uid = info.uid;
+    if (uid == null) throw const FormatException('Card returned no usable UID');
+    return CardRead(uid: uid, technologies: info.technologies, type: info.type, detectedAt: detectedAt);
+  }
+
+  @override
+  Future<void> stopReading() async {
+    final sheet = _sheet;
+    _sheet = null;
+    // Only closes the sheet this service opened, and only while it is still the current one.
+    await sheet?.close();
+  }
+
+  @override
+  Future<void> setSessionMessage(String message) async => _sheet?.setMessage(message);
+
+  @override
+  Future<bool> openNfcSettings() async => false; // iOS has no NFC setting.
 }

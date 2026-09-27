@@ -75,7 +75,7 @@ def test_token_parse_errors() -> None:
 async def register_personal(client: AsyncClient, name: str = "Amani Uwimana", email: str | None = None,
                             **extra: Any) -> dict[str, Any]:
     email = email or f"p-{uuid.uuid4().hex[:8]}@example.com"
-    r = await client.post("/api/v1/auth/register", json={"email": email, "password": "Sup3rSecretPass",
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": email, "password": "Sup3rSecretPass",
                                                          "full_name": name, "account_type": "personal", **extra})
     assert r.status_code == 201, r.text
     data = r.json()
@@ -158,7 +158,13 @@ async def test_sessions_login_codes_and_revocation(client: AsyncClient) -> None:
     assert code["code"].startswith("nfcl_") and code["qr_payload"].startswith("nfcterminal://login?v=1&server=")
     assert (await client.get(f"/api/v1/personal/login-codes/{code['id']}", headers=p["headers"])).json()["status"] == "pending"
     r = await client.post("/api/v1/personal/sessions", json={"login_code": code["code"], "device_name": "Galaxy"})
+    # One phone per account: another phone is signed in, so the new one confirms first (no code in development).
+    assert r.status_code == 202 and r.json()["status"] == "confirm" and r.json()["otp_required"] is False
+    assert r.json()["existing_session"]["kind"] == "mobile"
+    r = await client.post("/api/v1/personal/sessions/confirm", json={"challenge_id": r.json()["challenge_id"]})
     assert r.status_code == 201 and r.json()["session"]["device_name"] == "Galaxy"
+    r2 = await client.get("/api/v1/personal/cards", headers=s2["headers"])
+    assert r2.status_code == 401 and r2.json()["error"]["code"] == "session_replaced"
     st = (await client.get(f"/api/v1/personal/login-codes/{code['id']}", headers=p["headers"])).json()
     assert st["status"] == "used" and st["session"]["device_name"] == "Galaxy"
     r = await client.post("/api/v1/personal/sessions", json={"login_code": code["code"], "device_name": "Again"})
@@ -514,10 +520,10 @@ async def test_card_invite_via_registration_and_decline(client: AsyncClient) -> 
     r = await client.post(f"{base}/employees/{emp['id']}/digital-card", json={"email": "grace@example.com"},
                           headers=owner["headers"])
     token = token_from_url(r.json()["dev_invite_url"])
-    wrong = await client.post("/api/v1/auth/register", json={"email": "other@example.com", "password": "Sup3rSecretPass",
+    wrong = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "other@example.com", "password": "Sup3rSecretPass",
                                                              "full_name": "O", "card_invite": token})
     assert wrong.status_code == 403, wrong.text
-    g = await client.post("/api/v1/auth/register", json={"email": "grace@example.com", "password": "Sup3rSecretPass",
+    g = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "grace@example.com", "password": "Sup3rSecretPass",
                                                          "full_name": "Grace M", "card_invite_token": token})
     assert g.status_code == 201 and g.json()["user"]["account_type"] == "personal" and g.json()["user"]["email_verified"]
     cards = (await client.get("/api/v1/personal/cards", headers=bearer(g.json()["access_token"]))).json()

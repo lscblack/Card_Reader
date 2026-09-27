@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/platform.dart';
 import '../../data/models/device_config.dart';
 import 'common.dart';
 
@@ -75,8 +76,12 @@ class TapHelpSheet extends StatelessWidget {
           point(Icons.cloud_off_outlined, 'Offline?',
               'Reads are kept on the phone and sent automatically when the network is back.'),
           point(Icons.lock_open_outlined, 'Screen off / app closed',
-              'Android reads cards only while the screen is on and unlocked. With "Read cards when app is closed" on, '
-                  'a tap opens the app briefly and returns you to what you were doing.'),
+              isIos
+                  ? 'The iPhone reads cards only while the screen is on and unlocked. In the app, tap Scan cards. '
+                      'With the app closed (iPhone XS or newer), hold the card to the top of the iPhone and tap the '
+                      'banner: nexTap opens and records the tap.'
+                  : 'Android reads cards only while the screen is on and unlocked. With "Read cards when app is closed" on, '
+                      'a tap opens the app briefly and returns you to what you were doing.'),
           const SizedBox(height: 4),
           const UidOnlyNote(),
           const SizedBox(height: 6),

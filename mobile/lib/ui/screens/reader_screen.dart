@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/error_catalog.dart';
+import '../../core/platform.dart';
 import '../../data/api_client.dart';
 import '../../data/event_repository.dart';
 import '../../data/models/business.dart';
@@ -139,10 +140,17 @@ class ReaderScreen extends StatelessWidget {
       ReaderPhase.unsupported => StatusIndicator(
         icon: Icons.block, color: StatusColors.error(context),
         title: 'NFC not supported',
-        subtitle: 'This phone has no NFC reader. Use an NFC-capable Android phone. (${MobError.nfcUnsupported.ref})'),
+        subtitle: isIos
+            ? 'This iPhone can\'t read NFC cards (iPhone 7 or newer needed). (${MobError.nfcUnsupported.ref})'
+            : 'This phone has no NFC reader. Use an NFC-capable phone. (${MobError.nfcUnsupported.ref})'),
       ReaderPhase.nfcOff => StatusIndicator(
         icon: Icons.portable_wifi_off, color: StatusColors.warning(context),
         title: 'NFC off', subtitle: 'Turn on NFC in system settings to scan cards. (${MobError.nfcDisabled.ref})'),
+      ReaderPhase.stopped when r.sessionBased => StatusIndicator(
+        icon: Icons.contactless_outlined, color: StatusColors.neutral(context),
+        title: 'Ready to scan',
+        subtitle: 'Tap Scan cards, then hold each card near the top of the iPhone. '
+            'The scan stays open for about a minute.'),
       ReaderPhase.stopped => StatusIndicator(
         icon: Icons.pause_circle_outline, color: StatusColors.neutral(context),
         title: 'Reader stopped', subtitle: 'Tap Start to scan cards.'),
@@ -151,7 +159,7 @@ class ReaderScreen extends StatelessWidget {
         title: 'Offline', subtitle: 'Cards are still read and queued until the network is back.'),
       ReaderPhase.ready => StatusIndicator(
         icon: Icons.contactless_outlined, color: StatusColors.active(context), pulsing: true,
-        title: 'Ready to scan', subtitle: 'Hold a card near the back of the phone.'),
+        title: 'Ready to scan', subtitle: 'Hold a card $nfcSpot.'),
       ReaderPhase.reading => StatusIndicator(
         icon: Icons.nfc, color: StatusColors.active(context), busy: true, title: 'Reading…'),
       ReaderPhase.sending => StatusIndicator(
@@ -235,6 +243,13 @@ class _PrimaryAction extends StatelessWidget {
           icon: const Icon(Icons.stop),
           label: const Text('Stop reader'),
           style: OutlinedButton.styleFrom(minimumSize: size),
+        ),
+        _ when reader.sessionBased => FilledButton.icon(
+          key: const Key('scanCards'),
+          onPressed: reader.start,
+          icon: const Icon(Icons.contactless_outlined),
+          label: const Text('Scan cards'),
+          style: FilledButton.styleFrom(minimumSize: size),
         ),
         _ => FilledButton.icon(
           onPressed: reader.start,

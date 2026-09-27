@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform.dart';
 import '../../core/error_catalog.dart';
 import '../../data/models/business.dart';
 import '../../data/models/device_config.dart';
@@ -153,9 +154,13 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
               Text(
-                'Works when the screen is on and unlocked. Android may ask which app to use if another '
-                'NFC app is installed — choose nexTap and "Always". After a read the app shows a '
-                'notification and returns to what you were doing.',
+                isIos
+                    ? 'iPhone XS or newer, screen on and unlocked: hold the top of the iPhone to a nexTap card '
+                        'and tap the banner that appears. nexTap opens and sends the tap as an event (cards of '
+                        'this business). When off, the card\'s action runs instead, like on any phone.'
+                    : 'Works when the screen is on and unlocked. Android may ask which app to use if another '
+                        'NFC app is installed — choose nexTap and "Always". After a read the app shows a '
+                        'notification and returns to what you were doing.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

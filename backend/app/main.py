@@ -217,7 +217,7 @@ def create_app() -> FastAPI:
         allow_origins=settings.CORS_ORIGINS,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID", "X-Client-Id"],
         expose_headers=[
             "X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After",
         ],
@@ -237,7 +237,8 @@ async def _guarded(request: Request, call_next: Callable[[Request], Awaitable[Re
 
     rl_headers: dict[str, str] = {}
     await platform_settings.ensure_fresh()
-    if settings.RATE_LIMIT_ENABLED:
+    # /.well-known/* (apple-app-site-association) is fetched by Apple's CDN from a few shared IPs: never throttled.
+    if settings.RATE_LIMIT_ENABLED and not request.url.path.startswith("/.well-known/"):
         ip_bucket = ip_bucket_for(request)
         if ip_bucket is not None:  # everyone also shares a per-IP ceiling (unverified tokens can't dodge it)
             ip_result = await hit(*ip_bucket)

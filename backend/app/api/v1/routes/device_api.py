@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Header, Query, Request
+from fastapi import APIRouter, Header, Path, Query, Request
 from pydantic import Field
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -427,6 +427,22 @@ async def device_cards(device: CurrentDevice, session: SessionDep, pagination: P
                                   .offset(pagination.offset).limit(pagination.page_size))).scalars().unique()
     return {"items": [_device_card(c, business) for c in rows], "total": total, "page": pagination.page,
             "page_size": pagination.page_size}
+
+
+@router.get("/business/cards/by-code/{public_code}", summary="Card UID for a tap link code (iPhone terminals)",
+            description="iPhones can't hand a tapped card's UID to an app in the background: iOS reads the card's link "
+                        "`/t/{code}` and opens it in the nexTap app (universal link). The app asks here for the UID of "
+                        "this business's card with that code, then sends the tap as a normal event. 404 for unknown "
+                        "codes, other businesses' cards and cards without a UID.")
+async def device_card_by_code(device: CurrentDevice, session: SessionDep,
+                              public_code: str = Path(min_length=4, max_length=64)) -> dict[str, Any]:
+    business = await _business_device(session, device, None)
+    card = (await session.execute(select(Card).where(
+        Card.public_code == public_code, Card.business_id == business.id, Card.deleted_at.is_(None),
+    ))).scalar_one_or_none()
+    if card is None or not card.uid:
+        raise AppError(404, "not_found", "Card not found")
+    return {"uid": card.uid, "card_id": str(card.id), "name": card.name}
 
 
 class DeviceCardIn(Schema):

@@ -32,6 +32,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/admin/AdminAccountsPage'))
+const AdminDemographicsPage = lazy(() => import('@/pages/admin/AdminDemographicsPage'))
 const AdminAccountDetailPage = lazy(() => import('@/pages/admin/AdminAccountDetailPage'))
 const AdminBusinessesPage = lazy(() => import('@/pages/admin/AdminBusinessesPage'))
 const AdminDevicesPage = lazy(() => import('@/pages/admin/AdminDevicesPage'))
@@ -107,6 +108,7 @@ export function coreRoutes() {
         <Route path="notifications" element={page(<NotificationsPage />)} />
         <Route path="accounts" element={page(<AdminAccountsPage />)} />
         <Route path="accounts/:id" element={page(<AdminAccountDetailPage />)} />
+        <Route path="demographics" element={page(<AdminDemographicsPage />)} />
         <Route path="businesses" element={page(<AdminBusinessesPage />)} />
         <Route path="devices" element={page(<AdminDevicesPage />)} />
         <Route path="logs" element={page(<AdminRequestLogsPage />)} />

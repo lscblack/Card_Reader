@@ -72,6 +72,9 @@ services:
       DEVICE_SERVER_URL: ${DEVICE_SERVER_URL:-}
       MEDIA_ROOT: /app/media
       RELEASES_ROOT: /app/releases
+      # iOS app: tap links open it (universal links) once your Apple Team ID is set.
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      IOS_BUNDLE_ID: ${IOS_BUNDLE_ID:-net.nexventures.nfc-terminal}
     volumes:
       - media:/app/media          # uploaded logos/photos (served at /media)
       - releases:/app/releases    # built APKs (private; served via /downloads/*)

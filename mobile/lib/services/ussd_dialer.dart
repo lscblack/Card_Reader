@@ -26,13 +26,22 @@ String? ussdCodeFromUrl(String? url) {
 }
 
 /// Dials USSD codes. On Android the call is placed directly (the phone permission is asked once);
-/// if it's refused, or elsewhere, the dialer opens with the code filled in.
+/// if it's refused, the dialer opens with the code filled in. iOS lets no app dial `*` / `#` codes (nor
+/// fill them into the keypad): the code is copied and [iosCopiedNotice] tells the user to paste it.
 class UssdDialer {
   UssdDialer._();
   static const _ch = MethodChannel('net.nexventures.nfc_terminal/dialer');
 
-  /// true when the call was placed or the dialer opened.
+  /// iOS: explains that [code] was copied (set by the app, which owns the navigator).
+  static Future<void> Function(String code)? iosCopiedNotice;
+
+  /// true when the call was placed, the dialer opened, or (iOS) the code was copied.
   static Future<bool> dial(String code) async {
+    if (Platform.isIOS) {
+      await Clipboard.setData(ClipboardData(text: code));
+      await iosCopiedNotice?.call(code);
+      return true;
+    }
     if (Platform.isAndroid) {
       try {
         final r = await _ch.invokeMethod<String>('dial', {'code': code});

@@ -93,6 +93,61 @@ export interface TokenResponse {
   user: User
   /** Development only (email disabled): link to verify the address. */
   dev_verification_url?: string | null
+  status?: 'ok'
+}
+
+export interface ExistingSession {
+  kind: 'web' | 'mobile'
+  device_name: string
+  last_seen_at: ISODateTime | null
+}
+
+/** A sign-in that still needs the emailed code and/or a "sign out the other browser" confirmation. */
+export interface LoginConfirm {
+  status: 'confirm'
+  challenge_id: string
+  otp_required: boolean
+  otp_sent_to?: string | null
+  existing_session: ExistingSession | null
+  expires_at?: ISODateTime | null
+  /** Development only (email disabled). */
+  dev_code?: string | null
+}
+
+export type LoginOut = (TokenResponse & { status?: 'ok' }) | LoginConfirm
+
+export interface EmailCodeStart {
+  challenge_id: string
+  sent_to: string
+  expires_at?: ISODateTime | null
+  dev_code?: string | null
+}
+
+export interface ActiveSession {
+  id: string
+  kind: 'web' | 'mobile'
+  device_name: string
+  via?: string | null
+  created_at?: ISODateTime | null
+  last_seen_at: ISODateTime | null
+  current?: boolean
+}
+
+export interface MySessions {
+  web: ActiveSession | null
+  mobile: ActiveSession | null
+}
+
+export interface Passkey {
+  id: string
+  name: string
+  created_at: ISODateTime | null
+  last_used_at: ISODateTime | null
+}
+
+export interface WebAuthnStart<T = unknown> {
+  challenge_id: string
+  options: T
 }
 
 export interface RegisterBusinessInfo {
@@ -118,6 +173,8 @@ export interface RegisterRequest {
   phone?: string
   /** Part 4 §6 — accept a business-issued digital card while registering (`/register?card_invite=`). */
   card_invite_token?: string
+  /** ISO-3166 alpha-2; required unless `business.country` is set. */
+  country?: string
 }
 
 export interface BusinessCategory {
@@ -980,4 +1037,27 @@ export interface AppNotification {
   severity: 'info' | 'success' | 'warning' | 'error'
   read_at: ISODateTime | null
   created_at: ISODateTime
+}
+
+// ---------- Admin demographics ----------
+
+export interface CountryStat {
+  country: string | null
+  users: number
+  developer: number
+  business: number
+  personal: number
+  active_30d: number
+  new_30d: number
+}
+
+export interface Demographics {
+  total_users: number
+  countries: number
+  without_country: number
+  active_30d: number
+  new_30d: number
+  by_account_type: { developer: number; business: number; personal: number }
+  by_country: CountryStat[]
+  signups_by_month: { month: string; users: number }[]
 }

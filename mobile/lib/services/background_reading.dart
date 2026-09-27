@@ -53,12 +53,18 @@ bool shouldReturnToBackground(DispatchedTag tag) => tag.launchedFromBackground;
 
 /// Feeds tags from Android tag dispatch into the reader pipeline, then (if
 /// the tap opened the app) notifies and returns to the previous app.
+///
+/// iOS: a card tapped with the app closed arrives as its tap link only (universal link, no UID).
+/// [resolveTapLink] turns it into the UID of this business's card; any other card goes to [onForeignLink]
+/// (run like a guest tap).
 class BackgroundReading {
   BackgroundReading({
     required this.dispatch,
     required this.handleCard,
     required this.isRegistered,
     required this.flushRetries,
+    this.resolveTapLink,
+    this.onForeignLink,
     this.timeout = const Duration(seconds: 8),
   });
 
@@ -66,6 +72,8 @@ class BackgroundReading {
   final Future<EventRecord?> Function(CardRead card) handleCard;
   final bool Function() isRegistered;
   final void Function() flushRetries;
+  final Future<String?> Function(Uri tapLink)? resolveTapLink;
+  final void Function(DispatchedTag tag)? onForeignLink;
   final Duration timeout;
   StreamSubscription<DispatchedTag>? _sub;
 
@@ -82,7 +90,11 @@ class BackgroundReading {
   Future<void> handle(DispatchedTag tag) async {
     if (!isRegistered()) return; // no UI noise when not set up
     flushRetries();
-    final card = tag.toCardRead();
+    final card = tag.toCardRead() ?? await _fromTapLink(tag);
+    if (card == null && tag.uidHex.isEmpty && tag.ndefUris.isNotEmpty) {
+      onForeignLink?.call(tag);
+      return;
+    }
     if (card == null) {
       Log.d('bg', 'dispatched tag without usable UID ignored');
       return;
@@ -100,6 +112,23 @@ class BackgroundReading {
     }
     // null without timeout = debounced duplicate: just go back.
     await dispatch.moveToBack();
+  }
+
+  /// iOS tap link → this business's card (null: not ours, unknown, or the server can't be asked).
+  Future<CardRead?> _fromTapLink(DispatchedTag tag) async {
+    final resolve = resolveTapLink;
+    if (resolve == null || tag.uidHex.isNotEmpty || tag.ndefUris.isEmpty) return null;
+    final link = Uri.tryParse(tag.ndefUris.first);
+    if (link == null) return null;
+    String? uid;
+    try {
+      uid = await resolve(link).timeout(timeout);
+    } catch (e) {
+      Log.d('bg', 'tap link not resolved: $e');
+    }
+    final normalized = uid == null ? null : CardUtils.normalizeUid(uid);
+    if (normalized == null) return null;
+    return CardRead(uid: normalized, technologies: const [], type: CardType.unknown, detectedAt: tag.receivedAt);
   }
 
   void dispose() => _sub?.cancel();

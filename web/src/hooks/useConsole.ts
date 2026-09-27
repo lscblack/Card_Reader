@@ -53,6 +53,9 @@ export function useSandboxMutations() {
 
 // ---------- Admin console ----------
 
+export const useAdminDemographics = () =>
+  useQuery({ queryKey: ['admin', 'demographics'], queryFn: () => adminConsoleApi.demographics(), staleTime: 60_000 })
+
 export const useAdminOverview = (range: AdminRange, live: boolean) =>
   useQuery({
     queryKey: ['admin', 'overview', range],
@@ -69,7 +72,7 @@ export const useAdminRequestLogs = (f: RequestLogFilters, live: boolean) =>
     refetchInterval: live ? 5000 : false,
   })
 
-export const useAdminAccounts = (f: { type?: string; q?: string; status?: string; page?: number }) =>
+export const useAdminAccounts = (f: { type?: string; q?: string; status?: string; country?: string; page?: number }) =>
   useQuery({ queryKey: ['admin', 'accounts', f], queryFn: () => adminConsoleApi.accounts(f), placeholderData: keepPreviousData })
 
 export const useAdminAccount = (id: string | undefined) =>

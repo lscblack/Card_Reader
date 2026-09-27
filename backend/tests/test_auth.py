@@ -37,7 +37,7 @@ async def test_register_login_me(client: AsyncClient) -> None:
 async def test_register_duplicate_and_bad_login(client: AsyncClient) -> None:
     await register(client, email="bob@example.com")
     r = await client.post("/api/v1/auth/register",
-                          json={"email": "bob@example.com", "password": "Sup3rSecretPass", "full_name": "B"})
+                          json={"country": "RW", "country": "RW", "email": "bob@example.com", "password": "Sup3rSecretPass", "full_name": "B"})
     assert r.status_code == 409 and r.json()["error"]["code"] == "email_taken"
 
     r = await client.post("/api/v1/auth/login", json={"email": "bob@example.com", "password": "wrong-password"})
@@ -47,7 +47,7 @@ async def test_register_duplicate_and_bad_login(client: AsyncClient) -> None:
 
 
 async def test_short_password_is_validation_error(client: AsyncClient) -> None:
-    r = await client.post("/api/v1/auth/register", json={"email": "c@example.com", "password": "short", "full_name": "C"})
+    r = await client.post("/api/v1/auth/register", json={"country": "RW", "email": "c@example.com", "password": "short", "full_name": "C"})
     assert r.status_code == 422
     body = r.json()["error"]
     assert body["code"] == "validation_error"

@@ -74,6 +74,7 @@ export default function BusinessApp() {
           />
           <Route path="pages" element={<Navigate to="../profiles" replace />} />
           <Route path="pages/:profileId" element={<PagesRedirect />} />
+          <Route path="pages/:profileId/responses" element={<ResponsesRedirect />} />
           <Route path="responses" element={page(<FormResponsesPage />)} />
           <Route path="actions" element={page(<ActionsPage />)} />
           <Route path="analytics" element={page(<AnalyticsPage />)} />
@@ -94,6 +95,12 @@ export default function BusinessApp() {
 }
 
 /** Part 6: "Pages" is the UI name; the routes keep /profiles. */
+/** Older "new form response" notifications linked to /pages/:id/responses. */
+function ResponsesRedirect() {
+  const { profileId } = useParams();
+  return <Navigate to={`../responses${profileId ? `?profile_id=${profileId}` : ""}`} replace />;
+}
+
 function PagesRedirect() {
   const { profileId } = useParams();
   return <Navigate to={`../profiles/${profileId ?? ""}`} replace />;

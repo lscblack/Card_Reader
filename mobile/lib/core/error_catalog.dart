@@ -12,7 +12,7 @@ class MobError {
   final String fix;
 
   static const nfcUnsupported = MobError('MOB-1001', 'nfc_unsupported', 'NFC not supported',
-      'This phone has no NFC hardware.', 'Use an NFC-capable Android phone.');
+      'This phone has no NFC hardware.', 'Use an NFC-capable phone (Android, or iPhone 7 or newer).');
   static const nfcDisabled = MobError('MOB-1002', 'nfc_disabled', 'NFC is turned off',
       'NFC is disabled in the system settings.', 'Turn on NFC in Settings → Connections.');
   static const tagLost = MobError('MOB-1003', 'tag_lost', 'Card moved away',
@@ -48,12 +48,12 @@ class MobError {
       'Notifications not allowed', 'Background reads work, but their result cannot be shown as a notification.',
       'Allow notifications for nexTap in the system settings.');
   static const tagNotNdef = MobError('MOB-1017', 'tag_not_ndef', 'Card cannot store a link',
-      'The card does not support NDEF and cannot be formatted for it (e.g. MIFARE Classic on many phones).',
+      'The card does not support NDEF and cannot be formatted for it (e.g. MIFARE Classic, which iPhones and many Android phones can\'t use).',
       'Use an NDEF-compatible card (NTAG21x, MIFARE Ultralight, DESFire).');
   static const invalidServerResponse = MobError('MOB-1018', 'invalid_server_response', 'Unexpected server response',
       'The server answered with data the app does not understand.', 'Update the app/server; contact support with the request id.');
   static const programmingTimeout = MobError('MOB-1019', 'programming_timeout', 'No card presented',
-      'No card was held to the phone while programming.', 'Start again and hold the card to the back of the phone.');
+      'No card was held to the phone while programming.', 'Start again and hold the card to the phone (the back of Android phones, the top of iPhones).');
   static const endpointUnreachable = MobError('MOB-1020', 'endpoint_unreachable', 'Endpoint unreachable',
       'Direct mode: the developer endpoint could not be reached.', 'Check the endpoint URL/host is reachable from the phone.');
   static const endpointNotConfigured = MobError('MOB-1021', 'endpoint_not_configured', 'Endpoint not configured',
