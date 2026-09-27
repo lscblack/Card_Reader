@@ -323,10 +323,18 @@ inline = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
 print(" ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(s.encode()).digest()).decode() for s in inline if s.strip()))
 PY
 )"
+# `http2 on;` needs nginx ≥ 1.25.1; older versions take http2 as a listen flag
+NGINX_VER="$(nginx -v 2>&1 | sed -nE 's#.*nginx/([0-9.]+).*#\1#p')"
+if printf '%s\n1.25.1\n' "$NGINX_VER" | sort -V -C 2>/dev/null && [[ "$NGINX_VER" != 1.25.1 ]]; then
+  LISTEN_443="    listen 443 ssl http2;\n    listen [::]:443 ssl http2;"
+else
+  LISTEN_443="    listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;"
+fi
+nginx_reload() { nginx -t || die "nginx config test failed (see above) — nothing was reloaded"; systemctl reload nginx; }
 render() {  # $1 template, $2 domain — emits the TLS listen/redirect itself when a certificate exists
   local tpl="$1" d="$2" live="/etc/letsencrypt/live/$2" listen redirect
   if [[ -f "$live/fullchain.pem" ]]; then
-    listen="    listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;\n    ssl_certificate $live/fullchain.pem;\n    ssl_certificate_key $live/privkey.pem;"
+    listen="$LISTEN_443\n    ssl_certificate $live/fullchain.pem;\n    ssl_certificate_key $live/privkey.pem;"
     [[ -f /etc/letsencrypt/options-ssl-nginx.conf ]] && listen+="\n    include /etc/letsencrypt/options-ssl-nginx.conf;"
     [[ -f /etc/letsencrypt/ssl-dhparams.pem ]] && listen+="\n    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;"
     redirect="# HTTP → HTTPS (ACME challenges still answered so renewals work)\nserver {\n    listen 80;\n    listen [::]:80;\n    server_name $d;\n    location /.well-known/acme-challenge/ { root /var/www/html; }\n    location / { return 301 https://\$host\$request_uri; }\n}"
@@ -346,7 +354,7 @@ write_sites
 ln -sf "/etc/nginx/sites-available/$API_DOMAIN" "/etc/nginx/sites-enabled/$API_DOMAIN"
 ln -sf "/etc/nginx/sites-available/$WEB_DOMAIN" "/etc/nginx/sites-enabled/$WEB_DOMAIN"
 for d in "$API_DOMAIN" "$WEB_DOMAIN"; do [[ -f "/etc/letsencrypt/live/$d/fullchain.pem" ]] && ok "$d: HTTPS (443) + redirect from 80" || echo "   $d: HTTP only until a certificate exists"; done
-nginx -t && systemctl reload nginx && ok "nginx reloaded (our sites only)"
+nginx_reload && ok "nginx reloaded (our sites only)"
 
 # ── 10. TLS (one certificate per domain) ────────────────────────────────────
 TLS_MISSING=()
@@ -362,7 +370,7 @@ if ((DO_CERTBOT)) && command -v certbot >/dev/null; then
   cert_for "$API_DOMAIN"
   cert_for "$WEB_DOMAIN"
   write_sites
-  nginx -t && systemctl reload nginx
+  nginx_reload
   ((${#TLS_MISSING[@]})) && echo "   TLS still missing for: ${TLS_MISSING[*]}" || ok "TLS in place (auto-renew via certbot.timer)"
 elif ((DO_CERTBOT)); then
   echo "   certbot not installed — skipping TLS (apt-get install certbot, then: nextap cert)"
