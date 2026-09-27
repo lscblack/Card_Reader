@@ -7,7 +7,7 @@ for CONF in /etc/nextap.conf; do
 done
 APP_DIR="${APP_DIR:-/var/www/nextap}"; SERVICE="${SERVICE:-nextap-api}"; API_PORT="${API_PORT:-}"
 PY_ENV="${PY_ENV:-}"; API_DOMAIN="${API_DOMAIN:-tap.api.nexventures.net}"; WEB_DOMAIN="${WEB_DOMAIN:-tap.nexventures.net}"
-RUN_USER="${RUN_USER:-www-data}"; DB_NAME="${DB_NAME:-nfc_platform}"; DB_USER="${DB_USER:-postgres}"
+RUN_USER="${RUN_USER:-root}"; DB_NAME="${DB_NAME:-nfc_platform}"; DB_USER="${DB_USER:-postgres}"
 c() { printf '\e[1;36m%s\e[0m\n' "$*"; }
 need_root() { [[ $EUID -eq 0 ]] || exec sudo -E "$0" "$@"; }
 case "${1:-help}" in
