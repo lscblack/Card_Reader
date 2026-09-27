@@ -451,7 +451,7 @@ export interface AppliedPromotion {
   id: UUID
   name: string
   banner_text: string | null
-  discount_type: 'percent' | 'amount'
+  discount_type: 'percent' | 'amount' | 'free'
   discount_value: number
   discounted_price_monthly_cents: number
   ends_at: ISODateTime | null
@@ -803,6 +803,9 @@ export interface Branding {
   tagline: string | null
   logo_url: string | null
   logo_dark_url: string | null
+  /** Optional wordmark for sign-in / sign-up pages (falls back to the logo). */
+  auth_logo_url?: string | null
+  auth_logo_dark_url?: string | null
   favicon_url: string | null
   fonts: { heading: string; body: string; mono: string }
   theme: { accent_light: string; accent_dark: string; default_mode: ThemeMode }
@@ -812,7 +815,7 @@ export interface Branding {
   updated_at: ISODateTime | null
 }
 
-export type BrandingAssetVariant = 'logo' | 'logo_dark' | 'favicon'
+export type BrandingAssetVariant = 'logo' | 'logo_dark' | 'auth_logo' | 'auth_logo_dark' | 'favicon'
 
 export interface FontOption {
   family: string
@@ -828,7 +831,7 @@ export interface Promotion {
   name: string
   code: string | null
   description: string | null
-  discount_type: 'percent' | 'amount'
+  discount_type: 'percent' | 'amount' | 'free'
   discount_value: number
   currency: string | null
   audience: 'developer' | 'business' | 'personal' | 'all'

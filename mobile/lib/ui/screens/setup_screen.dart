@@ -8,6 +8,7 @@ import '../../core/http_client.dart';
 import '../../core/pairing.dart';
 import '../../services/app_state.dart';
 import '../theme.dart';
+import '../widgets/brand_logo.dart';
 import '../widgets/common.dart';
 import '../widgets/error_ref.dart';
 import '../widgets/guest_tap.dart';
@@ -108,10 +109,8 @@ class _SetupScreenState extends State<SetupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.contactless_outlined, size: 56, color: Theme.of(context).colorScheme.primary),
+                    const Center(child: BrandWordmark(height: 60)),
                     const SizedBox(height: 12),
-                    Text('nexTap', style: t.headlineMedium, textAlign: TextAlign.center),
-                    const SizedBox(height: 4),
                     Text(
                       'Connect this phone to your application: scan the pairing QR code from the dashboard, '
                       'or enter an API key (used once, never stored).',

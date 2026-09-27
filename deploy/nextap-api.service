@@ -1,0 +1,37 @@
+# nexTap API (tap.api.nexventures.net) — rendered by deploy/deploy.sh (placeholders replaced)
+[Unit]
+Description=nexTap FastAPI backend (uvicorn)
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+# settings (and alembic) read backend/.env from the working directory
+WorkingDirectory=@APP_DIR@/backend
+Environment=PATH=@VENV@/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+# apply pending database migrations before the workers start (idempotent)
+ExecStartPre=@VENV@/bin/alembic upgrade head
+ExecStart=@VENV@/bin/uvicorn app.main:app \
+  --host 127.0.0.1 --port @PORT@ \
+  --workers @WORKERS@ \
+  --proxy-headers --forwarded-allow-ips 127.0.0.1 \
+  --timeout-keep-alive 5 --timeout-graceful-shutdown 30
+Restart=always
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=45
+# hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=@APP_DIR@/backend/media @APP_DIR@/backend/releases @APP_DIR@/.deploy
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

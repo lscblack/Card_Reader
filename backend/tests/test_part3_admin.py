@@ -95,6 +95,17 @@ async def test_branding_assets(client: AsyncClient) -> None:
     r = await client.delete("/api/v1/admin/branding/assets?variant=logo", headers=admin)
     assert r.json()["logo_url"] is None and r.json()["logo_dark_url"] == url
 
+    # Optional sign-in / sign-up wordmark, separate from the navigation logo.
+    assert (await client.get("/api/v1/meta/branding")).json()["auth_logo_url"] is None
+    r = await client.post("/api/v1/admin/branding/assets?variant=auth_logo", headers=admin,
+                          files={"file": ("wordmark.png", io.BytesIO(PNG), "image/png")})
+    assert r.status_code == 200 and r.json()["auth_logo_url"].endswith(".png") and r.json()["logo_url"] is None
+    r = await client.post("/api/v1/admin/branding/assets?variant=auth_logo_dark", headers=admin,
+                          files={"file": ("wordmark-dark.png", io.BytesIO(PNG), "image/png")})
+    assert r.json()["auth_logo_dark_url"] and r.json()["auth_logo_url"]
+    r = await client.delete("/api/v1/admin/branding/assets?variant=auth_logo", headers=admin)
+    assert r.json()["auth_logo_url"] is None and r.json()["auth_logo_dark_url"]
+
 
 @pytest.mark.parametrize("payload,forbidden", [
     (b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', [b"script", b"alert"]),

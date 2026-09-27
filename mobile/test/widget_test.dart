@@ -27,7 +27,7 @@ void main() {
     await tester.tap(find.byKey(const Key('chooseTerminal')));
     await tester.pumpAndSettle();
 
-    expect(find.text('nexTap'), findsOneWidget);
+    expect(find.byKey(const Key('brandWordmark')), findsOneWidget);
     expect(find.byKey(const Key('serverUrl')), findsOneWidget);
     expect(find.byKey(const Key('apiKey')), findsOneWidget);
     expect(find.text('Register device'), findsOneWidget);

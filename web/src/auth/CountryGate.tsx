@@ -35,7 +35,7 @@ export function CountryGate() {
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <header className="px-4 py-4 sm:px-8">
-        <Logo />
+        <Logo variant="wordmark" />
       </header>
       <main className="flex flex-1 items-start justify-center px-4 pt-6 pb-16 sm:items-center sm:pt-0">
         <form onSubmit={submit} className="animate-pop-in w-full max-w-[420px] space-y-5" noValidate>

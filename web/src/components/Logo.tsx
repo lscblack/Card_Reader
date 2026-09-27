@@ -25,6 +25,8 @@ export function LogoMark({ className }: { className?: string }) {
  * - `withText={false}`: compact mark only (uploaded logos are shown as-is, clipped to `markClassName` height).
  * - `imgClassName`: height of an uploaded logo (default h-7).
  * - `surface`: 'dark' | 'light' to pick the logo variant for a fixed background (default follows the theme).
+ * - `variant="wordmark"`: sign-in pages, public pages and footers use the optional wordmark (Branding → wordmark),
+ *   shown larger; without one they fall back to the navigation logo. Dashboard navigation keeps the compact logo.
  */
 export function Logo({
   className,
@@ -32,6 +34,7 @@ export function Logo({
   imgClassName,
   markClassName,
   surface = 'auto',
+  variant = 'nav',
 }: {
   className?: string
   withText?: boolean
@@ -39,10 +42,22 @@ export function Logo({
   markClassName?: string
   /** Background the logo sits on: 'auto' follows the theme; 'dark' forces the dark-mode logo (e.g. on a dark hero). */
   surface?: 'auto' | 'light' | 'dark'
+  variant?: 'nav' | 'wordmark'
 }) {
   const { branding } = useBranding()
   const themeDark = useIsDark()
   const dark = surface === 'auto' ? themeDark : surface === 'dark'
+  const authSrc =
+    variant === 'wordmark'
+      ? (dark ? branding.auth_logo_dark_url || branding.auth_logo_url : branding.auth_logo_url || branding.auth_logo_dark_url) ?? null
+      : null
+  if (authSrc) {
+    return (
+      <span className={cn('inline-flex items-center', className)}>
+        <img src={authSrc} alt={branding.product_name} className={cn('h-11 w-auto max-w-[260px] object-contain', imgClassName)} />
+      </span>
+    )
+  }
   const src = (dark ? branding.logo_dark_url || branding.logo_url : branding.logo_url || branding.logo_dark_url) ?? null
   if (src) {
     return (

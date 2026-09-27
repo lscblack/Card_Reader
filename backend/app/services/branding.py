@@ -60,6 +60,9 @@ DEFAULTS: dict[str, Any] = {
     "tagline": "NFC detection → Card ID → Secure delivery.",
     "logo_path": None,
     "logo_dark_path": None,
+    # Optional wordmark for sign-in / sign-up pages (falls back to the logo above).
+    "auth_logo_path": None,
+    "auth_logo_dark_path": None,
     "favicon_path": None,
     "fonts": {"heading": "Inter", "body": "Inter", "mono": "JetBrains Mono"},
     "theme": {"accent_light": "#B91C1C", "accent_dark": "#E5484D", "default_mode": "dark"},
@@ -68,7 +71,8 @@ DEFAULTS: dict[str, Any] = {
     "social_links": [],
     "updated_at": None,
 }
-VARIANTS = {"logo": "logo_path", "logo_dark": "logo_dark_path", "favicon": "favicon_path"}
+VARIANTS = {"logo": "logo_path", "logo_dark": "logo_dark_path", "auth_logo": "auth_logo_path",
+            "auth_logo_dark": "auth_logo_dark_path", "favicon": "favicon_path"}
 
 _stored: dict[str, Any] = {}
 _loaded_at = float("-inf")
@@ -116,6 +120,8 @@ def public(data: dict[str, Any] | None = None) -> dict[str, Any]:
         "tagline": d["tagline"],
         "logo_url": media_url(d["logo_path"]),
         "logo_dark_url": media_url(d["logo_dark_path"]),
+        "auth_logo_url": media_url(d["auth_logo_path"]),
+        "auth_logo_dark_url": media_url(d["auth_logo_dark_path"]),
         "favicon_url": media_url(d["favicon_path"]),
         "fonts": dict(d["fonts"]),
         "theme": dict(d["theme"]),

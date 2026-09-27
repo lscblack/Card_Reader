@@ -90,6 +90,7 @@ flutter:
   assets:
     - assets/card_templates_v2.json
     - assets/design_presets.json
+    - assets/brand/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

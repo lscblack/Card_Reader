@@ -19,6 +19,7 @@ import { useInvites, usePCards, usePStats, useTemplates } from '../hooks/queries
 import { renderableOf, templateFor } from '../lib/card'
 import { DigitalCardRender } from '../components/DigitalCardRender'
 import { ActivityList } from '../components/ActivityList'
+import { FreeOfferBanner } from '@/components/FreeOfferBanner'
 
 export default function OverviewPage() {
   useDocumentTitle('My digital card')
@@ -46,6 +47,7 @@ export default function OverviewPage() {
           )
         }
       />
+      <FreeOfferBanner className="mb-6" />
       <div className="space-y-6">
         {pending.length > 0 && (
           <Alert tone="info" title={`${pending[0].business.name} invited you to a company card`}>

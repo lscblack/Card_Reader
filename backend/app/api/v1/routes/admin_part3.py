@@ -66,9 +66,9 @@ async def patch_branding(request: Request, admin: AdminUser, session: SessionDep
     return branding.public(data)
 
 
-@router.post("/branding/assets", summary="Upload a logo / dark logo / favicon (PNG, SVG, WebP ≤ 1 MB)")
+@router.post("/branding/assets", summary="Upload a logo / dark logo / sign-in logo / favicon (PNG, SVG, WebP ≤ 1 MB)")
 async def upload_branding_asset(admin: AdminUser, session: SessionDep, client: ClientDep,
-                                variant: Literal["logo", "logo_dark", "favicon"] = Query(...),
+                                variant: Literal["logo", "logo_dark", "auth_logo", "auth_logo_dark", "favicon"] = Query(...),
                                 file: UploadFile = File(...)) -> dict[str, Any]:
     data = await file.read(1024 * 1024 + 1)
     if len(data) > 1024 * 1024:
@@ -101,7 +101,7 @@ async def upload_branding_asset(admin: AdminUser, session: SessionDep, client: C
 
 @router.delete("/branding/assets", summary="Remove a branding asset")
 async def delete_branding_asset(admin: AdminUser, session: SessionDep, client: ClientDep,
-                                variant: Literal["logo", "logo_dark", "favicon"] = Query(...)) -> dict[str, Any]:
+                                variant: Literal["logo", "logo_dark", "auth_logo", "auth_logo_dark", "favicon"] = Query(...)) -> dict[str, Any]:
     field = branding.VARIANTS[variant]
     old = (await branding.current())[field]
     data_out = await branding.save(session, {field: None}, admin.id)
@@ -258,7 +258,8 @@ class PromotionFields(Schema):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     code: str | None = Field(default=None, max_length=32)
     description: str | None = Field(default=None, max_length=500)
-    discount_type: Literal["percent", "amount"] | None = None
+    # "free": a free period on a paid plan (discount_value = months), claimed by free-plan accounts in-app.
+    discount_type: Literal["percent", "amount", "free"] | None = None
     discount_value: int | None = Field(default=None, ge=1)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     audience: Literal["developer", "business", "personal", "all"] | None = None
@@ -273,7 +274,7 @@ class PromotionFields(Schema):
 
 class PromotionCreate(PromotionFields):
     name: str = Field(min_length=1, max_length=120)
-    discount_type: Literal["percent", "amount"]
+    discount_type: Literal["percent", "amount", "free"]
     discount_value: int = Field(ge=1)
 
 
@@ -286,6 +287,17 @@ async def _validate_promotion(session: SessionDep, promo: Promotion) -> None:
         promo.currency = promo.currency.upper()
     else:
         promo.currency = None
+    if promo.discount_type == "free":
+        if not 1 <= promo.discount_value <= 36:
+            raise validation_error("body.discount_value", "free periods are 1-36 months")
+        if not promo.plan_codes:
+            raise validation_error("body.plan_codes", "choose the plan(s) to give for free (one per account type)")
+        rows = (await session.execute(select(Plan).where(Plan.code.in_(promo.plan_codes)))).scalars().all()
+        if any(p.price_monthly_cents <= 0 for p in rows):
+            raise validation_error("body.plan_codes", "free periods must give a paid plan")
+        audiences = [p.audience for p in rows]
+        if len(audiences) != len(set(audiences)):
+            raise validation_error("body.plan_codes", "at most one plan per account type")
     if promo.starts_at and promo.ends_at and promo.ends_at <= promo.starts_at:
         raise validation_error("body.ends_at", "ends_at must be after starts_at")
     if promo.code is not None:

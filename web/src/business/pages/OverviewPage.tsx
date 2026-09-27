@@ -20,6 +20,7 @@ import { BizErrorState } from '../components/BizError'
 import { TimelineChart } from '../components/charts'
 import { RecentTapsList, TapDetailDrawer } from '../components/Taps'
 import { DownloadAppInline } from '@/components/DownloadApp'
+import { FreeOfferBanner } from '@/components/FreeOfferBanner'
 
 function greeting() {
   const h = new Date().getHours()
@@ -120,6 +121,7 @@ export default function OverviewPage() {
           )
         }
       />
+      <FreeOfferBanner businessId={business.id} className="mb-6" />
 
       {overview.error ? (
         <Card>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { PoweredBy } from '@/components/PoweredBy'
@@ -21,9 +22,15 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
         <div className="lg:hidden">
           <AuthVisualHeader />
         </div>
-        <header className="flex items-center justify-between px-4 py-4 sm:px-8">
-          <Link to="/" aria-label="Home" className="lg:invisible">
-            <Logo />
+        <header className="flex items-center justify-between gap-3 px-4 py-4 sm:px-8">
+          <Link to="/" aria-label="Home" className="lg:hidden">
+            <Logo variant="wordmark" imgClassName="h-9" />
+          </Link>
+          <Link
+            to="/"
+            className="hidden items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg lg:inline-flex"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
           <ThemeToggle />
         </header>

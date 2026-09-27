@@ -15,7 +15,8 @@ from app.db.base import Base, CreatedAt, Timestamps, UUIDPk
 class Promotion(UUIDPk, Timestamps, Base):
     __tablename__ = "promotions"
     __table_args__ = (
-        CheckConstraint("discount_type IN ('percent','amount')", name="discount_type"),
+        # "free": a free period on a paid plan, claimed in-app; discount_value = months.
+        CheckConstraint("discount_type IN ('percent','amount','free')", name="discount_type"),
         CheckConstraint("audience IN ('developer','business','personal','all')", name="audience"),
         Index("uq_promotions_code", "code", unique=True, postgresql_where=text("code IS NOT NULL")),
     )
@@ -47,6 +48,28 @@ class Promotion(UUIDPk, Timestamps, Base):
         if self.starts_at is not None and self.starts_at > now:
             return "scheduled"
         return "active"
+
+
+class PromotionClaim(UUIDPk, CreatedAt, Base):
+    """A free-period promotion claimed by an account: the paid plan until `ends_at`, then back to `previous_plan_code`."""
+
+    __tablename__ = "promotion_claims"
+    __table_args__ = (
+        Index("uq_promotion_claims_promo_user", "promotion_id", "user_id", unique=True),
+        Index("ix_promotion_claims_due", "ends_at", postgresql_where=text("ended_at IS NULL")),
+    )
+
+    promotion_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("promotions.id", ondelete="CASCADE"),
+                                                    nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Business accounts upgrade their business (plans live on the business), others their own subscription.
+    business_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("businesses.id", ondelete="CASCADE"))
+    plan_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_plan_code: Mapped[str | None] = mapped_column(String(32))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EmailCampaign(UUIDPk, CreatedAt, Base):

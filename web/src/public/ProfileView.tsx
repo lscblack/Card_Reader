@@ -154,7 +154,7 @@ export function ProfileView({
         ))}
         {extraSocial && <SectionView section={{ type: 'social', links: extraSocial }} accent={accent} businessSlug={business.slug} />}
         {profile.sections.length === 0 && !extraSocial && <p className="py-8 text-center text-sm text-subtle">Nothing here yet.</p>}
-        <p className="pt-4 text-center"><PoweredBy /></p>
+        <p className="pt-4 text-center"><PoweredBy brand /></p>
       </div>
     </div>
   )

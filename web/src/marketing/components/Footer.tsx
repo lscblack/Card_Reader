@@ -86,7 +86,7 @@ export function Footer() {
     <footer className="border-t border-border py-14">
       <div className="mx-auto grid w-11/12 gap-10 md:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div>
-          <Logo />
+          <Logo variant="wordmark" />
           <p className="mt-3 max-w-xs text-[13.5px] leading-relaxed text-muted">
             NFC detection → card ID → secure delivery. Turn any NFC Android phone into a programmable card reader.
           </p>

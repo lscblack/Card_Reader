@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from typing import Literal
@@ -9,7 +10,7 @@ from typing import Literal
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, PaginationDep, SessionDep, PlatformUser
+from app.api.deps import ClientDep, CurrentUser, PaginationDep, SessionDep, PlatformUser
 from app.models import ApiKey, Application, AuditLog, NfcEvent, Plan, Promotion, UsageDaily
 from app.schemas.common import Schema
 from pydantic import Field
@@ -25,7 +26,7 @@ from app.schemas.resources import (
     UsageTotals,
 )
 from app.services import plans as plan_service
-from app.services import promotions, usage
+from app.services import audit, free_periods, promotions, usage
 from app.services.request_logs import set_actor
 from app.services.applications import developer_app_ids
 from app.services.serializers import audit_out, event_out, plan_out
@@ -141,6 +142,30 @@ async def active_promotions(session: SessionDep, request: Request) -> list[dict]
     now = datetime.now(UTC)
     return [promotions.promotion_out(p, now) for p in await promotions.live_promotions(session, now)
             if p.show_on_landing]
+
+
+class ClaimIn(Schema):
+    business_id: uuid.UUID | None = None
+
+
+@router.get("/billing/free-offers", tags=["Usage & billing"], summary="Free-period offers you can claim",
+            description="Promotions like \"1 year free\" for accounts on a free plan, whether you can claim them now, "
+                        "and your running free period (`active`). Business accounts: the business you own "
+                        "(`business_id` picks one if you own several).")
+async def free_offers(user: CurrentUser, session: SessionDep,
+                      business_id: uuid.UUID | None = None) -> dict:  # type: ignore[type-arg]
+    return await free_periods.offers(session, user, business_id)
+
+
+@router.post("/billing/free-offers/{promotion_id}/claim", status_code=201, tags=["Usage & billing"],
+             summary="Claim a free-period offer (switches to the paid plan until it ends)")
+async def claim_free_offer(promotion_id: uuid.UUID, body: ClaimIn, user: CurrentUser, session: SessionDep,
+                           client: ClientDep) -> dict:  # type: ignore[type-arg]
+    row = await free_periods.claim(session, user, promotion_id, body.business_id)
+    audit.record(session, action="promotion.claim", user_id=user.id, client=client, resource_type="promotion",
+                 resource_id=promotion_id, metadata={"plan": row.plan_code, "ends_at": row.ends_at.isoformat()})
+    await session.commit()
+    return await free_periods.offers(session, user, body.business_id)
 
 
 class PromoValidateIn(Schema):

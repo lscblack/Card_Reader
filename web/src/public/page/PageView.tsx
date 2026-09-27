@@ -207,7 +207,7 @@ export function PageView({
             {profile.sections.length === 0 && <p className="pg-subtle" style={{ padding: '32px 0', textAlign: 'center' }}>Nothing here yet.</p>}
           </main>
           <footer className="pg-foot">
-            <PoweredBy />
+            <PoweredBy brand />
           </footer>
         </div>
       </div>

@@ -724,6 +724,8 @@ const branding: Branding = {
   tagline: 'NFC detection → Card ID → Secure delivery',
   logo_url: null,
   logo_dark_url: null,
+  auth_logo_url: null,
+  auth_logo_dark_url: null,
   favicon_url: null,
   fonts: { heading: 'Inter', body: 'Inter', mono: 'JetBrains Mono' },
   theme: { accent_light: '#B91C1C', accent_dark: '#E5484D', default_mode: 'dark' },
@@ -944,8 +946,11 @@ function handleCore3(method: string, path: string, q: Query, body: Body, token: 
   }
   if (is('POST', '/admin/branding/assets') || is('DELETE', '/admin/branding/assets')) {
     const variant = String(q?.variant ?? '')
-    const key = variant === 'logo' ? 'logo_url' : variant === 'logo_dark' ? 'logo_dark_url' : variant === 'favicon' ? 'favicon_url' : null
-    if (!key) return fail(422, 'validation_error', 'Validation failed', [{ field: 'query.variant', message: 'logo | logo_dark | favicon' }])
+    const keys: Record<string, 'logo_url' | 'logo_dark_url' | 'auth_logo_url' | 'auth_logo_dark_url' | 'favicon_url'> = {
+      logo: 'logo_url', logo_dark: 'logo_dark_url', auth_logo: 'auth_logo_url', auth_logo_dark: 'auth_logo_dark_url', favicon: 'favicon_url',
+    }
+    const key = keys[variant] ?? null
+    if (!key) return fail(422, 'validation_error', 'Validation failed', [{ field: 'query.variant', message: 'logo | logo_dark | auth_logo | auth_logo_dark | favicon' }])
     if (method === 'POST' && typeof body.file_size === 'number' && body.file_size > 1024 * 1024) return fail(413, 'file_too_large', 'Branding assets must be 1 MB or smaller.')
     branding[key] = method === 'POST' ? String(body.file_url ?? '') : null
     branding.updated_at = now()

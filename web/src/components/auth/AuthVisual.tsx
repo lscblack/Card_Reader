@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { Activity, BadgeCheck, QrCode, ShieldCheck, Waypoints } from 'lucide-react'
 import { useBranding } from '@/branding/context'
 import { cn } from '@/lib/cn'
@@ -155,9 +156,9 @@ export function AuthVisualPanel() {
     <div className="auth-panel flex h-full flex-col justify-between p-10 xl:p-14">
       <div className="auth-grid" aria-hidden="true" />
       <div className="flex items-center justify-between">
-        <span className="text-white">
-          <Logo surface="dark" />
-        </span>
+        <Link to="/" aria-label="Back to the home page" className="rounded-md text-white transition-opacity hover:opacity-85">
+          <Logo surface="dark" variant="wordmark" />
+        </Link>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11.5px] text-white/75">
           <Waypoints className="h-3.5 w-3.5" /> Tap → event → endpoint
         </span>

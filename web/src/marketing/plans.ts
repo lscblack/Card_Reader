@@ -31,7 +31,7 @@ export interface AppliedPromotion {
   id: string
   name: string
   banner_text: string | null
-  discount_type: 'percent' | 'amount'
+  discount_type: 'percent' | 'amount' | 'free'
   discount_value: number
   discounted_price_monthly_cents: number
   ends_at: string | null
@@ -44,7 +44,7 @@ export interface LandingPromotion {
   name: string
   code: string | null
   description?: string | null
-  discount_type: 'percent' | 'amount'
+  discount_type: 'percent' | 'amount' | 'free'
   discount_value: number
   currency?: string | null
   audience: 'developer' | 'business' | 'personal' | 'all'
@@ -226,7 +226,14 @@ export function planPrice(p: PublicPlan, billing: Billing): { now: number | null
   return { now: monthly, was: null, perYear: null }
 }
 
-export function promoLabel(p: { discount_type: 'percent' | 'amount'; discount_value: number }, currency = 'usd'): string {
+/** "12 months free" → "1 year free". */
+export function freePeriodLabel(months: number): string {
+  if (months % 12 === 0) return months === 12 ? '1 year free' : `${months / 12} years free`
+  return `${months} month${months === 1 ? '' : 's'} free`
+}
+
+export function promoLabel(p: { discount_type: 'percent' | 'amount' | 'free'; discount_value: number }, currency = 'usd'): string {
+  if (p.discount_type === 'free') return freePeriodLabel(p.discount_value)
   return p.discount_type === 'percent' ? `${p.discount_value}% off` : `${formatCents(p.discount_value, currency)} off`
 }
 

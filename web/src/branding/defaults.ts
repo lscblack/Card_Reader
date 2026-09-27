@@ -5,6 +5,8 @@ export const DEFAULT_BRANDING: Branding = {
   tagline: 'NFC detection → Card ID → Secure delivery',
   logo_url: null,
   logo_dark_url: null,
+  auth_logo_url: null,
+  auth_logo_dark_url: null,
   favicon_url: null,
   fonts: { heading: 'Inter', body: 'Inter', mono: 'JetBrains Mono' },
   theme: { accent_light: '#B91C1C', accent_dark: '#E5484D', default_mode: 'dark' },

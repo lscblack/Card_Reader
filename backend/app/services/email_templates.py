@@ -107,9 +107,8 @@ def brand_context(branding: dict[str, Any]) -> dict[str, Any]:
     from app.services.branding import public
 
     pub = public(branding)
-    logo = pub["logo_url"]
-    if logo and logo.lower().endswith(".svg"):  # most email clients can't render SVG
-        logo = None
+    # Emails prefer the wordmark (logo with the name); most email clients can't render SVG.
+    logo = next((u for u in (pub["auth_logo_url"], pub["logo_url"]) if u and not u.lower().endswith(".svg")), None)
     body_font = branding["fonts"]["body"]
     return {
         "product_name": pub["product_name"],

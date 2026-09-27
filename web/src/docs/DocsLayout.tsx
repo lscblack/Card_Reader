@@ -168,7 +168,7 @@ export default function DocsLayout() {
               <Logo withText={false} />
             </span>
             <span className="hidden sm:inline">
-              <Logo />
+              <Logo variant="wordmark" imgClassName="h-10 max-w-[200px]" />
             </span>
           </Link>
           <Link to="/docs" className="rounded-md bg-surface-2 px-2 py-0.5 text-[12.5px] font-semibold text-muted hover:text-fg">
@@ -212,7 +212,7 @@ export default function DocsLayout() {
           <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/60" onClick={() => setMenuOpen(false)} />
           <div className="animate-slide-in-left absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col overflow-y-auto border-r border-border bg-bg p-4">
             <div className="mb-5 flex items-center justify-between">
-              <Logo />
+              <Logo variant="wordmark" imgClassName="h-10 max-w-[200px]" />
               <button
                 type="button"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-2"

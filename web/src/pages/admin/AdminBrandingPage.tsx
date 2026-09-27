@@ -29,20 +29,36 @@ const PRESETS: { name: string; light: string; dark: string }[] = [
   { name: 'Graphite', light: '#3F3F46', dark: '#D4D4D8' },
 ]
 
-const ASSETS: { variant: BrandingAssetVariant; label: string; hint: string; field: 'logo_url' | 'logo_dark_url' | 'favicon_url'; bg: 'light' | 'dark' }[] = [
-  { variant: 'logo', label: 'Logo', hint: 'Used on light backgrounds and in emails.', field: 'logo_url', bg: 'light' },
-  { variant: 'logo_dark', label: 'Logo (dark mode)', hint: 'Light version for dark backgrounds.', field: 'logo_dark_url', bg: 'dark' },
-  { variant: 'favicon', label: 'Favicon', hint: 'Square, at least 64×64.', field: 'favicon_url', bg: 'light' },
+type Asset = {
+  variant: BrandingAssetVariant
+  label: string
+  hint: string
+  field: 'logo_url' | 'logo_dark_url' | 'auth_logo_url' | 'auth_logo_dark_url' | 'favicon_url'
+  bg: 'light' | 'dark'
+  /** What shows when this asset is removed. */
+  fallback: string
+}
+
+const ASSETS: Asset[] = [
+  { variant: 'logo', label: 'Logo', hint: 'Dashboard navigation and small spaces. A compact mark works best.', field: 'logo_url', bg: 'light', fallback: 'The default mark will be used instead.' },
+  { variant: 'logo_dark', label: 'Logo (dark mode)', hint: 'Light version for dark backgrounds.', field: 'logo_dark_url', bg: 'dark', fallback: 'The default mark will be used instead.' },
+  { variant: 'favicon', label: 'Favicon', hint: 'Square, at least 64×64.', field: 'favicon_url', bg: 'light', fallback: 'The default mark will be used instead.' },
+]
+
+/** Optional wordmark (logo with the name) for sign-in pages, public pages and emails. */
+const AUTH_ASSETS: Asset[] = [
+  { variant: 'auth_logo', label: 'Wordmark', hint: 'Logo with the product name, for light backgrounds and emails. Optional.', field: 'auth_logo_url', bg: 'light', fallback: 'These pages will use the navigation logo.' },
+  { variant: 'auth_logo_dark', label: 'Wordmark (dark)', hint: 'Light version for dark backgrounds and the sign-in side panel. Optional.', field: 'auth_logo_dark_url', bg: 'dark', fallback: 'These pages will use the navigation logo.' },
 ]
 
 const ASSET_TYPES = ['image/png', 'image/svg+xml', 'image/webp']
 
-function AssetCard({ a, b }: { a: (typeof ASSETS)[number]; b: Branding }) {
+function AssetCard({ a, b }: { a: Asset; b: Branding }) {
   const m = useBrandingMutations()
   const toast = useToast()
   const input = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState(false)
-  const url = b[a.field]
+  const url = b[a.field] ?? null
   const busy = (m.upload.isPending && m.upload.variables?.variant === a.variant) || (m.remove.isPending && m.remove.variables === a.variant)
 
   async function pick(file?: File) {
@@ -93,7 +109,7 @@ function AssetCard({ a, b }: { a: (typeof ASSETS)[number]; b: Branding }) {
         open={confirm}
         onClose={() => setConfirm(false)}
         title={`Remove ${a.label.toLowerCase()}?`}
-        description="The default mark will be used instead."
+        description={a.fallback}
         confirmLabel="Remove"
         loading={m.remove.isPending}
         onConfirm={async () => {
@@ -271,6 +287,18 @@ function BrandingForm({ b }: { b: Branding }) {
         <CardHeader title="Logos & favicon" description="PNG, SVG or WebP up to 1 MB. SVGs are sanitised. Changes apply immediately." />
         <CardBody className="grid gap-4 lg:grid-cols-3">
           {ASSETS.map((a) => (
+            <AssetCard key={a.variant} a={a} b={b} />
+          ))}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Wordmark"
+          description="Optional. Shown on sign-in and sign-up pages, the landing page, docs, public business pages and digital cards, and in emails — separate from the compact logo in the dashboard navigation. Leave empty to use the navigation logo everywhere."
+        />
+        <CardBody className="grid gap-4 lg:grid-cols-2">
+          {AUTH_ASSETS.map((a) => (
             <AssetCard key={a.variant} a={a} b={b} />
           ))}
         </CardBody>

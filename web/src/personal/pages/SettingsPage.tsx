@@ -15,6 +15,7 @@ import { VisibilityToggle } from '../components/editorBits'
 import { PasswordCard } from '@/components/PasswordCard'
 import { PasskeysCard, SignedInCard } from '@/components/AccountSecurity'
 import { CountrySelect } from '@/components/CountrySelect'
+import { FreeOfferBanner } from '@/components/FreeOfferBanner'
 
 interface PrivacyDefaults {
   phones: Visibility
@@ -150,6 +151,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" description="Your profile, password, where you’re signed in and privacy defaults." />
+      <FreeOfferBanner className="mb-6" />
       <div className="space-y-6">
         <ProfileForm />
         <PasswordCard />

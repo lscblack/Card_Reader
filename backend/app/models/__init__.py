@@ -22,7 +22,7 @@ from app.models.business import (
     PageTemplate,
     Profile,
 )
-from app.models.communication import AppRelease, EmailCampaign, EmailLog, Notification, Promotion
+from app.models.communication import AppRelease, EmailCampaign, EmailLog, Notification, Promotion, PromotionClaim
 from app.models.personal import (
     CardTemplate,
     Contact,

@@ -19,6 +19,7 @@ import { ServerUrlCard } from '@/components/ServerUrlCard'
 import { DownloadAppCard } from '@/components/DownloadApp'
 import { useAppRelease } from '@/hooks/useAppRelease'
 import { useTour, developerDashboardTour } from '@/tours'
+import { FreeOfferBanner } from '@/components/FreeOfferBanner'
 
 const steps = [
   { title: 'Create an application', body: 'Groups your devices, API keys and endpoint.' },
@@ -152,6 +153,7 @@ export default function OverviewPage() {
           </>
         }
       />
+      <FreeOfferBanner className="mb-6" />
 
       {overview.error ? (
         <Card>

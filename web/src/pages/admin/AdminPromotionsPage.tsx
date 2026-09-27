@@ -17,6 +17,7 @@ import { ConfirmDialog, Drawer } from '@/components/ui/Modal'
 import { SkeletonRows } from '@/components/ui/Spinner'
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from '@/components/ui/Table'
 import { useToast } from '@/components/ui/toastContext'
+import { freePeriodLabel } from '@/marketing/plans'
 
 const statusTone: Record<PromotionStatus, Tone> = { active: 'success', scheduled: 'info', expired: 'neutral', inactive: 'neutral', exhausted: 'warning' }
 
@@ -30,10 +31,12 @@ function toLocalInput(iso: string | null): string {
 const fromLocalInput = (v: string) => (v ? new Date(v).toISOString().replace(/\.\d{3}Z$/, 'Z') : null)
 
 function discountLabel(p: Pick<Promotion, 'discount_type' | 'discount_value' | 'currency'>) {
+  if (p.discount_type === 'free') return freePeriodLabel(p.discount_value)
   return p.discount_type === 'percent' ? `${p.discount_value}% off` : `${money(p.discount_value, p.currency ?? 'usd')} off`
 }
 
-function discounted(plan: Plan, type: 'percent' | 'amount', value: number) {
+function discounted(plan: Plan, type: 'percent' | 'amount' | 'free', value: number) {
+  if (type === 'free') return 0
   const m = plan.price_monthly_cents ?? 0
   const off = type === 'percent' ? Math.round((m * value) / 100) : value
   return Math.max(0, m - off)
@@ -43,7 +46,7 @@ interface Draft {
   name: string
   code: string
   description: string
-  discount_type: 'percent' | 'amount'
+  discount_type: 'percent' | 'amount' | 'free'
   value: string
   currency: string
   audience: 'developer' | 'business' | 'personal' | 'all'
@@ -81,6 +84,33 @@ function Preview({ d, plans }: { d: Draft; plans: Plan[] }) {
     (p) => p.is_active !== false && (p.price_monthly_cents ?? 0) > 0 && (d.audience === 'all' || p.audience === d.audience) && (!d.plan_codes.length || d.plan_codes.includes(p.code)),
   )
   const sample = eligible[0]
+  if (d.discount_type === 'free') {
+    const given = plans.filter((p) => d.plan_codes.includes(p.code))
+    return (
+      <div className="space-y-3">
+        <p className="text-xs font-medium tracking-wide text-subtle uppercase">Preview</p>
+        <div className="rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold">{d.name || 'Free period'}</p>
+            <Badge tone="success">{freePeriodLabel(value || 0)}</Badge>
+          </div>
+          {given.length ? (
+            <ul className="mt-2 space-y-1 text-[13px] text-muted">
+              {given.map((p) => (
+                <li key={p.code}>
+                  <span className="capitalize">{p.audience}</span> accounts on a free plan get <b className="text-fg">{p.name}</b> free for {value || 0} months, then go
+                  back to their free plan automatically.
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[13px] text-muted">Choose the paid plan to give for each account type.</p>
+          )}
+          <p className="mt-2 text-xs text-subtle">Users claim it from their dashboard; each account can claim it once.</p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="space-y-3">
       <p className="text-xs font-medium tracking-wide text-subtle uppercase">Preview</p>
@@ -129,16 +159,28 @@ function PromotionEditor({ promo, onClose }: { promo: Promotion | null; onClose:
     Number.isNaN(val) ||
     val <= 0 ||
     (d.discount_type === 'percent' && val > 100) ||
+    (d.discount_type === 'free' && (!Number.isInteger(val) || val > 36 || !d.plan_codes.length)) ||
     (!!d.starts_at && !!d.ends_at && new Date(d.starts_at) >= new Date(d.ends_at)) ||
     (d.code !== '' && !/^[A-Z0-9_-]{3,32}$/i.test(d.code)) ||
     (d.max_redemptions !== '' && !/^\d+$/.test(d.max_redemptions))
-  const planOptions = (plans.data ?? []).filter((p) => d.audience === 'all' || p.audience === d.audience)
+  const free = d.discount_type === 'free'
+  const planOptions = (plans.data ?? []).filter(
+    (p) => (d.audience === 'all' || p.audience === d.audience) && (!free || (p.price_monthly_cents ?? 0) > 0),
+  )
+  const togglePlan = (code: string) => {
+    const on = d.plan_codes.includes(code)
+    if (on) return set('plan_codes', d.plan_codes.filter((c) => c !== code))
+    // A free period gives one plan per account type: picking one replaces the other plan of that type.
+    const audience = planOptions.find((p) => p.code === code)?.audience
+    const keep = free ? d.plan_codes.filter((c) => planOptions.find((p) => p.code === c)?.audience !== audience) : d.plan_codes
+    set('plan_codes', [...keep, code])
+  }
 
   async function save() {
     setError(null)
     const body: PromotionInput = {
       name: d.name.trim(),
-      code: d.code.trim() ? d.code.trim().toUpperCase() : null,
+      code: !free && d.code.trim() ? d.code.trim().toUpperCase() : null,
       description: d.description.trim() || null,
       discount_type: d.discount_type,
       discount_value: d.discount_type === 'amount' ? Math.round(val * 100) : val,
@@ -184,13 +226,25 @@ function PromotionEditor({ promo, onClose }: { promo: Promotion | null; onClose:
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Discount">
             {(p) => (
-              <Select {...p} value={d.discount_type} onChange={(e) => set('discount_type', e.target.value as Draft['discount_type'])}>
+              <Select
+                {...p}
+                value={d.discount_type}
+                onChange={(e) => {
+                  const t = e.target.value as Draft['discount_type']
+                  setD((x) => ({ ...x, discount_type: t, value: t === 'free' ? '12' : x.discount_type === 'free' ? '20' : x.value }))
+                }}
+              >
                 <option value="percent">Percent</option>
                 <option value="amount">Fixed amount</option>
+                <option value="free">Free period</option>
               </Select>
             )}
           </Field>
-          <Field label={d.discount_type === 'percent' ? 'Percent off' : 'Amount off'} error={fe.discount_value ?? (d.discount_type === 'percent' && val > 100 ? 'Max 100%' : null)}>
+          <Field
+            label={free ? 'Months free' : d.discount_type === 'percent' ? 'Percent off' : 'Amount off'}
+            hint={free ? '12 = one year' : undefined}
+            error={fe.discount_value ?? (d.discount_type === 'percent' && val > 100 ? 'Max 100%' : free && val > 36 ? 'Max 36 months' : null)}
+          >
             {(p) => <Input {...p} inputMode="decimal" value={d.value} onChange={(e) => set('value', e.target.value.replace(/[^\d.]/g, ''))} />}
           </Field>
           {d.discount_type === 'amount' ? (
@@ -205,6 +259,8 @@ function PromotionEditor({ promo, onClose }: { promo: Promotion | null; onClose:
                 </Select>
               )}
             </Field>
+          ) : free ? (
+            <p className="self-end pb-2 text-xs text-subtle">No code needed — free-plan accounts claim it from their dashboard.</p>
           ) : (
             <Field label="Coupon code" optional error={fe.code}>
               {(p) => <Input {...p} value={d.code} onChange={(e) => set('code', e.target.value.toUpperCase().replace(/\s/g, ''))} className="font-mono uppercase" maxLength={32} />}
@@ -232,8 +288,10 @@ function PromotionEditor({ promo, onClose }: { promo: Promotion | null; onClose:
           </Field>
         </div>
         <fieldset>
-          <legend className="mb-2 text-[13px] font-medium">Plans</legend>
-          <p className="mb-2 text-xs text-subtle">None selected = every plan of the audience.</p>
+          <legend className="mb-2 text-[13px] font-medium">{free ? 'Plan to give' : 'Plans'}</legend>
+          <p className="mb-2 text-xs text-subtle">
+            {free ? 'Pick one paid plan per account type (developer, business, personal) — required.' : 'None selected = every plan of the audience.'}
+          </p>
           <div className="flex flex-wrap gap-2">
             {planOptions.map((p) => {
               const on = d.plan_codes.includes(p.code)
@@ -242,7 +300,7 @@ function PromotionEditor({ promo, onClose }: { promo: Promotion | null; onClose:
                   key={p.code}
                   type="button"
                   aria-pressed={on}
-                  onClick={() => set('plan_codes', on ? d.plan_codes.filter((c) => c !== p.code) : [...d.plan_codes, p.code])}
+                  onClick={() => togglePlan(p.code)}
                   className={cn('rounded-lg border px-2.5 py-1 text-xs', on ? 'border-accent bg-accent-soft text-fg' : 'border-border text-muted hover:border-border-strong')}
                 >
                   {p.name} <span className="font-mono text-subtle">{p.code}</span>

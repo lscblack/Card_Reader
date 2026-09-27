@@ -15,6 +15,7 @@ import { ErrorState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Input'
 import { Table, TableWrap, TBody, TD, TH, THead } from '@/components/ui/Table'
+import { FreeOfferBanner } from '@/components/FreeOfferBanner'
 
 function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const ratio = limit ? Math.min(1, used / limit) : 0
@@ -220,6 +221,7 @@ export default function UsagePage() {
           </Select>
         }
       />
+      <FreeOfferBanner className="mb-6" />
       {usage.error ? (
         <Card>
           <ErrorState error={usage.error} onRetry={() => usage.refetch()} />

@@ -12,7 +12,7 @@ export function Unavailable({ title = 'This page isn’t available', body }: { t
       <p className="mt-2 max-w-xs text-[15px] text-muted">
         {body ?? 'The card or link you used isn’t active right now. If you think this is a mistake, contact the business that gave it to you.'}
       </p>
-      <p className="mt-10 text-center"><PoweredBy /></p>
+      <p className="mt-10 text-center"><PoweredBy brand /></p>
     </main>
   )
 }

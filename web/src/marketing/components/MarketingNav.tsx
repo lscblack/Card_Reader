@@ -51,7 +51,7 @@ export function MarketingNav({ onNavigate }: { onNavigate: (t: NavTarget) => voi
     >
       <nav className="mx-auto flex h-16 w-11/12 items-center justify-between gap-4" aria-label="Main">
         <Link to="/" className="rounded-md text-fg" aria-label={`${productName} home`}>
-          <Logo />
+          <Logo variant="wordmark" imgClassName="h-10 max-w-[200px]" />
         </Link>
 
         <ul className="hidden items-center gap-1 md:flex">

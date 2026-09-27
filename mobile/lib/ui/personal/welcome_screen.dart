@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/setup_screen.dart';
+import '../widgets/brand_logo.dart';
 import '../widgets/common.dart';
 import '../widgets/guest_tap.dart';
 import 'personal_auth_screen.dart';
@@ -12,17 +13,14 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     return GuestTapScope(
       child: Scaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
           children: [
-            Icon(Icons.contactless_outlined, size: 56, color: scheme.primary),
-            const SizedBox(height: 12),
-            Text('nexTap', style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center),
-            const SizedBox(height: 6),
+            const Center(child: BrandWordmark(height: 64)),
+            const SizedBox(height: 14),
             Text('How do you want to use this phone? You can set up both.', style: t.bodyMedium, textAlign: TextAlign.center),
             const SizedBox(height: 28),
             _Choice(

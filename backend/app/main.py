@@ -135,6 +135,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     ]
     if settings.DELIVERY_WORKER_ENABLED:
         tasks.append(asyncio.create_task(delivery.run_worker(SessionLocal, stop), name="delivery-worker"))
+        # Free-period promotions: 14-day reminders and the switch back to the free plan (runs with the worker).
+        from app.services import free_periods
+
+        tasks.append(asyncio.create_task(free_periods.run_sweeper(SessionLocal, stop), name="free-period-sweeper"))
     try:
         yield
     finally:

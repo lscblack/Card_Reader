@@ -153,7 +153,7 @@ export default function PublicCardPage() {
           </span>
         </Link>
         <p className="pt-2 text-center">
-          <PoweredBy />
+          <PoweredBy brand />
         </p>
       </div>
     </main>

@@ -22,6 +22,8 @@ def applies_to(promo: Promotion, plan: Plan) -> bool:
 
 
 def discounted_price(promo: Promotion, price_cents: int) -> int:
+    if promo.discount_type == "free":  # free period (claimed in-app, see free_periods)
+        return 0
     if promo.discount_type == "percent":
         return max(0, round(price_cents * (100 - promo.discount_value) / 100))
     return max(0, price_cents - promo.discount_value)
@@ -31,7 +33,7 @@ def best_for(plan: Plan, promos: list[Promotion], now: datetime) -> Promotion | 
     """The applicable active promotion giving the lowest monthly price (ties: ends soonest)."""
     if plan.price_monthly_cents <= 0:
         return None
-    candidates = [p for p in promos if p.status_at(now) == "active" and applies_to(p, plan)
+    candidates = [p for p in promos if p.discount_type != "free" and p.status_at(now) == "active" and applies_to(p, plan)
                   and discounted_price(p, plan.price_monthly_cents) < plan.price_monthly_cents]
     if not candidates:
         return None

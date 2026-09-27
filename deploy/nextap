@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# nextap — manage the nexTap deployment (installed to /usr/local/bin by deploy/deploy.sh)
+set -Eeuo pipefail
+# written by deploy.sh; the /etc copy makes this work regardless of where the code lives
+for CONF in /etc/nextap.conf; do
+  [[ -f "$CONF" ]] && { source "$CONF"; break; }
+done
+APP_DIR="${APP_DIR:-/var/www/nextap}"; SERVICE="${SERVICE:-nextap-api}"; API_PORT="${API_PORT:-}"
+VENV="${VENV:-$APP_DIR/backend/.venv}"; API_DOMAIN="${API_DOMAIN:-tap.api.nexventures.net}"; WEB_DOMAIN="${WEB_DOMAIN:-tap.nexventures.net}"
+RUN_USER="${RUN_USER:-www-data}"; DB_NAME="${DB_NAME:-nfc_platform}"; DB_USER="${DB_USER:-postgres}"
+c() { printf '\e[1;36m%s\e[0m\n' "$*"; }
+need_root() { [[ $EUID -eq 0 ]] || exec sudo -E "$0" "$@"; }
+case "${1:-help}" in
+  start|stop|restart|enable|disable)
+      need_root "$@"; systemctl "$1" "$SERVICE"; systemctl --no-pager --lines=0 status "$SERVICE" || true ;;
+  status)
+      systemctl --no-pager status "$SERVICE" || true
+      echo; c "nginx:"; systemctl is-active nginx || true; c "postgres:"; systemctl is-active postgresql || true
+      c "redis:"; systemctl is-active redis-server 2>/dev/null || systemctl is-active redis 2>/dev/null || true
+      if [[ -n "$API_PORT" ]]; then echo; c "health (127.0.0.1:$API_PORT):"; curl -s "http://127.0.0.1:$API_PORT/api/v1/health" || true; echo; fi ;;
+  logs|journal)      shift; journalctl -u "$SERVICE" -f -n "${1:-100}" --no-pager ;;
+  logs-tail)         shift; journalctl -u "$SERVICE" -n "${1:-200}" --no-pager ;;
+  errors)            journalctl -u "$SERVICE" -p err -n 200 --no-pager ;;
+  nginx-logs)        tail -n 100 -f /var/log/nginx/access.log /var/log/nginx/error.log ;;
+  nginx-test)        need_root "$@"; nginx -t && systemctl reload nginx ;;
+  update)            need_root "$@"; cd "$APP_DIR"; [[ -d .git ]] && git pull --ff-only; bash "$APP_DIR/deploy/deploy.sh" --no-certbot ;;
+  deploy)            need_root "$@"; shift; bash "$APP_DIR/deploy/deploy.sh" "$@" ;;
+  build|frontend)    need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --frontend-only --no-certbot ;;
+  backend)           need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --backend-only --no-certbot ;;
+  migrate)           need_root "$@"; cd "$APP_DIR/backend"; sudo -u "$RUN_USER" "$VENV/bin/alembic" upgrade head ;;
+  shell)             cd "$APP_DIR/backend"; exec "$VENV/bin/python" ;;
+  psql)              sudo -u postgres psql "$DB_NAME" ;;
+  where|info)        echo "app dir : $APP_DIR"; echo "service : $SERVICE"; echo "port    : ${API_PORT:-unknown}"; echo "venv    : $VENV"; echo "db      : $DB_NAME (role $DB_USER)"; echo "domains : $WEB_DOMAIN (web), $API_DOMAIN (api)" ;;
+  env)               need_root "$@"; ${EDITOR:-nano} "$APP_DIR/backend/.env"; echo "run: nextap restart" ;;
+  port)              echo "${API_PORT:-unknown}" ;;
+  cert|certbot)      need_root "$@"; bash "$APP_DIR/deploy/deploy.sh" --backend-only ;;
+  renew)             need_root "$@"; certbot renew --quiet; systemctl reload nginx ;;
+  backup)            need_root "$@"; mkdir -p "$APP_DIR/.deploy/backups"; f="$APP_DIR/.deploy/backups/nextap-$(date +%F-%H%M).sql.gz"
+                     sudo -u postgres pg_dump "$DB_NAME" | gzip > "$f"; tar -czf "${f%.sql.gz}-media.tgz" -C "$APP_DIR/backend" media releases; echo "→ $f" ;;
+  help|*) cat <<H
+nextap — nexTap service manager ($WEB_DOMAIN + $API_DOMAIN)
+  nextap status              service + nginx/postgres/redis state + API health
+  nextap start|stop|restart  control the API service ($SERVICE)
+  nextap logs [n]            follow the journal (last n lines)   | nextap logs-tail [n] | nextap errors
+  nextap nginx-logs          follow nginx access/error logs      | nextap nginx-test (test + reload)
+  nextap update              git pull (if repo) + full redeploy  | nextap deploy [opts] (run deploy.sh)
+  nextap build               rebuild the frontend only           | nextap backend (python deps + service)
+  nextap migrate             alembic upgrade head (idempotent)
+  nextap env                 edit backend/.env (then nextap restart) | nextap psql (database shell)
+  nextap port                show the local API port            | nextap shell (python in the venv)
+  nextap where               show the deployed paths, port, database and domains
+  nextap cert                obtain missing Let's Encrypt certificates | nextap renew
+  nextap backup              pg_dump + media/releases tarball into .deploy/backups
+Raw systemd:  systemctl status|start|stop|restart $SERVICE   ·   journalctl -u $SERVICE -f
+H
+  ;;
+esac

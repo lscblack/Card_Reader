@@ -93,7 +93,7 @@ export default function WifiPage() {
             <p className="max-w-[240px] text-xs text-subtle">On another phone, scan this with the camera to join automatically.</p>
           </div>
         </div>
-        <p className="mt-8 text-center"><PoweredBy /></p>
+        <p className="mt-8 text-center"><PoweredBy brand /></p>
       </div>
     </main>
   )

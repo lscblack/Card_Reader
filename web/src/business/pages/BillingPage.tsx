@@ -12,6 +12,7 @@ import type { BusinessPlan } from '../api/types'
 import { useBusiness, useCan } from '../hooks/context'
 import { useBilling, useBizPlans } from '../hooks/queries'
 import { BizErrorState } from '../components/BizError'
+import { FreeOfferBanner } from '@/components/FreeOfferBanner'
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const ratio = limit ? Math.min(1, used / limit) : 0
@@ -54,6 +55,7 @@ export default function BillingPage() {
   return (
     <>
       <PageHeader title="Billing" description="Your plan, usage this month and available upgrades." />
+      <FreeOfferBanner businessId={business.id} className="mb-6" />
       <div className="space-y-6">
         {billing.error ? (
           <Card>

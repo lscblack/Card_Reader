@@ -251,6 +251,10 @@ CATALOG_LIST: list[ErrorDef] = [
        "A plan with this code already exists (codes are immutable).", "Choose another code."),
     _E("promotion_code_exists", "NFC-7005", 409, "api", "Promotion code exists",
        "Another promotion already uses this coupon code.", "Choose another code."),
+    _E("offer_not_available", "NFC-7006", 409, "api", "Offer not available",
+       "This free-period offer can't be claimed: already claimed, a free period is already running, the account isn't "
+       "on a free plan, only the business owner can claim it, or the offer ended (see details.reason).",
+       "Nothing to do — or ask the business owner to claim it."),
     # ── NFC-8xxx sandbox / admin ───────────────────────────────────────
     _E("sandbox_no_application", "NFC-8001", 409, "api", "Sandbox has no application",
        "Link the sandbox endpoint to an application first (it provides the signing secret).",
