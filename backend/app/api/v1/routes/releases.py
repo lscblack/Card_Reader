@@ -165,8 +165,7 @@ async def cancel_release(release_id: uuid.UUID, admin: AdminUser, session: Sessi
     r = await _get(session, release_id)
     if r.status in ("queued", "building"):
         r.status, r.error = "cancelled", "Cancelled by an administrator"
-        if r.started_at is None:
-            r.finished_at = datetime.now(UTC)
+        r.finished_at = datetime.now(UTC)  # the worker overwrites it when it stops a running build
         audit.record(session, action="admin.app_release_cancel", user_id=admin.id, client=client,
                      resource_type="app_release", resource_id=r.id)
         await session.commit()

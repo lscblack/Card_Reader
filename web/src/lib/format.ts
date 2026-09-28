@@ -24,6 +24,21 @@ export function relativeTime(iso: string | null | undefined, now = Date.now()): 
   return rtf.format(Math.round(diff / chosen[1]), chosen[0])
 }
 
+/** A length of time in plain words: "45s", "3 min 20s", "2 hours 14 min", "3 days 4 hours", "2 months", "2 years". */
+export function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds))
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`
+  if (s < 60) return `${s}s`
+  const min = Math.floor(s / 60)
+  if (min < 60) return s % 60 ? `${min} min ${s % 60}s` : `${min} min`
+  const hours = Math.floor(min / 60)
+  if (hours < 24) return min % 60 ? `${plural(hours, 'hour')} ${min % 60} min` : plural(hours, 'hour')
+  const days = Math.floor(hours / 24)
+  if (days < 30) return hours % 24 ? `${plural(days, 'day')} ${plural(hours % 24, 'hour')}` : plural(days, 'day')
+  if (days < 365) return plural(Math.floor(days / 30), 'month')
+  return plural(Math.floor(days / 365), 'year')
+}
+
 export function dateTime(iso: string | null | undefined, withSeconds = false): string {
   if (!iso) return '—'
   const d = new Date(iso)

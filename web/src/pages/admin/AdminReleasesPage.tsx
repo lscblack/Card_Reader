@@ -9,7 +9,7 @@ import { apiFileUrl } from '@/hooks/useAppRelease'
 import { useServerMeta } from '@/hooks/queries'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useNow } from '@/hooks/useNow'
-import { dateTime, formatBytes, num, relativeTime } from '@/lib/format'
+import { dateTime, formatBytes, formatDuration, num, relativeTime } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -28,9 +28,10 @@ const running = (r: AppRelease) => r.status === 'queued' || r.status === 'buildi
 
 function duration(r: AppRelease) {
   if (!r.started_at) return null
+  // only a running build counts up to now; a finished one without an end time has no known duration
+  if (!r.finished_at && r.status !== 'building') return null
   const end = r.finished_at ? new Date(r.finished_at).getTime() : Date.now()
-  const s = Math.max(0, Math.round((end - new Date(r.started_at).getTime()) / 1000))
-  return s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`
+  return formatDuration((end - new Date(r.started_at).getTime()) / 1000)
 }
 
 function useReleases() {
