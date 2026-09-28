@@ -70,6 +70,7 @@ function Editor({ card }: { card: DigitalCard }) {
   const locked = (k: string) => !!link?.locked_fields.includes(k)
   const inFlight = useRef(false)
   const desktop = useMediaQuery('(min-width: 1024px)')
+  const [panelWidth, setPanelWidth] = usePanelWidth()
   const { focus, setFocus } = useFocusMode()
 
   // Autosave: 900 ms after the last change, PATCH only what differs from the last saved version.
@@ -197,9 +198,10 @@ function Editor({ card }: { card: DigitalCard }) {
 
       <Card
         className={cn(
-          'overflow-hidden lg:grid lg:min-h-[620px] lg:grid-cols-[76px_360px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]',
+          'overflow-hidden lg:grid lg:min-h-[620px] lg:grid-rows-[minmax(0,1fr)]',
           focus ? 'lg:h-[calc(100dvh-5rem)]' : 'lg:h-[calc(100dvh-13rem)]',
         )}
+        style={desktop ? { gridTemplateColumns: `76px ${panelWidth}px minmax(0,1fr)` } : undefined}
       >
         {/* Rail (desktop) */}
         <nav className="hidden border-r border-border bg-surface-2/40 py-2 lg:block" aria-label="Editor sections">
@@ -216,7 +218,12 @@ function Editor({ card }: { card: DigitalCard }) {
           ))}
         </nav>
         {/* Panel (desktop) */}
-        {desktop && <div className="overflow-y-auto border-r border-border">{panel}</div>}
+        {desktop && (
+          <div className="relative min-h-0">
+            <div className="h-full overflow-y-auto border-r border-border">{panel}</div>
+            <PanelResizeHandle width={panelWidth} onChange={setPanelWidth} />
+          </div>
+        )}
 
         {/* Canvas */}
         <div className="flex min-w-0 flex-col bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] [background-size:18px_18px]">
@@ -327,4 +334,70 @@ export default function CardEditorPage() {
   if (error) return <BizErrorState error={error} onRetry={() => refetch()} />
   if (isLoading || !data || templates.isLoading) return <PageSkeleton />
   return <Editor key={data.id} card={data} />
+}
+
+
+const PANEL_KEY = 'nfc.cardEditor.panelWidth'
+const PANEL_DEFAULT = 360
+const PANEL_MIN = 300
+const PANEL_MAX = 720
+const clampPanel = (w: number) => Math.round(Math.min(PANEL_MAX, Math.max(PANEL_MIN, w)))
+
+/** Width of the editor panel, remembered in this browser. */
+function usePanelWidth(): [number, (w: number) => void] {
+  const [width, setWidth] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(PANEL_KEY))
+      return saved ? clampPanel(saved) : PANEL_DEFAULT
+    } catch {
+      return PANEL_DEFAULT
+    }
+  })
+  const set = (w: number) => {
+    const next = clampPanel(w)
+    setWidth(next)
+    try {
+      localStorage.setItem(PANEL_KEY, String(next))
+    } catch {
+      /* not remembered */
+    }
+  }
+  return [width, set]
+}
+
+/** Drag (or arrow keys) to widen the editor panel; double-click resets it. */
+function PanelResizeHandle({ width, onChange }: { width: number; onChange: (w: number) => void }) {
+  const start = useRef<{ x: number; w: number } | null>(null)
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the editor panel"
+      aria-valuemin={PANEL_MIN}
+      aria-valuemax={PANEL_MAX}
+      aria-valuenow={width}
+      tabIndex={0}
+      title="Drag to resize · double-click to reset"
+      className="group absolute top-0 -right-1.5 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center outline-none"
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = { x: e.clientX, w: width }
+      }}
+      onPointerMove={(e) => {
+        if (start.current) onChange(start.current.w + e.clientX - start.current.x)
+      }}
+      onPointerUp={() => (start.current = null)}
+      onPointerCancel={() => (start.current = null)}
+      onDoubleClick={() => onChange(PANEL_DEFAULT)}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft') onChange(width - 16)
+        else if (e.key === 'ArrowRight') onChange(width + 16)
+        else return
+        e.preventDefault()
+      }}
+    >
+      <span className="h-full w-0.5 bg-transparent transition-colors group-hover:bg-accent/60 group-focus-visible:bg-accent group-active:bg-accent" />
+    </div>
+  )
 }
