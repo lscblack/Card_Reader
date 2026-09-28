@@ -7,12 +7,12 @@ import {
   type TextareaHTMLAttributes,
 } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
-import { cn } from '@/lib/cn'
+import { cn, defaultWidth } from '@/lib/cn'
 
 export { Select, type SelectProps } from './Select'
 
 const control =
-  'w-full rounded-lg border border-border-strong bg-surface px-3 text-sm text-fg placeholder:text-subtle shadow-xs transition-colors ' +
+  'min-w-0 rounded-lg border border-border-strong bg-surface px-3 text-sm text-fg placeholder:text-subtle shadow-xs transition-colors ' +
   'focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 ' +
   'aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:ring-red-500/20'
 
@@ -22,7 +22,7 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, inputSize = 'md', ...rest }, ref) {
-  return <input ref={ref} className={cn(control, inputSize === 'lg' ? 'h-11 text-[15px]' : 'h-9', className)} {...rest} />
+  return <input ref={ref} className={cn(control, defaultWidth(className), inputSize === 'lg' ? 'h-11 text-[15px]' : 'h-9', className)} {...rest} />
 })
 
 /** Password field with a show / hide toggle. */
@@ -51,7 +51,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   { className, ...rest },
   ref,
 ) {
-  return <textarea ref={ref} className={cn(control, 'min-h-[80px] py-2', className)} {...rest} />
+  return <textarea ref={ref} className={cn(control, defaultWidth(className), 'min-h-[80px] py-2', className)} {...rest} />
 })
 
 export interface FieldProps {

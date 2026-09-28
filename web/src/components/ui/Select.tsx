@@ -15,7 +15,7 @@ import {
   type SelectHTMLAttributes,
 } from 'react'
 import { Check, ChevronDown, Search } from 'lucide-react'
-import { cn } from '@/lib/cn'
+import { cn, defaultWidth } from '@/lib/cn'
 import { FloatingPanel } from './Popover'
 import { useDismiss } from './useDismiss'
 
@@ -23,7 +23,7 @@ import { useDismiss } from './useDismiss'
 const SEARCH_THRESHOLD = 8
 
 export const selectControl =
-  'w-full rounded-lg border border-border-strong bg-surface px-3 text-sm text-fg placeholder:text-subtle shadow-xs transition-colors ' +
+  'min-w-0 rounded-lg border border-border-strong bg-surface px-3 text-sm text-fg placeholder:text-subtle shadow-xs transition-colors ' +
   'focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 ' +
   'aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:ring-red-500/20'
 
@@ -98,7 +98,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   const useList = !multiple && !size && (searchable ?? options.length > SEARCH_THRESHOLD)
   if (!useList) {
     return (
-      <select ref={ref} multiple={multiple} size={size} className={cn(selectControl, multiple ? 'py-1.5' : cn(controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9', 'pr-8'), className)} {...rest}>
+      <select ref={ref} multiple={multiple} size={size} className={cn(selectControl, defaultWidth(className), multiple ? 'py-1.5' : cn(controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9', 'pr-8'), className)} {...rest}>
         {children}
       </select>
     )
@@ -211,7 +211,7 @@ const SearchableSelect = forwardRef<
 
   let lastGroup: string | undefined
   return (
-    <div className={cn('relative w-full', className)} style={style}>
+    <div className={cn('relative min-w-0', defaultWidth(className), className)} style={style}>
       <select
         ref={nativeRef}
         {...rest}
@@ -239,7 +239,7 @@ const SearchableSelect = forwardRef<
         disabled={rest.disabled}
         onClick={() => (open ? close() : openList())}
         onKeyDown={onTriggerKey}
-        className={cn(selectControl, 'relative flex items-center pr-8 text-left', controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9')}
+        className={cn(selectControl, 'relative flex w-full items-center pr-8 text-left', controlSize === 'lg' ? 'h-11 text-[15px]' : 'h-9')}
       >
         {selected && renderOption ? (
           <span className="flex min-w-0 flex-1 items-center gap-2 truncate">{renderOption(selected)}</span>
