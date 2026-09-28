@@ -536,13 +536,39 @@ async def register_chip(body: ChipIn, ctx: PersonalAuth, session: SessionDep, cl
     return chips.chip_out(chip, card)
 
 
-@router.delete("/chips/{chip_id}", status_code=204, summary="Unregister a physical card")
-async def delete_chip(chip_id: uuid.UUID, ctx: PersonalAuth, session: SessionDep, client: ClientDep) -> Response:
+class ChipPatch(Schema):
+    card_id: uuid.UUID | None = Field(default=None, description="The digital card this chip opens")
+    label: str | None = Field(default=None, max_length=120)
+
+
+async def _chip(session: SessionDep, user_id: uuid.UUID, chip_id: uuid.UUID) -> ChipRegistration:
     chip = (await session.execute(select(ChipRegistration).where(
-        ChipRegistration.id == chip_id, ChipRegistration.user_id == ctx.user.id,
+        ChipRegistration.id == chip_id, ChipRegistration.user_id == user_id,
         ChipRegistration.digital_card_id.is_not(None)))).scalar_one_or_none()
     if chip is None:
         raise not_found("Card")
+    return chip
+
+
+@router.patch("/chips/{chip_id}", summary="Rename a physical card or choose which digital card it opens")
+async def update_chip(chip_id: uuid.UUID, body: ChipPatch, ctx: PersonalAuth, session: SessionDep,
+                      client: ClientDep) -> dict[str, Any]:
+    chip = await _chip(session, ctx.user.id, chip_id)
+    changes = body.model_dump(exclude_unset=True)
+    if body.card_id is not None:
+        chip.digital_card_id = (await _card(session, ctx.user.id, body.card_id)).id
+    if "label" in changes:
+        chip.label = (body.label or "").strip() or f"Card {chip.uid[-4:]}"
+    audit.record(session, action="chip.update", user_id=ctx.user.id, client=client,
+                 resource_type="chip", resource_id=chip.id, metadata={"fields": sorted(changes)})
+    await session.commit()
+    card = await _card(session, ctx.user.id, chip.digital_card_id)  # type: ignore[arg-type]
+    return chips.chip_out(chip, card)
+
+
+@router.delete("/chips/{chip_id}", status_code=204, summary="Unregister a physical card")
+async def delete_chip(chip_id: uuid.UUID, ctx: PersonalAuth, session: SessionDep, client: ClientDep) -> Response:
+    chip = await _chip(session, ctx.user.id, chip_id)
     await session.delete(chip)
     audit.record(session, action="chip.unregister", user_id=ctx.user.id, client=client,
                  resource_type="chip", resource_id=chip.id)

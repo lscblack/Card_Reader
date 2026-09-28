@@ -17,10 +17,18 @@ import type {
   Paginated,
   PersonalSession,
   PersonalStats,
+  PhysicalCard,
   PublicCardResponse,
 } from './types'
 
 const c = '/personal/cards'
+
+export const chipsApi = {
+  list: () => api.get<PhysicalCard[]>('/personal/chips'),
+  create: (body: { uid: string; card_id?: string; label?: string }) => api.post<PhysicalCard>('/personal/chips', body),
+  update: (id: string, body: { card_id?: string; label?: string | null }) => api.patch<PhysicalCard>(`/personal/chips/${id}`, body),
+  remove: (id: string) => api.delete(`/personal/chips/${id}`),
+}
 
 export const cardsApi = {
   list: () => api.get<DigitalCard[] | { items: DigitalCard[] }>(c),

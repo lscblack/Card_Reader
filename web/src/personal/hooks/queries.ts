@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { activityApi, cardsApi, contactsApi, invitesApi, sessionsApi, templatesApi } from '../api/personal'
+import { activityApi, cardsApi, chipsApi, contactsApi, invitesApi, sessionsApi, templatesApi } from '../api/personal'
 import { isV2, type CardTemplateV2, type ContactFilters } from '../api/types'
 
 const list = <T,>(d: T[] | { items: T[] }): T[] => (Array.isArray(d) ? d : (d.items ?? []))
@@ -7,6 +7,7 @@ const list = <T,>(d: T[] | { items: T[] }): T[] => (Array.isArray(d) ? d : (d.it
 export const pk = { all: ['personal'] as const }
 
 export const usePCards = () => useQuery({ queryKey: ['personal', 'cards'], queryFn: async () => list(await cardsApi.list()) })
+export const usePChips = () => useQuery({ queryKey: ['personal', 'chips'], queryFn: chipsApi.list })
 export const usePCard = (id: string | undefined) =>
   useQuery({ queryKey: ['personal', 'card', id], queryFn: () => cardsApi.get(id!), enabled: !!id })
 export const useDesignPresets = () => useQuery({ queryKey: ['personal-design-presets'], queryFn: templatesApi.presets, staleTime: 30 * 60_000 })

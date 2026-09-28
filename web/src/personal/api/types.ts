@@ -328,3 +328,15 @@ export interface BusinessInvite {
   /** The business-linked card once accepted. */
   card_id: UUID | null
 }
+
+/** A physical NFC card registered by the person: tapping it opens one of their digital cards. */
+export interface PhysicalCard {
+  id: string
+  uid: string
+  label: string | null
+  digital_card_id: string
+  digital_card_label: string | null
+  taps: number
+  last_tap_at: string | null
+  created_at: string
+}

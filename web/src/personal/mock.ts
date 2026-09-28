@@ -5,6 +5,7 @@
 import type { RawResponse } from '@/api/client'
 import type {
   ActivityItem,
+  PhysicalCard,
   BusinessInvite,
   CardDesign,
   CardFields,
@@ -116,6 +117,7 @@ const templates: CardTemplateV1[] = [
 
 let seeded = false
 const cards: DigitalCard[] = []
+const chips: PhysicalCard[] = []
 const contacts: Contact[] = []
 const activity: ActivityItem[] = []
 const sessions: PersonalSession[] = []
@@ -399,6 +401,37 @@ export function handlePersonalMock(method: string, path: string, q: Query, body:
   }
 
   if (!token) return fail(401, 'not_authenticated', 'Not authenticated')
+
+  // ---- physical cards (chips) ----
+  const chipOut = (c: PhysicalCard): PhysicalCard => ({ ...c, digital_card_label: cards.find((d) => d.id === c.digital_card_id)?.label ?? null })
+  if (is('GET', '/personal/chips')) return ok(chips.map(chipOut))
+  if (is('POST', '/personal/chips')) {
+    const uid = str(body.uid).replace(/[:\s]/g, '').toUpperCase()
+    if (!/^[0-9A-F]{4,64}$/.test(uid)) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.uid', message: 'uid must be 4-64 hex characters' }])
+    if (chips.some((c) => c.uid === uid)) return fail(409, 'card_uid_exists', 'You already registered this card')
+    const target = cards.find((d) => d.id === str(body.card_id)) ?? cards.find((d) => d.is_primary) ?? cards[0]
+    if (!target) return fail(409, 'no_digital_card', 'Create your digital card first, then register a physical card')
+    const chip: PhysicalCard = { id: uuid(), uid, label: str(body.label) || `Card ${uid.slice(-4)}`, digital_card_id: target.id, digital_card_label: null, taps: 0, last_tap_at: null, created_at: now() }
+    chips.unshift(chip)
+    return ok(chipOut(chip), 201)
+  }
+  if (seg[0] === 'personal' && seg[1] === 'chips' && seg[2]) {
+    const chip = chips.find((c) => c.id === seg[2])
+    if (!chip) return fail(404, 'not_found', 'Card not found')
+    if (method === 'PATCH') {
+      if (body.card_id !== undefined) {
+        const target = cards.find((d) => d.id === str(body.card_id))
+        if (!target) return fail(404, 'not_found', 'Card not found')
+        chip.digital_card_id = target.id
+      }
+      if (body.label !== undefined) chip.label = str(body.label) || `Card ${chip.uid.slice(-4)}`
+      return ok(chipOut(chip))
+    }
+    if (method === 'DELETE') {
+      chips.splice(chips.indexOf(chip), 1)
+      return ok(null, 204)
+    }
+  }
 
   // ---- cards ----
   if (is('GET', '/personal/cards')) return ok(cards)

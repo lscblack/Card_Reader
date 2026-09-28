@@ -123,7 +123,7 @@ async def test_developer_cannot_register_a_card_someone_else_owns(client: AsyncC
     await client.post("/api/v1/personal/chips", json={"uid": "04CAFE0001"}, headers=person["headers"])
     owner = await register_business(client)
     await create_card(client, owner, name="Door", uid="04CAFE0002")
-    app, dh = await _dev_device(client, user)
+    _, dh = await _dev_device(client, user)
 
     for uid in ("04CAFE0001", "04CAFE0002"):
         r = await client.post("/api/v1/device/events", json=_tap(uid), headers=dh)
@@ -139,3 +139,32 @@ async def test_business_devices_keep_their_own_registration(client: AsyncClient)
     assert r.status_code == 403 and r.json()["error"]["code"] == "device_is_business"
     r = await client.post("/api/v1/device/events", json=_tap("04BEEF0001"), headers=dev["headers"])
     assert r.status_code == 200 and "app_card" not in r.json() and r.json()["business"]["result"] == "unknown_card"
+
+
+async def test_personal_chip_can_be_remapped_renamed_and_deleted(client: AsyncClient) -> None:
+    person = await register_personal(client)
+    h = person["headers"]
+    main = await primary(client, h)
+    work = (await client.post("/api/v1/personal/cards", json={"label": "Work", "template_id": "split"}, headers=h)).json()
+    chip = (await client.post("/api/v1/personal/chips", json={"uid": "04ABAB0001"}, headers=h)).json()
+    assert chip["digital_card_id"] == main["id"]
+
+    r = await client.patch(f"/api/v1/personal/chips/{chip['id']}", json={"card_id": work["id"], "label": "Keyring"},
+                           headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["digital_card_id"] == work["id"] and r.json()["digital_card_label"] == "Work"
+    assert r.json()["label"] == "Keyring"
+    r = await client.get("/api/v1/public/cards/resolve", params={"uid": "04ABAB0001"})
+    assert r.json()["tap_url"].endswith(f"/p/{work['slug']}")
+
+    # someone else's card or chip is out of reach
+    other = await register_personal(client, name="Other Person")
+    theirs = await primary(client, other["headers"])
+    r = await client.patch(f"/api/v1/personal/chips/{chip['id']}", json={"card_id": theirs["id"]}, headers=h)
+    assert r.status_code == 404
+    r = await client.patch(f"/api/v1/personal/chips/{chip['id']}", json={"label": "x"}, headers=other["headers"])
+    assert r.status_code == 404
+    assert (await client.delete(f"/api/v1/personal/chips/{chip['id']}", headers=other["headers"])).status_code == 404
+
+    assert (await client.delete(f"/api/v1/personal/chips/{chip['id']}", headers=h)).status_code == 204
+    assert (await client.get("/api/v1/personal/chips", headers=h)).json() == []

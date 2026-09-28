@@ -8,6 +8,7 @@ const OverviewPage = lazy(() => import("./pages/OverviewPage"));
 const CardsPage = lazy(() => import("./pages/CardsPage"));
 const CardEditorPage = lazy(() => import("./pages/CardEditorPage"));
 const ContactsPage = lazy(() => import("./pages/ContactsPage"));
+const PhysicalCardsPage = lazy(() => import("./pages/PhysicalCardsPage"));
 const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const SharePage = lazy(() => import("./pages/SharePage"));
 const InvitesPage = lazy(() => import("./pages/InvitesPage"));
@@ -45,6 +46,7 @@ export default function PersonalApp() {
         <Route index element={page(<OverviewPage />)} />
         <Route path="cards" element={page(<CardsPage />)} />
         <Route path="cards/:cardId" element={page(<CardEditorPage />)} />
+        <Route path="physical-cards" element={page(<PhysicalCardsPage />)} />
         <Route path="contacts" element={page(<ContactsPage />)} />
         <Route path="contacts/:contactId" element={page(<ContactsPage />)} />
         <Route path="activity" element={page(<ActivityPage />)} />

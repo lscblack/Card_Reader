@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, Outlet } from 'react-router'
-import { Activity, Building2, Contact, CreditCard, LayoutDashboard, QrCode, Settings } from 'lucide-react'
+import { Activity, Building2, Contact, CreditCard, LayoutDashboard, Nfc, QrCode, Settings } from 'lucide-react'
 import { DashboardShell, type ShellNavSection } from '@/layouts/DashboardShell'
 import { useTour } from '@/tours'
 import { useInvites, usePCards } from '../hooks/queries'
@@ -20,6 +20,7 @@ export function PersonalLayout() {
       items: [
         { to: '/me', label: 'Overview', icon: LayoutDashboard, end: true },
         { to: '/me/cards', label: 'My Cards', icon: CreditCard },
+        { to: '/me/physical-cards', label: 'Physical cards', icon: Nfc },
         { to: '/me/contacts', label: 'Contacts', icon: Contact },
         { to: '/me/activity', label: 'Activity', icon: Activity },
         { to: '/me/share', label: 'Share', icon: QrCode },
