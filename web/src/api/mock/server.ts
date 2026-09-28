@@ -4,6 +4,7 @@
  */
 import type {
   ApiKey,
+  AppCard,
   Application,
   AuditLog,
   Delivery,
@@ -164,6 +165,7 @@ const endpoint = (url: string | null, enabled = true): EndpointConfig => ({
   last_test_success: url ? true : null,
 })
 
+const appCards = new Map<string, AppCard[]>()
 const apps: Application[] = [
   {
     id: uuid(),
@@ -1602,6 +1604,29 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
       log('pairing_code.create', 'application', app.id)
       const qs = `v=1&server=${encodeURIComponent(serverUrl)}&code=${code}${name ? `&name=${encodeURIComponent(name)}` : ''}`
       return ok({ id, code, expires_at, server_url: serverUrl, qr_payload: `nfcterminal://pair?${qs}` }, 201)
+    }
+    if (seg[2] === 'cards') {
+      const list = appCards.get(app.id) ?? []
+      appCards.set(app.id, list)
+      if (is('GET', '/applications/:id/cards')) return ok(list)
+      if (is('POST', '/applications/:id/cards')) {
+        const uid = String(body.uid ?? '').replace(/[:\s]/g, '').toUpperCase()
+        if (!/^[0-9A-F]{4,64}$/.test(uid)) return fail(422, 'validation_error', 'Validation failed', [{ field: 'body.uid', message: 'uid must be 4-64 hex characters' }])
+        if ([...appCards.values()].some((l) => l.some((c) => c.uid === uid))) return fail(409, 'card_uid_exists', 'You already registered this card')
+        const card: AppCard = { id: uuid(), uid, label: String(body.label ?? '').trim() || `Card ${uid.slice(-4)}`, note: null, application_id: app.id, taps: 0, last_tap_at: null, created_at: now() }
+        list.unshift(card)
+        return ok(card, 201)
+      }
+      const card = list.find((c) => c.id === seg[3])
+      if (!card) return fail(404, 'not_found', 'Card not found')
+      if (is('PATCH', '/applications/:id/cards/:cid')) {
+        card.label = String(body.label ?? '').trim() || `Card ${card.uid.slice(-4)}`
+        return ok(card)
+      }
+      if (is('DELETE', '/applications/:id/cards/:cid')) {
+        appCards.set(app.id, list.filter((c) => c.id !== card.id))
+        return ok(null, 204)
+      }
     }
     if (is('POST', '/applications/:id/endpoint/test')) {
       if (endpointOutsideAllowlist(app.endpoint.url, app.allowed_domains)) {

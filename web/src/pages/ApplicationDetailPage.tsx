@@ -24,9 +24,10 @@ import { AllowedDomainsCard } from '@/components/AllowedDomains'
 import { ApiKeysTable, CreateApiKeyModal } from '@/components/ApiKeys'
 import { DevicesTable } from '@/components/Devices'
 import { RunConsole } from '@/components/RunConsole'
+import { AppCardsTab } from '@/components/AppCards'
 import { PairPhoneButton } from '@/components/PairPhoneModal'
 
-type Tab = 'settings' | 'live' | 'endpoint' | 'keys' | 'devices'
+type Tab = 'settings' | 'live' | 'endpoint' | 'keys' | 'devices' | 'cards'
 
 function SettingsTab({ app }: { app: Application }) {
   const update = useUpdateApplication(app.id)
@@ -241,7 +242,7 @@ function DevicesTab({ app }: { app: Application }) {
 export default function ApplicationDetailPage() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
-  const tab = (['settings', 'live', 'endpoint', 'keys', 'devices'].includes(params.get('tab') ?? '') ? params.get('tab') : 'settings') as Tab
+  const tab = (['settings', 'live', 'endpoint', 'keys', 'devices', 'cards'].includes(params.get('tab') ?? '') ? params.get('tab') : 'settings') as Tab
   const { data: app, isLoading, error, refetch } = useApplication(id)
   useDocumentTitle(app?.name ?? 'Application')
 
@@ -281,6 +282,7 @@ export default function ApplicationDetailPage() {
               { value: 'endpoint', label: 'Endpoint & webhooks' },
               { value: 'keys', label: 'API keys' },
               { value: 'devices', label: 'Devices', count: app.device_count },
+              { value: 'cards', label: 'Cards' },
             ]}
           />
           {tab === 'settings' && <SettingsTab key={app.id} app={app} />}
@@ -294,6 +296,7 @@ export default function ApplicationDetailPage() {
           {tab === 'live' && <RunConsole key={app.id} fixedAppId={app.id} />}
           {tab === 'keys' && <KeysTab app={app} />}
           {tab === 'devices' && <DevicesTab app={app} />}
+          {tab === 'cards' && <AppCardsTab app={app} />}
         </>
       )}
     </>

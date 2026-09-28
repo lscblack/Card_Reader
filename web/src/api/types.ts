@@ -245,6 +245,18 @@ export interface Application {
   deleted?: boolean
 }
 
+/** A physical card (chip UID) registered to a developer application — from a phone tap or by hand. */
+export interface AppCard {
+  id: UUID
+  uid: string
+  label: string | null
+  note: string | null
+  application_id: UUID | null
+  taps: number
+  last_tap_at: ISODateTime | null
+  created_at: ISODateTime
+}
+
 export interface CreateApplicationRequest {
   name: string
   description?: string
@@ -937,6 +949,8 @@ export interface AdminErrorDetail extends AdminErrorEntry {
 export interface LiveEventReceived {
   event_id: UUID
   card_id: string
+  /** Name of the card when it is registered to the application (developer apps). */
+  card_label?: string | null
   card_type: string | null
   card_technologies: string[]
   device_id: UUID

@@ -21,34 +21,54 @@ AppError registerChipError(Object e) => switch (e) {
 };
 
 /// Asks for an optional name for a card being registered. null = cancelled; '' = no name.
-Future<String?> askCardName(BuildContext context, {required String uid, required String title, String hint = 'e.g. Blue card'}) {
-  final ctrl = TextEditingController();
-  return showDialog<String>(
-    context: context,
-    builder: (c) => AlertDialog(
-      title: Text(title),
-      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Card ID ${CardUtils.formatUid(uid)}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-        const SizedBox(height: 12),
-        TextField(
-          key: const Key('cardNameField'),
-          controller: ctrl,
-          autofocus: true,
-          maxLength: 120,
-          decoration: InputDecoration(labelText: 'Name (optional)', hintText: hint),
-          onSubmitted: (v) => Navigator.of(c).pop(v.trim()),
-        ),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Cancel')),
-        FilledButton(
-          key: const Key('confirmRegisterCard'),
-          onPressed: () => Navigator.of(c).pop(ctrl.text.trim()),
-          child: const Text('Register'),
-        ),
-      ],
-    ),
-  ).whenComplete(ctrl.dispose);
+Future<String?> askCardName(BuildContext context, {required String uid, required String title, String hint = 'e.g. Blue card'}) =>
+    showDialog<String>(context: context, builder: (_) => _CardNameDialog(uid: uid, title: title, hint: hint));
+
+/// Owns its text controller so it outlives the dialog's closing animation.
+class _CardNameDialog extends StatefulWidget {
+  const _CardNameDialog({required this.uid, required this.title, required this.hint});
+
+  final String uid;
+  final String title;
+  final String hint;
+
+  @override
+  State<_CardNameDialog> createState() => _CardNameDialogState();
+}
+
+class _CardNameDialogState extends State<_CardNameDialog> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Card ID ${CardUtils.formatUid(widget.uid)}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+      const SizedBox(height: 12),
+      TextField(
+        key: const Key('cardNameField'),
+        controller: _ctrl,
+        autofocus: true,
+        maxLength: 120,
+        decoration: InputDecoration(labelText: 'Name (optional)', hintText: widget.hint),
+        onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+      ),
+    ]),
+    actions: [
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+      FilledButton(
+        key: const Key('confirmRegisterCard'),
+        onPressed: () => Navigator.of(context).pop(_ctrl.text.trim()),
+        child: const Text('Register'),
+      ),
+    ],
+  );
 }
 
 /// Developer devices: the tapped card's status in the application's card list, with "Register this card".

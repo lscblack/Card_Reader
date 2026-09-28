@@ -139,6 +139,7 @@ function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
             <CopyButton value={text(card)} label="Copy card ID" className="text-zinc-400 hover:bg-white/10 hover:text-white" />
           </span>
         )}
+        {r?.card_label && <span className="rounded bg-emerald-400/15 px-1.5 text-[12px] font-medium text-emerald-200">{text(r.card_label)}</span>}
         <span className="rounded bg-amber-400/15 px-1 text-[11px] font-medium text-amber-200">UID only</span>
       </div>
       <p className="mt-1 text-zinc-400">

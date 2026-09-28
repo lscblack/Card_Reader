@@ -1,5 +1,6 @@
 import { api } from './client'
 import type {
+  AppCard,
   Application,
   CreateApplicationRequest,
   CreateApplicationResponse,
@@ -26,6 +27,11 @@ export const applicationsApi = {
   setAllowedDomains: (id: string, domains: string[]) => api.put<Application>(`/applications/${id}/allowed-domains`, { domains }),
   createPairingCode: (id: string, body: CreatePairingCodeRequest = {}) =>
     api.post<PairingCodeCreated>(`/applications/${id}/pairing-codes`, body),
+  listCards: (id: string) => api.get<AppCard[]>(`/applications/${id}/cards`),
+  createCard: (id: string, body: { uid: string; label?: string }) => api.post<AppCard>(`/applications/${id}/cards`, body),
+  updateCard: (id: string, cardId: string, body: { label?: string | null }) =>
+    api.patch<AppCard>(`/applications/${id}/cards/${cardId}`, body),
+  deleteCard: (id: string, cardId: string) => api.delete(`/applications/${id}/cards/${cardId}`),
 }
 
 export const pairingApi = {
