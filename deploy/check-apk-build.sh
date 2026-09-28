@@ -23,7 +23,7 @@ pass() { printf '  \e[1;32m✔\e[0m %s\n' "$*"; }
 fail() { printf '  \e[1;31m✖\e[0m %s\n' "$1"; [[ -n "${2:-}" ]] && printf '      → %s\n' "$2"; FAILS=$((FAILS + 1)); }
 warn() { printf '  \e[1;33m!\e[0m %s\n' "$1"; [[ -n "${2:-}" ]] && printf '      → %s\n' "$2"; WARNS=$((WARNS + 1)); }
 head_() { printf '\n\e[1m%s\e[0m\n' "$*"; }
-envget() { { grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true; } | tail -1 | cut -d= -f2- | sed 's/^"//;s/"$//;s/^'"'"'//;s/'"'"'$//'; }
+envget() { { grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true; } | tail -1 | cut -d= -f2- | tr -d '\r' | sed 's/[[:space:]]*$//;s/^"//;s/"$//;s/^'"'"'//;s/'"'"'$//'; }
 as_user() { if [[ "$(id -un)" == "$RUN_USER" ]]; then "$@"; else sudo -u "$RUN_USER" "$@"; fi; }
 abspath() { [[ "$1" == /* ]] && echo "$1" || echo "$BACKEND_DIR/${1#./}"; }   # the API runs in backend/
 
@@ -36,7 +36,7 @@ echo "   runs as : $RUN_USER (the API service user — builds run as this user)"
 # ── settings ────────────────────────────────────────────────────────────────
 head_ "Settings (backend/.env)"
 [[ "$(envget APP_BUILD_ENABLED)" == "true" ]] && pass "APP_BUILD_ENABLED=true" \
-  || fail "APP_BUILD_ENABLED is not true — the admin Build button is disabled" "set APP_BUILD_ENABLED=true in $ENV_FILE, then: nextap restart"
+  || fail "APP_BUILD_ENABLED is '$(envget APP_BUILD_ENABLED)' in $ENV_FILE, not true — the admin Build button is disabled" "set APP_BUILD_ENABLED=true in $ENV_FILE, then: nextap restart"
 FLUTTER_BIN="$(envget FLUTTER_BIN)"; FLUTTER_BIN="${FLUTTER_BIN:-flutter}"
 MOBILE_DIR="$(envget MOBILE_PROJECT_DIR)"
 JAVA_HOME_="$(envget JAVA_HOME)"
