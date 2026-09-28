@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FullPageSpinner } from '@/components/ui/Spinner'
 import { coreRoutes } from '@/routes/coreRoutes'
 import { businessRoutes } from '@/business/routes'
@@ -15,22 +16,25 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
  *   - web-marketing: "/" landing and /docs/*
  */
 export default function App() {
+  const { pathname } = useLocation()
   return (
-    <Suspense fallback={<FullPageSpinner />}>
-      <Routes>
-        {coreRoutes()}
-        {businessRoutes()}
-        {personalRoutes()}
-        {marketingRoutes()}
-        <Route
-          path="*"
-          element={
-            <div className="mx-auto w-11/12 max-w-lg py-24">
-              <NotFoundPage />
-            </div>
-          }
-        />
-      </Routes>
-    </Suspense>
+    <ErrorBoundary resetKey={pathname}>
+      <Suspense fallback={<FullPageSpinner />}>
+        <Routes>
+          {coreRoutes()}
+          {businessRoutes()}
+          {personalRoutes()}
+          {marketingRoutes()}
+          <Route
+            path="*"
+            element={
+              <div className="mx-auto w-11/12 max-w-lg py-24">
+                <NotFoundPage />
+              </div>
+            }
+          />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   )
 }

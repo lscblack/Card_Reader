@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- route table module, not hot-reloaded as a component */
 import { lazy, Suspense, type ReactNode } from 'react'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Navigate, Route } from 'react-router'
 import { GuestOnly, LegacyRedirect, RequireAdmin, RequireAuth } from '@/auth/guards'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -57,7 +58,11 @@ function PageFallback() {
   )
 }
 
-const page = (el: ReactNode) => <Suspense fallback={<PageFallback />}>{el}</Suspense>
+const page = (el: ReactNode) => (
+  <ErrorBoundary>
+    <Suspense fallback={<PageFallback />}>{el}</Suspense>
+  </ErrorBoundary>
+)
 
 const LEGACY = ['applications', 'api-keys', 'devices', 'events', 'endpoints', 'webhooks', 'usage', 'settings']
 

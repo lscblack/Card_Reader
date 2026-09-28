@@ -22,6 +22,7 @@ import { useApplication, useApplications } from '@/hooks/queries'
 import { useSandboxMutations } from '@/hooks/useConsole'
 import { useLiveRun, type LiveStatus, type LiveTap } from '@/hooks/useLiveRun'
 import { cn } from '@/lib/cn'
+import { ErrorBoundary } from './ErrorBoundary'
 import { Button } from './ui/Button'
 import { CopyButton } from './ui/CopyButton'
 import { Select } from './ui/Input'
@@ -58,7 +59,12 @@ function beep() {
   }
 }
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+const time = (iso: string | null | undefined) => {
+  const d = iso ? new Date(iso) : new Date()
+  return (Number.isNaN(d.getTime()) ? new Date() : d).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+/** Server values are shown as text; anything else (object, array) is printed as JSON instead of crashing React. */
+const text = (v: unknown) => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v))
 
 function statusTone(code: number | null, success: boolean) {
   if (success) return 'text-emerald-400'
@@ -69,13 +75,13 @@ function statusTone(code: number | null, success: boolean) {
 function Attempt({ a }: { a: LiveDeliveryAttempt }) {
   const [showPayload, setShowPayload] = useState(false)
   const payload = a.request_payload != null ? JSON.stringify(a.request_payload, null, 2) : null
-  const ctype = a.response_headers?.['content-type']
+  const ctype = text(a.response_headers?.['content-type'])
   return (
     <div className="space-y-1.5 border-l border-white/10 pl-3">
       <p className="flex flex-wrap items-center gap-x-2 text-zinc-300">
         <ArrowUpRight className="h-3.5 w-3.5 text-zinc-500" />
         <span className="font-semibold text-zinc-100">POST</span>
-        <span className="min-w-0 break-all text-zinc-400">{a.url}</span>
+        <span className="min-w-0 break-all text-zinc-400">{text(a.url)}</span>
         <span className="text-zinc-500">
           ({a.mode}, attempt {a.attempt})
         </span>
@@ -102,7 +108,7 @@ function Attempt({ a }: { a: LiveDeliveryAttempt }) {
       </p>
       {a.error_code && (
         <p className="flex flex-wrap items-center gap-2 text-red-300">
-          <span>{a.error_code}</span>
+          <span>{text(a.error_code)}</span>
           {a.error_ref && (
             <a href={errorDocsUrl(a.error_ref)} target="_blank" rel="noreferrer" className="rounded border border-red-400/40 px-1 hover:bg-red-400/10">
               {a.error_ref} ↗
@@ -110,7 +116,9 @@ function Attempt({ a }: { a: LiveDeliveryAttempt }) {
           )}
         </p>
       )}
-      {a.response_excerpt && <pre className="max-h-28 overflow-auto rounded-md bg-black/30 p-2 text-[11.5px] whitespace-pre-wrap text-zinc-400">{a.response_excerpt}</pre>}
+      {a.response_excerpt != null && a.response_excerpt !== '' && (
+        <pre className="max-h-28 overflow-auto rounded-md bg-black/30 p-2 text-[11.5px] whitespace-pre-wrap text-zinc-400">{text(a.response_excerpt)}</pre>
+      )}
     </div>
   )
 }
@@ -127,8 +135,8 @@ function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
         <span className="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">card</span>
         {card && (
           <span className="inline-flex items-center gap-1">
-            <span className="text-lg font-semibold tracking-wider text-white sm:text-xl">{card}</span>
-            <CopyButton value={card} label="Copy card ID" className="text-zinc-400 hover:bg-white/10 hover:text-white" />
+            <span className="text-lg font-semibold tracking-wider text-white sm:text-xl">{text(card)}</span>
+            <CopyButton value={text(card)} label="Copy card ID" className="text-zinc-400 hover:bg-white/10 hover:text-white" />
           </span>
         )}
         <span className="rounded bg-amber-400/15 px-1 text-[11px] font-medium text-amber-200">UID only</span>
@@ -136,24 +144,24 @@ function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
       <p className="mt-1 text-zinc-400">
         {r ? (
           <>
-            {r.device_name} · {r.card_type ?? 'unknown type'} · {r.card_technologies.join(', ') || '—'} · {r.delivery_mode}
+            {text(r.device_name) || 'phone'} · {text(r.card_type) || 'unknown type'} · {(Array.isArray(r.card_technologies) ? r.card_technologies.join(', ') : text(r.card_technologies)) || '—'} · {text(r.delivery_mode)}
           </>
         ) : t.business ? (
           <>
-            {t.business.card_name}
-            {t.business.assignee_name ? ` · ${t.business.assignee_name}` : ''} · {t.business.result}
-            {t.business.action_type ? ` → ${t.business.action_type}` : ''}
+            {text(t.business.card_name) || 'card'}
+            {t.business.assignee_name ? ` · ${text(t.business.assignee_name)}` : ''} · {text(t.business.result)}
+            {t.business.action_type ? ` → ${text(t.business.action_type)}` : ''}
           </>
         ) : null}
       </p>
-      {t.attempts.length > 0 && (
+      {(t.attempts ?? []).length > 0 && (
         <div className="mt-3 space-y-3">
           {t.attempts.map((a) => (
             <Attempt key={a.attempt} a={a} />
           ))}
         </div>
       )}
-      {t.sandbox.map((s) => (
+      {(t.sandbox ?? []).map((s) => (
         <p key={s.request_id} className="mt-2 flex flex-wrap items-center gap-2 pl-3">
           {s.signature_status === 'valid' ? <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> : <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />}
           <span className={s.signature_status === 'valid' ? 'text-emerald-400' : 'text-amber-300'}>signature {s.signature_status}</span>
@@ -165,7 +173,7 @@ function TapBlock({ t, fresh }: { t: LiveTap; fresh: boolean }) {
           </Link>
         </p>
       ))}
-      {r && !t.attempts.length && !t.business && <p className="mt-2 animate-pulse pl-3 text-zinc-500">delivering…</p>}
+      {r && !(t.attempts ?? []).length && !t.business && <p className="mt-2 animate-pulse pl-3 text-zinc-500">delivering…</p>}
     </div>
   )
 }
@@ -320,7 +328,16 @@ export function RunConsole({
         {sandbox && app && !connected && <p className="mt-2 text-amber-300">“{app.name}” delivers elsewhere — connect it to this sandbox to see verdicts here.</p>}
         <div className="mt-4 space-y-3">
           {taps.map((t) => (
-            <TapBlock key={t.key} t={t} fresh={t.key === freshKey} />
+            <ErrorBoundary
+              key={t.key}
+              fallback={(e) => (
+                <p className="rounded-lg border border-red-400/40 px-3 py-2 text-red-300">
+                  [{time(t.at)}] could not display this tap: {e.message}
+                </p>
+              )}
+            >
+              <TapBlock t={t} fresh={t.key === freshKey} />
+            </ErrorBoundary>
           ))}
         </div>
       </div>
