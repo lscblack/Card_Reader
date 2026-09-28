@@ -187,6 +187,15 @@ class FakePersonalApi implements PersonalApi {
   Future<void> deleteImage(String id, String kind) async {}
   @override
   Future<List<CardTemplate>> templates() async => serverTemplates ?? CardTemplate.builtIn;
+
+  final chips = <Map<String, String?>>[];
+  Object? chipError;
+
+  @override
+  Future<void> registerChip({required String uid, String? cardId, String? label}) async {
+    if (chipError != null) throw chipError!;
+    chips.add({'uid': uid, 'card_id': cardId, 'label': label});
+  }
   List<CardTemplate>? serverTemplates;
   DesignPresets presets = DesignPresets.fallback;
   @override

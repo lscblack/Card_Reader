@@ -21,6 +21,7 @@ import '../widgets/common.dart';
 import '../widgets/digital_card_result.dart';
 import '../widgets/error_ref.dart';
 import '../widgets/help_sheet.dart';
+import '../widgets/register_chip.dart';
 import '../widgets/update_banner.dart';
 import 'program_card_screen.dart';
 import 'register_cards_screen.dart';
@@ -377,6 +378,12 @@ class _LastCardCard extends StatelessWidget {
                     initialUid: card.uid)
                 : null,
           ),
+        ],
+        // Developer phones: save the card to the application's card list.
+        if (e != null && e.business == null && e.appCard != null && api != null && !(config?.isBusiness ?? false)) ...[
+          const SizedBox(height: 8),
+          AppCardPanel(key: ValueKey('appCard-${e.eventId}'), result: e.appCard!, uid: card.uid, eventId: e.eventId, api: api!,
+              repository: context.read<ReaderController>().repository),
         ],
         if (e != null) ...[
           const Divider(height: 20),

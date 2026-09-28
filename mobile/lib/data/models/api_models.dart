@@ -153,6 +153,7 @@ class EventSubmitResult {
     this.errorCode,
     this.business,
     this.digitalCard,
+    this.appCard,
   });
 
   final String eventId;
@@ -175,6 +176,9 @@ class EventSubmitResult {
   /// Part 4 §5: digital card read by this terminal (public fields), if the platform returns it.
   final DigitalCardSummary? digitalCard;
 
+  /// Developer devices: whether the chip is one of the application's registered cards.
+  final AppCardResult? appCard;
+
   factory EventSubmitResult.fromJson(Map<String, dynamic> j) => EventSubmitResult(
     eventId: j['event_id'] as String? ?? '',
     status: j['status'] as String? ?? 'pending',
@@ -186,5 +190,27 @@ class EventSubmitResult {
     errorCode: j['error_code'] as String? ?? (j['digital_card'] is Map ? (j['digital_card'] as Map)['error_code'] as String? : null),
     digitalCard: DigitalCardSummary.fromJson(j['digital_card']),
     business: j['business'] is Map ? BusinessResult.fromJson((j['business'] as Map).cast<String, dynamic>()) : null,
+    appCard: j['app_card'] is Map ? AppCardResult.fromJson((j['app_card'] as Map).cast<String, dynamic>()) : null,
+  );
+}
+
+/// `app_card` of a developer device's tap: is this chip one of the application's cards?
+class AppCardResult {
+  const AppCardResult({required this.registered, this.canRegister = false, this.id, this.label, this.raw = const {}});
+
+  final bool registered;
+
+  /// Not registered by anyone on the platform (a chip owned elsewhere can't be registered here).
+  final bool canRegister;
+  final String? id;
+  final String? label;
+  final Map<String, dynamic> raw;
+
+  factory AppCardResult.fromJson(Map<String, dynamic> j) => AppCardResult(
+    registered: j['registered'] == true,
+    canRegister: j['can_register'] == true,
+    id: j['id'] as String?,
+    label: j['label'] as String?,
+    raw: j,
   );
 }

@@ -75,6 +75,10 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         httpCardResolver(() => [widget.appState.serverUrl, _personal.serverUrl, AppConfig.defaultServerUrl]),
     // Tests inject a link opener; only the real app asks the server about USSD cards.
     ussdLookup: widget.linkOpener == null ? fetchTapUssd : null,
+    chipRegistrar: GuestChipRegistrar(
+      available: () => _personal.signedIn,
+      register: (uid, label) => _personal.api!.registerChip(uid: uid, label: label),
+    ),
   );
 
   @override
@@ -153,7 +157,8 @@ class _NfcTerminalAppState extends State<NfcTerminalApp> with WidgetsBindingObse
         if (ctx == null) continue;
         final uid = CardUtils.normalizeUid(t.uidHex) ?? t.uidHex;
         await showGuestTag(ctx, GuestTag(uid: uid, uris: t.ndefUris, hasNdef: t.ndefUris.isNotEmpty),
-            knownServers: _guest.knownServers(), opener: _guest.opener, resolver: _guest.resolver);
+            knownServers: _guest.knownServers(), opener: _guest.opener, resolver: _guest.resolver,
+            chipRegistrar: _guest.chipRegistrar);
         // Launched by the tap from another app: go back to it (like background terminal reads).
         if (t.launchedFromBackground) await widget.appState.tagDispatch.moveToBack();
       }

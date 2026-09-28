@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'api_models.dart' show AppCardResult;
 import 'business.dart';
 import 'personal.dart';
 import 'device_config.dart';
@@ -50,6 +51,7 @@ class EventRecord {
     this.businessJson,
     this.digitalCardToken,
     this.digitalJson,
+    this.appCardJson,
   });
 
   final String eventId;
@@ -87,6 +89,19 @@ class EventRecord {
   /// Part 4 §5: `digital_card` block returned by the platform (public fields).
   final String? digitalJson;
 
+  /// Developer devices: `app_card` block returned by the platform, JSON-encoded.
+  final String? appCardJson;
+
+  AppCardResult? get appCard {
+    final raw = appCardJson;
+    if (raw == null) return null;
+    try {
+      return AppCardResult.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
   DigitalCardSummary? get digitalCard {
     final raw = digitalJson;
     if (raw == null) return null;
@@ -123,6 +138,7 @@ class EventRecord {
     String? Function()? requestId,
     String? Function()? businessJson,
     String? Function()? digitalJson,
+    String? Function()? appCardJson,
   }) => EventRecord(
     eventId: eventId,
     cardId: cardId,
@@ -143,6 +159,7 @@ class EventRecord {
     businessJson: businessJson != null ? businessJson() : this.businessJson,
     digitalCardToken: digitalCardToken,
     digitalJson: digitalJson != null ? digitalJson() : this.digitalJson,
+    appCardJson: appCardJson != null ? appCardJson() : this.appCardJson,
   );
 
   Map<String, Object?> toRow() => {
@@ -165,6 +182,7 @@ class EventRecord {
     'business_json': businessJson,
     'digital_token': digitalCardToken,
     'digital_json': digitalJson,
+    'app_card_json': appCardJson,
   };
 
   factory EventRecord.fromRow(Map<String, Object?> r) {
@@ -196,6 +214,7 @@ class EventRecord {
       businessJson: r['business_json'] as String?,
       digitalCardToken: r['digital_token'] as String?,
       digitalJson: r['digital_json'] as String?,
+      appCardJson: r['app_card_json'] as String?,
     );
   }
 }

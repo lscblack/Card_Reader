@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Response
+from pydantic import Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import ClientDep, CurrentUser, SessionDep, ensure_developer_account, platform_only
 from app.core.config import settings
-from app.core.errors import AppError, validation_error
+from app.core.errors import AppError, not_found, validation_error
 from app.core.security import generate_webhook_secret
-from app.models import Application, User
+from app.models import Application, ChipRegistration, User
+from app.schemas.common import Schema
 from app.schemas.resources import (
     ApplicationCreatedOut,
     ApplicationCreateIn,
@@ -24,7 +28,7 @@ from app.schemas.resources import (
     RotateSecretIn,
     RotateSecretOut,
 )
-from app.services import audit, delivery, pairing
+from app.services import audit, chips, delivery, pairing
 from app.services import sandbox as sandbox_service
 from app.api.v1.routes import sandbox as sandbox_routes
 from app.services import plans as plan_service
@@ -320,3 +324,82 @@ async def create_pairing_code(
         id=row.id, code=code, expires_at=row.expires_at, server_url=server_url,
         qr_payload=pairing.qr_payload(server_url, code, name),
     )
+
+
+# ── Registered cards (developer applications) ───────────────────────────────
+class AppCardIn(Schema):
+    uid: str = Field(min_length=4, max_length=200)
+    label: str | None = Field(default=None, max_length=120)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AppCardPatch(Schema):
+    label: str | None = Field(default=None, max_length=120)
+    note: str | None = Field(default=None, max_length=500)
+
+
+async def _app_chip(session: SessionDep, app: Application, chip_id: uuid.UUID) -> ChipRegistration:
+    chip = (await session.execute(select(ChipRegistration).where(
+        ChipRegistration.id == chip_id, ChipRegistration.application_id == app.id))).scalar_one_or_none()
+    if chip is None:
+        raise not_found("Card")
+    return chip
+
+
+@router.get("/{application_id}/cards", summary="Cards registered to this application")
+async def list_app_cards(application_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> list[dict[str, Any]]:
+    app = await get_owned_application(session, user, application_id, permission="api.view")
+    rows = (await session.execute(select(ChipRegistration).where(ChipRegistration.application_id == app.id)
+                                  .order_by(ChipRegistration.created_at.desc()))).scalars().all()
+    return [chips.chip_out(c) for c in rows]
+
+
+@router.post("/{application_id}/cards", status_code=201, summary="Register a card by its chip UID")
+async def create_app_card(application_id: uuid.UUID, body: AppCardIn, user: CurrentUser, session: SessionDep,
+                          client: ClientDep) -> dict[str, Any]:
+    from app.api.v1.routes.cards import normalize_uid
+
+    app = await get_owned_application(session, user, application_id)
+    if app.business_id is not None:
+        raise AppError(403, "device_is_business", "Business applications register cards in the business dashboard")
+    uid = normalize_uid(body.uid)
+    assert uid is not None
+    await chips.ensure_free(session, uid, user_id=app.owner_id)
+    chip = ChipRegistration(uid=uid, user_id=app.owner_id, application_id=app.id,
+                            label=(body.label or "").strip() or f"Card {uid[-4:]}", note=body.note)
+    session.add(chip)
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        raise chips.uid_taken() from None
+    audit.record(session, action="app_card.register", user_id=user.id, client=client,
+                 resource_type="chip", resource_id=chip.id, metadata={"application_id": str(app.id)})
+    await session.commit()
+    return chips.chip_out(chip)
+
+
+@router.patch("/{application_id}/cards/{chip_id}", summary="Rename a registered card")
+async def update_app_card(application_id: uuid.UUID, chip_id: uuid.UUID, body: AppCardPatch, user: CurrentUser,
+                          session: SessionDep) -> dict[str, Any]:
+    app = await get_owned_application(session, user, application_id)
+    chip = await _app_chip(session, app, chip_id)
+    changes = body.model_dump(exclude_unset=True)
+    if "label" in changes:
+        chip.label = (body.label or "").strip() or f"Card {chip.uid[-4:]}"
+    if "note" in changes:
+        chip.note = body.note
+    await session.commit()
+    return chips.chip_out(chip)
+
+
+@router.delete("/{application_id}/cards/{chip_id}", status_code=204, summary="Unregister a card")
+async def delete_app_card(application_id: uuid.UUID, chip_id: uuid.UUID, user: CurrentUser, session: SessionDep,
+                          client: ClientDep) -> Response:
+    app = await get_owned_application(session, user, application_id)
+    chip = await _app_chip(session, app, chip_id)
+    await session.delete(chip)
+    audit.record(session, action="app_card.unregister", user_id=user.id, client=client,
+                 resource_type="chip", resource_id=chip.id, metadata={"application_id": str(app.id)})
+    await session.commit()
+    return Response(status_code=204)

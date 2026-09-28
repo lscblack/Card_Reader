@@ -74,6 +74,9 @@ abstract class PersonalApi {
   Future<void> deleteImage(String id, String kind);
   Future<List<CardTemplate>> templates();
 
+  /// Registers a physical card: tapping it opens [cardId] (default: the primary card).
+  Future<void> registerChip({required String uid, String? cardId, String? label});
+
   /// Part 5 §3 (public): palettes + font pairs.
   Future<DesignPresets> designPresets();
   Future<String> exchangeQr(String cardId);
@@ -247,6 +250,10 @@ class HttpPersonalApi implements PersonalApi {
 
   @override
   Future<void> deleteCard(String id) => _call('DELETE', '/personal/cards/${Uri.encodeComponent(id)}');
+
+  @override
+  Future<void> registerChip({required String uid, String? cardId, String? label}) =>
+      _call('POST', '/personal/chips', body: {'uid': uid, 'card_id': ?cardId, 'label': ?label});
 
   @override
   Future<DigitalCard> setPrimary(String id) async =>

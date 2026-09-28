@@ -256,8 +256,9 @@ def _vcard(text: str, name: str) -> Response:
 @router.get("/public/cards/resolve", summary="Find a registered card's tap link by chip ID (public)",
             description="Lets the nexTap app open a registered card that has no tap link written to its chip yet, "
                         "without signing in. Returns only the public tap link (the same URL printed in the card's "
-                        "QR code). 404 `card_not_registered` when no business — or more than one — registered "
-                        "this chip ID. Rate limited per IP like all public endpoints.")
+                        "QR code), or the digital card URL (`kind: digital_card`) when a person registered the chip. "
+                        "404 `card_not_registered` when nobody — or more than one business — registered this chip ID. "
+                        "Rate limited per IP like all public endpoints.")
 async def public_resolve_card(uid: str, session: SessionDep, request: Request) -> JSONResponse:
     from app.api.v1.routes.cards import normalize_uid
     from app.services.business import tap_url
@@ -270,6 +271,15 @@ async def public_resolve_card(uid: str, session: SessionDep, request: Request) -
         .where(Card.uid == normalized, Card.deleted_at.is_(None), Business.deleted_at.is_(None))
         .limit(2)
     )).all()
+    if not rows:  # a person's physical card opens their digital card
+        from app.services import chips
+        from app.services.personal import public_url
+
+        card = await chips.personal_card_for_uid(session, normalized)
+        if card is not None:
+            await session.commit()  # tap counter
+            return JSONResponse({"tap_url": public_url(card), "kind": "digital_card"},
+                                headers={"Cache-Control": "no-store"})
     if len(rows) != 1:  # unknown, or registered by several businesses (never guess between them)
         raise AppError(404, "card_not_registered", "This card isn't registered with nexTap")
     code, kind = rows[0]

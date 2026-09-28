@@ -59,6 +59,9 @@ abstract class DeviceApi {
   });
   Future<void> markCardProgrammed({required String cardId, required String uid});
 
+  /// Developer devices: save a tapped card to the application's card list (`POST /device/app/cards`).
+  Future<void> registerAppCard({required String uid, String? label});
+
   /// iOS: a card tapped with the app closed opens its tap link `/t/{code}` in the app (universal link),
   /// without its UID. Returns the UID of this business's card with that code, or null when the card isn't
   /// this business's (or has no UID yet). Network failures throw.
@@ -176,6 +179,14 @@ class ApiClient implements DeviceApi {
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     });
     return BusinessCardItem.fromJson(j);
+  }
+
+  @override
+  Future<void> registerAppCard({required String uid, String? label}) async {
+    await _request('POST', '/device/app/cards', body: {
+      'uid': uid,
+      if (label != null && label.trim().isNotEmpty) 'label': label.trim(),
+    });
   }
 
   @override

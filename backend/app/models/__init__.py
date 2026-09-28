@@ -22,6 +22,7 @@ from app.models.business import (
     PageTemplate,
     Profile,
 )
+from app.models.chip import ChipRegistration
 from app.models.communication import AppRelease, EmailCampaign, EmailLog, Notification, Promotion, PromotionClaim
 from app.models.personal import (
     CardTemplate,
@@ -46,7 +47,7 @@ from app.models.user import (
 
 __all__ = [
     "CardTemplate", "Contact", "DigitalCard", "DigitalCardInvite", "PersonalActivity", "PersonalLoginCode",
-    "PersonalSession",
+    "PersonalSession", "ChipRegistration",
     "AppRelease", "EmailCampaign", "EmailLog", "Notification", "Promotion",
     "Business", "BusinessCategory", "BusinessInvitation", "BusinessMember", "BusinessSlugRedirect",
     "Card", "CardHistory", "CardTap", "Customer", "Employee", "FormResponse", "PageTemplate", "Profile",

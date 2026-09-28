@@ -13,6 +13,7 @@ import '../../services/card_resolver.dart';
 import '../../services/guest_tap.dart';
 import '../../services/ussd_dialer.dart';
 import '../personal/share_ripple.dart';
+import 'register_chip.dart';
 import '../theme.dart';
 
 /// Opens a link outside the app (mockable).
@@ -33,9 +34,21 @@ Future<bool> openExternally(Uri uri) async {
   }
 }
 
+/// Personal accounts: register an unknown card so tapping it opens their digital card.
+class GuestChipRegistrar {
+  const GuestChipRegistrar({required this.available, required this.register});
+
+  /// Someone is signed in to My Card on this phone.
+  final bool Function() available;
+  final Future<void> Function(String uid, String? label) register;
+}
+
 /// App-wide guest-tap wiring (provided by `NfcTerminalApp`).
 class GuestTapConfig {
-  const GuestTapConfig({required this.reader, this.opener = openExternally, required this.knownServers, this.resolver, this.ussdLookup, this.dialer = UssdDialer.dial});
+  const GuestTapConfig({required this.reader, this.opener = openExternally, required this.knownServers, this.resolver, this.ussdLookup, this.dialer = UssdDialer.dial, this.chipRegistrar});
+
+  /// Offers "Register as my card" on cards nobody set up (null: never).
+  final GuestChipRegistrar? chipRegistrar;
   final GuestTapReader reader;
   final LinkOpener opener;
 
@@ -226,7 +239,8 @@ class _GuestTapScopeState extends State<GuestTapScope> {
     _lastAt = now;
     _sheetOpen = true;
     try {
-      await showGuestTag(context, tag, knownServers: c.knownServers(), opener: c.opener, resolver: c.resolver, ussdLookup: c.ussdLookup, dialer: c.dialer);
+      await showGuestTag(context, tag, knownServers: c.knownServers(), opener: c.opener, resolver: c.resolver, ussdLookup: c.ussdLookup, dialer: c.dialer,
+          chipRegistrar: c.chipRegistrar);
     } finally {
       _sheetOpen = false;
       _lastAt = DateTime.now();
@@ -240,7 +254,8 @@ class _GuestTapScopeState extends State<GuestTapScope> {
 /// Guest tap result sheet: opens nexTap links on known servers right away, asks for other hosts
 /// and other links, and explains cards that aren't set up yet.
 Future<void> showGuestTag(BuildContext context, GuestTag tag,
-    {required Iterable<String?> knownServers, LinkOpener opener = openExternally, CardResolver? resolver, UssdLookup? ussdLookup, UssdDial dialer = UssdDialer.dial}) {
+    {required Iterable<String?> knownServers, LinkOpener opener = openExternally, CardResolver? resolver, UssdLookup? ussdLookup, UssdDial dialer = UssdDialer.dial,
+    GuestChipRegistrar? chipRegistrar}) {
   unawaited(HapticFeedback.mediumImpact());
   final link = pickTapLink(tag.uris, knownServers);
   // No link on the chip: the card may still be registered (linked but not programmed) — ask the server.
@@ -255,13 +270,14 @@ Future<void> showGuestTag(BuildContext context, GuestTag tag,
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (_) => GuestTagSheet(tag: tag, link: link, opener: opener, lookup: lookup, ussdLookup: ussdLookup, dialer: dialer),
+    builder: (_) => GuestTagSheet(tag: tag, link: link, opener: opener, lookup: lookup, ussdLookup: ussdLookup, dialer: dialer, chipRegistrar: chipRegistrar),
   );
 }
 
 class GuestTagSheet extends StatefulWidget {
-  const GuestTagSheet({super.key, required this.tag, required this.link, required this.opener, this.lookup, this.ussdLookup, this.dialer = UssdDialer.dial});
+  const GuestTagSheet({super.key, required this.tag, required this.link, required this.opener, this.lookup, this.ussdLookup, this.dialer = UssdDialer.dial, this.chipRegistrar});
   final GuestTag tag;
+  final GuestChipRegistrar? chipRegistrar;
   final TapLink? link;
   final LinkOpener opener;
   final UssdLookup? ussdLookup;
@@ -279,6 +295,26 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
   bool _failed = false;
   late TapLink? _link = widget.link;
   late bool _looking = widget.link == null && widget.lookup != null;
+  bool _chipBusy = false;
+  bool _chipDone = false;
+  String? _chipError;
+
+  Future<void> _registerChip() async {
+    final name = await askCardName(context, uid: widget.tag.uid, title: 'Register as my card');
+    if (name == null || !mounted) return;
+    setState(() {
+      _chipBusy = true;
+      _chipError = null;
+    });
+    try {
+      await widget.chipRegistrar!.register(widget.tag.uid, name.isEmpty ? null : name);
+      if (mounted) setState(() => _chipDone = true);
+    } catch (e) {
+      if (mounted) setState(() => _chipError = registerChipError(e).message);
+    } finally {
+      if (mounted) setState(() => _chipBusy = false);
+    }
+  }
 
   @override
   void initState() {
@@ -375,20 +411,47 @@ class _GuestTagSheetState extends State<GuestTagSheet> {
         ],
       ];
     } else if (l == null) {
+      final canRegister = widget.tag.uid.isNotEmpty && (widget.chipRegistrar?.available() ?? false);
       body = [
-        Icon(Icons.info_outline, size: 48, color: scheme.onSurfaceVariant),
+        Icon(_chipDone ? Icons.check_circle_outline : Icons.info_outline, size: 48,
+            color: _chipDone ? scheme.primary : scheme.onSurfaceVariant),
         const SizedBox(height: 12),
         Text(
-          widget.tag.hasNdef ? 'This card has no link to open' : 'This card isn\'t set up yet',
+          _chipDone
+              ? 'Registered to your digital card'
+              : widget.tag.hasNdef ? 'This card has no link to open' : 'This card isn\'t set up yet',
           key: const Key('guestNotSetUp'),
           style: t.titleLarge,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
-        Text('Ask the business to register it with nexTap.', textAlign: TextAlign.center, style: t.bodyMedium),
+        Text(
+          _chipDone
+              ? 'Anyone who taps this card with nexTap now sees your digital card.'
+              : canRegister
+                  ? 'Make it yours: anyone who taps it will see your digital card.'
+                  : 'Ask the business to register it with nexTap.',
+          textAlign: TextAlign.center,
+          style: t.bodyMedium,
+        ),
         if (uid != null) ...[
           const SizedBox(height: 8),
           SelectableText(uid, textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontFamily: 'monospace')),
+        ],
+        if (canRegister && !_chipDone) ...[
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            key: const Key('registerChipButton'),
+            onPressed: _chipBusy ? null : _registerChip,
+            icon: _chipBusy
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.add_card_outlined),
+            label: const Text('Register as my card'),
+          ),
+        ],
+        if (_chipError != null) ...[
+          const SizedBox(height: 8),
+          Text(_chipError!, key: const Key('registerChipError'), textAlign: TextAlign.center, style: TextStyle(color: scheme.error)),
         ],
       ];
     } else {

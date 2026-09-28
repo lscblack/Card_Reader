@@ -58,6 +58,10 @@ async def ensure_uid_free(session: SessionDep, business_id: uuid.UUID, uid: str 
         stmt = stmt.where(Card.id != exclude)
     existing = (await session.execute(stmt.limit(1))).first()
     if existing is None:
+        from app.services.chips import uid_registered_as_chip
+
+        if await uid_registered_as_chip(session, uid):  # a person's card or a developer app's card
+            raise uid_taken()
         return
     if existing.business_id == business_id:
         # Same business, so naming the existing card leaks nothing ("Already registered as <name>").

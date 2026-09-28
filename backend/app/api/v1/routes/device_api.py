@@ -35,7 +35,7 @@ from app.schemas.device_api import (
 from app.core.error_catalog import ref_for
 from app.services import audit, delivery, live, usage
 from app.services import business as biz
-from app.services import digital_cards
+from app.services import chips, digital_cards
 from app.services import taps as taps_service
 from app.services import plans as plan_service
 from app.services.serializers import device_out
@@ -310,13 +310,19 @@ async def submit_event(
         business = await session.get(Business, app.business_id) if app.business_id else None
         return await _handle_duplicate(session, existing, device_id, body, business)
 
+    # developer devices: is this chip one of the application's registered cards? (drives "Register this card")
+    app_card = None
+    if business is None and digital is None:
+        app_card = await chips.app_card_for_tap(session, app, event.card_id)
+
     device.events_count = Device.events_count + 1
     await usage.bump(session, application_id=app.id, owner_id=device.owner_id, day=now.date(), events=1)
     live.publish_later(app.id, "event.received", {
         "event_id": str(event.id), "card_id": event.card_id, "card_type": event.card_type,
         "card_technologies": list(event.card_technologies or []), "device_id": str(device_id),
         "device_name": device.name, "detected_at": body.detected_at.isoformat().replace("+00:00", "Z"),
-        "delivery_mode": event.delivery_mode})
+        "delivery_mode": event.delivery_mode,
+        "card_label": app_card.get("label") if app_card else None})
 
     outcome = None
     if digital is not None:
@@ -332,14 +338,14 @@ async def submit_event(
         await _record_direct_attempt(session, event, body)
         await session.commit()
         await _enqueue(webhook_event)
-        return _out(await _state(session, event), block, digital.response if digital else None)
+        return _out(await _state(session, event), block, digital.response if digital else None, app_card)
 
     if business is not None and not (app.endpoint_url and app.endpoint_enabled):
         # Business terminal without an endpoint: not an error — the tap is logged.
         event.status = "logged"
         await session.commit()
         await _enqueue(webhook_event)
-        return _out(await _state(session, event), block, digital.response if digital else None)
+        return _out(await _state(session, event), block, digital.response if digital else None, app_card)
 
     await session.commit()  # persist before the (slow) outbound call
     await _enqueue(webhook_event)
@@ -352,7 +358,7 @@ async def submit_event(
         error=d.error,
         error_code=d.error_code,
         error_ref=ref_for(d.error_code),
-    ), block, digital.response if digital else None)
+    ), block, digital.response if digital else None, app_card)
 
 
 async def _enqueue(event: NfcEvent | None) -> None:
@@ -360,10 +366,13 @@ async def _enqueue(event: NfcEvent | None) -> None:
         await delivery.enqueue(event.id, datetime.now(UTC))
 
 
-def _out(state: DeviceEventOut, business_block: dict | None, digital: dict | None = None) -> JSONResponse:  # type: ignore[type-arg]
+def _out(state: DeviceEventOut, business_block: dict | None, digital: dict | None = None,
+         app_card: dict | None = None) -> JSONResponse:  # type: ignore[type-arg]
     data = state.model_dump(mode="json", exclude={"business"})
     if digital is not None:
         data["digital_card"] = digital
+    if app_card is not None:
+        data["app_card"] = app_card
     # error_code / error_ref only when the attempt failed (keeps the Part 1 success shape unchanged).
     for key in ("error_code", "error_ref"):
         if data.get(key) is None:
@@ -515,3 +524,40 @@ async def device_card_programmed(card_id: uuid.UUID, body: ProgrammedIn, device:
     card = (await session.execute(select(Card).where(Card.id == card_id)
                                   .execution_options(populate_existing=True))).scalar_one()
     return card_out(card, business).model_dump(mode="json")
+
+
+class DeviceAppCardIn(Schema):
+    uid: str = Field(min_length=4, max_length=200)
+    label: str | None = Field(default=None, max_length=120)
+    note: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/app/cards", status_code=201, summary="Register a scanned card to this application (developer devices)",
+             description="Developer devices save a tapped card to the application's card list (shown in the dashboard; "
+                         "later taps report `app_card.label`). Business devices use `POST /device/business/cards`. "
+                         "409 `card_uid_exists` when this account already registered the chip, "
+                         "409 `card_uid_taken` when anyone else did.")
+async def device_register_app_card(body: DeviceAppCardIn, device: CurrentDevice, session: SessionDep,
+                                   client: ClientDep) -> dict[str, Any]:
+    from app.api.v1.routes.cards import normalize_uid
+    from app.models import ChipRegistration
+
+    app = device.application
+    if app.business_id is not None:
+        raise AppError(403, "device_is_business", "Business devices register cards with POST /device/business/cards")
+    uid = normalize_uid(body.uid)
+    assert uid is not None
+    await chips.ensure_free(session, uid, user_id=device.owner_id)
+    chip = ChipRegistration(uid=uid, user_id=device.owner_id, application_id=app.id,
+                            label=(body.label or "").strip() or f"Card {uid[-4:]}", note=body.note)
+    session.add(chip)
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        raise chips.uid_taken() from None
+    audit.record(session, action="app_card.register", user_id=device.owner_id, client=client,
+                 resource_type="chip", resource_id=chip.id,
+                 metadata={"application_id": str(app.id), "device_id": str(device.id)})
+    await session.commit()
+    return chips.chip_out(chip)

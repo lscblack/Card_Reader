@@ -13,7 +13,8 @@ from fastapi import APIRouter, BackgroundTasks, File, Query, Request, Response, 
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import Field
-from sqlalchemy import Date, cast, func, or_, select, update
+from sqlalchemy import Date, cast, delete, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import ClientDep, PaginationDep, PersonalAuth, SessionDep
 from app.core.config import settings
@@ -24,6 +25,7 @@ from app.core.countries import normalize_country
 from app.core.useragent import is_bot
 from app.models import (
     CardTemplate,
+    ChipRegistration,
     Contact,
     DigitalCard,
     DigitalCardInvite,
@@ -33,7 +35,7 @@ from app.models import (
     User,
 )
 from app.schemas.common import Schema
-from app.services import audit, auth_sessions, card_invites, media, notifications, personal
+from app.services import audit, auth_sessions, card_invites, chips, media, notifications, personal
 from app.services import email as email_service
 from app.services.request_logs import set_actor
 from app.services.serializers import user_out
@@ -476,6 +478,7 @@ async def delete_card(card_id: uuid.UUID, ctx: PersonalAuth, session: SessionDep
     card = await _card(session, ctx.user.id, card_id)
     card.deleted_at, card.status = datetime.now(UTC), "inactive"
     await session.execute(update(Contact).where(Contact.counterpart_card_id == card.id).values(live=False))
+    await session.execute(delete(ChipRegistration).where(ChipRegistration.digital_card_id == card.id))
     if card.is_primary:
         card.is_primary = False
         other = next((c for c in await _cards_of(session, ctx.user.id) if c.id != card.id), None)
@@ -483,6 +486,66 @@ async def delete_card(card_id: uuid.UUID, ctx: PersonalAuth, session: SessionDep
             other.is_primary = True
     audit.record(session, action="digital_card.delete", user_id=ctx.user.id, client=client,
                  resource_type="digital_card", resource_id=card.id)
+    await session.commit()
+    return Response(status_code=204)
+
+
+class ChipIn(Schema):
+    uid: str = Field(min_length=4, max_length=200)
+    card_id: uuid.UUID | None = Field(default=None, description="Which card the chip opens (default: the primary card)")
+    label: str | None = Field(default=None, max_length=120)
+
+
+@router.get("/chips", summary="Physical cards registered to my digital cards")
+async def list_chips(ctx: PersonalAuth, session: SessionDep) -> list[dict[str, Any]]:
+    rows = (await session.execute(
+        select(ChipRegistration, DigitalCard)
+        .join(DigitalCard, DigitalCard.id == ChipRegistration.digital_card_id)
+        .where(ChipRegistration.user_id == ctx.user.id, DigitalCard.deleted_at.is_(None))
+        .order_by(ChipRegistration.created_at.desc())
+    )).all()
+    return [chips.chip_out(chip, card) for chip, card in rows]
+
+
+@router.post("/chips", status_code=201, summary="Register a physical card: tapping it opens my digital card",
+             description="409 `card_uid_exists` when you already registered this chip (details name it), "
+                         "409 `card_uid_taken` when someone else did.")
+async def register_chip(body: ChipIn, ctx: PersonalAuth, session: SessionDep, client: ClientDep) -> dict[str, Any]:
+    from app.api.v1.routes.cards import normalize_uid
+
+    uid = normalize_uid(body.uid)
+    assert uid is not None
+    if body.card_id is not None:
+        card = await _card(session, ctx.user.id, body.card_id)
+    else:
+        card = next(iter(await _cards_of(session, ctx.user.id)), None)  # primary first
+        if card is None:
+            raise AppError(409, "no_digital_card", "Create your digital card first, then register a physical card")
+    await chips.ensure_free(session, uid, user_id=ctx.user.id)
+    chip = ChipRegistration(uid=uid, user_id=ctx.user.id, digital_card_id=card.id,
+                            label=(body.label or "").strip() or f"Card {uid[-4:]}")
+    session.add(chip)
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        raise chips.uid_taken() from None
+    audit.record(session, action="chip.register", user_id=ctx.user.id, client=client,
+                 resource_type="chip", resource_id=chip.id, metadata={"digital_card_id": str(card.id)})
+    await session.commit()
+    return chips.chip_out(chip, card)
+
+
+@router.delete("/chips/{chip_id}", status_code=204, summary="Unregister a physical card")
+async def delete_chip(chip_id: uuid.UUID, ctx: PersonalAuth, session: SessionDep, client: ClientDep) -> Response:
+    chip = (await session.execute(select(ChipRegistration).where(
+        ChipRegistration.id == chip_id, ChipRegistration.user_id == ctx.user.id,
+        ChipRegistration.digital_card_id.is_not(None)))).scalar_one_or_none()
+    if chip is None:
+        raise not_found("Card")
+    await session.delete(chip)
+    audit.record(session, action="chip.unregister", user_id=ctx.user.id, client=client,
+                 resource_type="chip", resource_id=chip.id)
     await session.commit()
     return Response(status_code=204)
 

@@ -223,6 +223,7 @@ class DeliveryService {
     var out = e;
     if (r.business != null) out = out.copyWith(businessJson: () => jsonEncode(r.business!.raw));
     if (r.digitalCard != null) out = out.copyWith(digitalJson: () => jsonEncode(r.digitalCard!.raw));
+    if (r.appCard != null) out = out.copyWith(appCardJson: () => jsonEncode(r.appCard!.raw));
     return out;
   }
 

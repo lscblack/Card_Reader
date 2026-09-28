@@ -215,6 +215,15 @@ class FakeDeviceApi implements DeviceApi {
     return item;
   }
 
+  final appCards = <Map<String, String?>>[];
+  Object? appCardError;
+
+  @override
+  Future<void> registerAppCard({required String uid, String? label}) async {
+    if (appCardError != null) throw appCardError!;
+    appCards.add({'uid': uid, 'label': label});
+  }
+
   @override
   Future<void> markCardProgrammed({required String cardId, required String uid}) async {
     if (programmedError != null) throw programmedError!;
