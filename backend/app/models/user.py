@@ -52,6 +52,7 @@ class User(UUIDPk, Timestamps, Base):
     login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     # Part 3 §7: free-form UI preferences (≤ 8 KB), e.g. product tours
     preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255))
 
     subscription: Mapped[Subscription | None] = relationship(
         back_populates="user", uselist=False, lazy="selectin"
@@ -109,7 +110,7 @@ class Subscription(UUIDPk, Timestamps, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     current_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    # Reserved for a future payment provider (Stripe etc.).
+    # "stripe" (paid online) or "promotion" (free period); provider_subscription_id is the Stripe subscription id.
     provider: Mapped[str | None] = mapped_column(String(32))
     provider_subscription_id: Mapped[str | None] = mapped_column(String(255))
 

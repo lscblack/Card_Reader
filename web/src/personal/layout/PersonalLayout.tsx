@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, Outlet } from 'react-router'
-import { Activity, Building2, Contact, CreditCard, LayoutDashboard, Nfc, QrCode, Settings } from 'lucide-react'
+import { Activity, Building2, Contact, CreditCard, LayoutDashboard, LifeBuoy, Nfc, QrCode, Settings } from 'lucide-react'
 import { DashboardShell, type ShellNavSection } from '@/layouts/DashboardShell'
 import { useTour } from '@/tours'
 import { useInvites, usePCards } from '../hooks/queries'
@@ -36,6 +36,7 @@ export function PersonalLayout() {
           badge: pending ? <span className="rounded-full bg-accent-solid px-1.5 text-[11px] font-semibold text-accent-fg">{pending}</span> : undefined,
         },
         { to: '/me/settings', label: 'Settings', icon: Settings },
+        { to: '/support', label: 'Help & support', icon: LifeBuoy },
       ],
     },
   ]

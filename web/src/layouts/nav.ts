@@ -1,5 +1,7 @@
 import {
   Activity,
+  LifeBuoy,
+  Wallet,
   CreditCard,
   Mail,
   PackageOpen,
@@ -54,6 +56,7 @@ export const developerNav: ShellNavSection[] = [
       { to: '/docs', label: 'API Documentation', icon: BookOpen, tour: 'nav-docs' },
       { to: '/dashboard/usage', label: 'Usage', icon: Gauge, tour: 'nav-usage' },
       { to: '/dashboard/settings', label: 'Account Settings', icon: Settings, tour: 'nav-settings' },
+      { to: '/support', label: 'Help & support', icon: LifeBuoy },
       { to: '/admin', label: 'Admin console', icon: ShieldCheck, tour: 'nav-admin', adminOnly: true },
     ],
   },
@@ -69,6 +72,7 @@ export const adminNav: ShellNavSection[] = [
       { to: '/admin/businesses', label: 'Businesses', icon: Building2 },
       { to: '/admin/devices', label: 'Devices', icon: Smartphone },
       { to: '/admin/emails', label: 'Emails', icon: Mail, tour: 'nav-admin-emails' },
+      { to: '/admin/support', label: 'Support', icon: LifeBuoy },
     ],
   },
   {
@@ -85,6 +89,7 @@ export const adminNav: ShellNavSection[] = [
     items: [
       { to: '/admin/plans', label: 'Plans', icon: CreditCard },
       { to: '/admin/promotions', label: 'Promotions', icon: TicketPercent },
+      { to: '/admin/payments', label: 'Payments', icon: Wallet },
     ],
   },
   {

@@ -7,6 +7,7 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
+  LifeBuoy,
   Nfc,
   Plug,
   Smartphone,
@@ -53,6 +54,7 @@ const SECTIONS: { title?: string; items: Item[] }[] = [
       { path: 'team', label: 'Team Members', icon: UsersRound },
       { path: 'billing', label: 'Billing', icon: CreditCard },
       { path: 'settings', label: 'Business Settings', icon: Building2 },
+      { path: '/support', label: 'Help & support', icon: LifeBuoy },
     ],
   },
 ]
@@ -62,6 +64,6 @@ export function businessNav(base: string, can: (p: Permission) => boolean): Shel
     title: s.title,
     items: s.items
       .filter((i) => !i.perm || can(i.perm))
-      .map((i) => ({ to: i.path ? `${base}/${i.path}` : base, label: i.label, icon: i.icon, end: i.path === '' })),
+      .map((i) => ({ to: i.path.startsWith('/') ? i.path : i.path ? `${base}/${i.path}` : base, label: i.label, icon: i.icon, end: i.path === '' })),
   }))
 }

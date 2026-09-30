@@ -151,6 +151,13 @@ class Settings(BaseSettings):
     ANDROID_SDK_ROOT: str = ""
     APP_BUILD_TIMEOUT_SECONDS: int = 1800
 
+    # ── Payments (Stripe) ────────────────────────────────────────
+    # Blank secret key = online upgrades are off. Use sk_test_/pk_test_ keys while testing.
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    # Signing secret of the webhook endpoint (/api/v1/billing/stripe/webhook); `stripe listen` prints one locally.
+    STRIPE_WEBHOOK_SECRET: str = ""
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, v: object) -> object:

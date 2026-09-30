@@ -74,6 +74,11 @@ export function MarketingNav({ onNavigate }: { onNavigate: (t: NavTarget) => voi
               Docs
             </Link>
           </li>
+          <li>
+            <Link to="/support" className="rounded-lg px-3 py-2 text-[13.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg">
+              Support
+            </Link>
+          </li>
         </ul>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -128,6 +133,9 @@ export function MarketingNav({ onNavigate }: { onNavigate: (t: NavTarget) => voi
               ))}
               <Link to="/docs" className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-fg hover:bg-surface-2">
                 Docs
+              </Link>
+              <Link to="/support" className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-fg hover:bg-surface-2">
+                Support
               </Link>
               <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
                 <div className="flex items-center justify-between px-3 pb-2 text-[14px] text-muted">

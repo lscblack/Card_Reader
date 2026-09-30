@@ -16,6 +16,8 @@ import { Skeleton } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Input'
 import { Table, TableWrap, TBody, TD, TH, THead } from '@/components/ui/Table'
 import { FreeOfferBanner } from '@/components/FreeOfferBanner'
+import { ManageBillingButton, PaymentsOffNote, UpgradeButton } from '@/components/BillingActions'
+import { usePaymentsState } from '@/hooks/usePaymentsState'
 
 function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const ratio = limit ? Math.min(1, used / limit) : 0
@@ -148,7 +150,7 @@ function DailyChart({ daily }: { daily: UsageDaily[] }) {
   )
 }
 
-function PlanCard({ plan, current }: { plan: Plan; current: boolean }) {
+function PlanCard({ plan, current, payments, currentPrice }: { plan: Plan; current: boolean; payments: boolean; currentPrice: number }) {
   const paid = plan.price_monthly_cents > 0
   return (
     <div className={cn('flex flex-col rounded-xl border bg-surface p-5', current ? 'border-accent ring-1 ring-accent' : 'border-border')}>
@@ -186,11 +188,11 @@ function PlanCard({ plan, current }: { plan: Plan; current: boolean }) {
             Your plan
           </Button>
         ) : paid ? (
-          <Button className="w-full" disabled title="Paid plans are not available yet">
-            Upgrade — coming soon
-          </Button>
+          <UpgradeButton planCode={plan.code} enabled={payments} className="w-full" variant={plan.is_featured ? 'primary' : 'secondary'}>
+            {plan.price_monthly_cents > currentPrice ? 'Upgrade' : 'Switch plan'}
+          </UpgradeButton>
         ) : (
-          <Button className="w-full" disabled>
+          <Button className="w-full" disabled title="Cancel your subscription from Manage billing to go back to Free">
             Free forever
           </Button>
         )}
@@ -204,6 +206,7 @@ export default function UsagePage() {
   const [days, setDays] = useState(30)
   const usage = useUsage(days)
   const plans = usePlans()
+  const payments = usePaymentsState()
   const sub = useSubscription()
   const u = usage.data
   const currentCode = sub.data?.plan.code ?? u?.plan.code
@@ -292,7 +295,14 @@ export default function UsagePage() {
 
           <section>
             <h2 className="mb-1 text-[15px] font-semibold tracking-tight">Plans</h2>
-            <p className="mb-4 text-[13px] text-muted">Paid plans are coming soon. Online payments aren&apos;t enabled yet.</p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[13px] text-muted">
+                {payments.data?.enabled === false
+                  ? <PaymentsOffNote />
+                  : 'Pay securely by card. Upgrades apply instantly; cancel anytime.'}
+              </p>
+              {payments.data?.can_manage && <ManageBillingButton size="sm" />}
+            </div>
             {plans.error ? (
               <Card>
                 <ErrorState error={plans.error} onRetry={() => plans.refetch()} />
@@ -306,7 +316,7 @@ export default function UsagePage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-3">
                 {plans.data.filter((p) => !p.audience || p.audience === 'developer').map((p) => (
-                  <PlanCard key={p.code} plan={p} current={p.code === currentCode} />
+                  <PlanCard key={p.code} plan={p} current={p.code === currentCode} payments={!!payments.data?.enabled} currentPrice={plans.data?.find((x) => x.code === currentCode)?.price_monthly_cents ?? 0} />
                 ))}
               </div>
             )}

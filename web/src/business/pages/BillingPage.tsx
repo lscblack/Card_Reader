@@ -1,10 +1,9 @@
-import { Check, CreditCard, Sparkles } from 'lucide-react'
+import { Check, CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Spinner'
-import { useToast } from '@/components/ui/toastContext'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { cn } from '@/lib/cn'
 import { money, num } from '@/lib/format'
@@ -13,6 +12,8 @@ import { useBusiness, useCan } from '../hooks/context'
 import { useBilling, useBizPlans } from '../hooks/queries'
 import { BizErrorState } from '../components/BizError'
 import { FreeOfferBanner } from '@/components/FreeOfferBanner'
+import { ManageBillingButton, PaymentsOffNote, UpgradeButton } from '@/components/BillingActions'
+import { usePaymentsState } from '@/hooks/usePaymentsState'
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const ratio = limit ? Math.min(1, used / limit) : 0
@@ -45,11 +46,13 @@ const lim = (v: number | null | undefined, unit: string) => (v == null ? `Unlimi
 export default function BillingPage() {
   const { business } = useBusiness()
   const can = useCan()
-  const toast = useToast()
   useDocumentTitle('Billing')
   const billing = useBilling(business.id)
   const plans = useBizPlans()
   const current = billing.data?.plan.code
+  const owner = can('billing.manage')
+  const payments = usePaymentsState(business.id, owner)
+  const currentPrice = billing.data?.plan.price_monthly_cents ?? 0
   const bizPlans = (plans.data ?? []).filter((p): p is BusinessPlan => (p as BusinessPlan).audience === 'business' || p.code.startsWith('biz_'))
 
   return (
@@ -74,9 +77,13 @@ export default function BillingPage() {
                     <p className="mt-0.5 text-[13px] text-muted">
                       {billing.data.plan.price_monthly_cents ? `${money(billing.data.plan.price_monthly_cents, billing.data.plan.currency)} / month` : 'Free'}
                     </p>
-                    <Badge tone={billing.data.status === 'active' ? 'success' : 'warning'} dot className="mt-3 capitalize">
-                      {billing.data.status}
-                    </Badge>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge tone={billing.data.status === 'active' ? 'success' : 'warning'} dot className="capitalize">
+                        {billing.data.status}
+                      </Badge>
+                      {payments.data?.paid_online && <Badge tone="neutral">Paid by card</Badge>}
+                    </div>
+                    {payments.data?.can_manage && <ManageBillingButton businessId={business.id} size="sm" className="mt-4" />}
                   </>
                 ) : (
                   <Skeleton className="mt-3 h-14 w-40" />
@@ -143,23 +150,32 @@ export default function BillingPage() {
                           </li>
                         ))}
                     </ul>
-                    <Button
-                      className="mt-5 w-full"
-                      variant={featured && !isCurrent ? 'primary' : 'secondary'}
-                      disabled={isCurrent || !can('billing.manage')}
-                      leftIcon={!isCurrent ? <Sparkles className="h-4 w-4" /> : undefined}
-                      title={!can('billing.manage') ? 'Only owners can change the plan' : undefined}
-                      onClick={() => toast.info('Online upgrades are coming soon. Contact us to change your plan today.', 'Coming soon')}
-                    >
-                      {isCurrent ? 'Your plan' : p.code === 'biz_enterprise' ? 'Contact sales' : 'Upgrade'}
-                    </Button>
+                    {isCurrent || !p.price_monthly_cents ? (
+                      <Button className="mt-5 w-full" disabled title={!isCurrent ? 'Cancel your subscription from Manage billing to go back to the free plan' : undefined}>
+                        {isCurrent ? 'Your plan' : 'Free forever'}
+                      </Button>
+                    ) : !owner ? (
+                      <Button className="mt-5 w-full" disabled title="Only owners can change the plan">
+                        Upgrade
+                      </Button>
+                    ) : (
+                      <div className="mt-5">
+                        <UpgradeButton planCode={p.code} businessId={business.id} enabled={!!payments.data?.enabled} className="w-full" variant={featured ? 'primary' : 'secondary'}>
+                          {p.price_monthly_cents > currentPrice ? 'Upgrade' : 'Switch plan'}
+                        </UpgradeButton>
+                      </div>
+                    )}
                   </Card>
                 )
               })}
               {plans.isLoading && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-80" />)}
             </div>
           )}
-          <p className="mt-3 text-xs text-subtle">Paid upgrades are coming soon — no payment details are collected yet.</p>
+          <p className="mt-3 text-xs text-subtle">
+            {payments.data?.enabled === false
+              ? <PaymentsOffNote />
+              : 'Payments are processed securely by Stripe. Upgrades apply instantly; cancel anytime from Manage billing.'}
+          </p>
         </div>
       </div>
     </>

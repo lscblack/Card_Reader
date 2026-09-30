@@ -230,7 +230,7 @@ export function Pricing({ audience, onAudience }: { audience: Audience; onAudien
         </div>
         <p className="mt-10 flex items-center justify-center gap-1.5 text-center text-[12.5px] text-subtle">
           <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          Prices in USD. Paid plans are being rolled out — limits apply today, checkout is coming soon.
+          Prices in USD. Pay securely by card — upgrades apply instantly, cancel anytime.
           {usingFallback && q.isError && ' Live pricing is temporarily unavailable.'}
         </p>
       </div>

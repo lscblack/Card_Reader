@@ -16,6 +16,11 @@ import { PasswordCard } from '@/components/PasswordCard'
 import { PasskeysCard, SignedInCard } from '@/components/AccountSecurity'
 import { CountrySelect } from '@/components/CountrySelect'
 import { FreeOfferBanner } from '@/components/FreeOfferBanner'
+import { ManageBillingButton, UpgradeButton } from '@/components/BillingActions'
+import { usePaymentsState } from '@/hooks/usePaymentsState'
+import { usePlans, useSubscription } from '@/hooks/queries'
+import { money } from '@/lib/format'
+import { Check, Sparkles } from 'lucide-react'
 
 interface PrivacyDefaults {
   phones: Visibility
@@ -146,6 +151,52 @@ function Privacy() {
   )
 }
 
+/** Current personal plan with the upgrade to the paid personal plan (Stripe checkout). */
+function PlanCard() {
+  const sub = useSubscription()
+  const plans = usePlans()
+  const payments = usePaymentsState()
+  const current = sub.data?.plan
+  const upgrade = (plans.data ?? []).filter((p) => p.audience === 'personal' && p.price_monthly_cents > (current?.price_monthly_cents ?? 0))[0]
+  return (
+    <Card>
+      <CardHeader title="Plan" description="Your digital card plan and billing." />
+      <CardBody className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-border bg-gradient-to-br from-accent-soft to-transparent p-4">
+          <p className="text-xs font-semibold tracking-wider text-subtle uppercase">Current plan</p>
+          <p className="mt-1.5 text-xl font-semibold tracking-tight">{current?.name ?? '—'}</p>
+          <p className="text-[13px] text-muted">{current?.price_monthly_cents ? `${money(current.price_monthly_cents, current.currency)} / month` : 'Free'}</p>
+          {payments.data?.can_manage && <ManageBillingButton size="sm" className="mt-3" />}
+        </div>
+        {upgrade ? (
+          <div className="rounded-xl border border-accent/40 p-4 ring-1 ring-accent/20">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-[15px] font-semibold">
+                <Sparkles className="h-4 w-4 text-accent" /> {upgrade.name}
+              </p>
+              <p className="text-[13px] text-muted">
+                <span className="text-lg font-semibold text-fg">{money(upgrade.price_monthly_cents, upgrade.currency)}</span> / month
+              </p>
+            </div>
+            <ul className="mt-3 space-y-1.5 text-[13px] text-muted">
+              {upgrade.features.slice(0, 4).map((f) => (
+                <li key={f} className="flex gap-2">
+                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /> {f}
+                </li>
+              ))}
+            </ul>
+            <UpgradeButton planCode={upgrade.code} enabled={!!payments.data?.enabled} variant="primary" className="mt-4 w-full">
+              Upgrade to {upgrade.name}
+            </UpgradeButton>
+          </div>
+        ) : (
+          <p className="self-center text-[13px] text-muted">You’re on our best personal plan. Thank you!</p>
+        )}
+      </CardBody>
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   useDocumentTitle('Settings')
   return (
@@ -154,6 +205,7 @@ export default function SettingsPage() {
       <FreeOfferBanner className="mb-6" />
       <div className="space-y-6">
         <ProfileForm />
+        <PlanCard />
         <PasswordCard />
         <SignedInCard />
         <PasskeysCard />

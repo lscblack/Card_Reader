@@ -26,7 +26,8 @@ from app.schemas.resources import (
     UsageTotals,
 )
 from app.services import plans as plan_service
-from app.services import audit, free_periods, promotions, usage
+from app.services import audit, free_periods, payments, promotions, usage
+from app.core.config import settings
 from app.services.request_logs import set_actor
 from app.services.applications import developer_app_ids
 from app.services.serializers import audit_out, event_out, plan_out
@@ -202,7 +203,7 @@ async def validate_promotion(body: PromoValidateIn, user: CurrentUser, session: 
     response_model=SubscriptionOut,
     tags=["Usage & billing"],
     summary="Current subscription",
-    description="Paid upgrades are architecture-only; no payment provider is connected yet.",
+    description="`provider` is `stripe` when the plan is paid online.",
 )
 async def get_subscription(user: CurrentUser, session: SessionDep) -> SubscriptionOut:
     sub = await plan_service.get_subscription(session, user)
@@ -212,6 +213,69 @@ async def get_subscription(user: CurrentUser, session: SessionDep) -> Subscripti
         current_period_start=sub.current_period_start,
         current_period_end=sub.current_period_end,
     )
+
+
+def _web_origin(request: Request) -> str:
+    """The dashboard origin to send the buyer back to (the caller's, when it's an allowed origin)."""
+    origin = (request.headers.get("origin") or "").rstrip("/")
+    allowed = {o.rstrip("/") for o in settings.CORS_ORIGINS} | {settings.PUBLIC_WEB_URL.rstrip("/")}
+    return origin if origin in allowed else settings.PUBLIC_WEB_URL.rstrip("/")
+
+
+@router.get("/billing/payments", tags=["Usage & billing"], summary="Online payment status for your plan",
+            description="Whether online upgrades are enabled, the Stripe publishable key and whether the plan is "
+                        "paid online (then `can_manage` opens the Stripe customer portal).")
+async def payments_state(user: CurrentUser, session: SessionDep,
+                         business_id: uuid.UUID | None = None) -> dict:  # type: ignore[type-arg]
+    return await payments.billing_state(session, user, business_id)
+
+
+class CheckoutIn(Schema):
+    plan_code: str = Field(min_length=1, max_length=32)
+    interval: Literal["month", "year"] = "month"
+    business_id: uuid.UUID | None = None
+    promotion_code: str | None = Field(default=None, max_length=32)
+
+
+@router.post("/billing/checkout", status_code=201, tags=["Usage & billing"], summary="Start a Stripe checkout",
+             description="Creates a Stripe Checkout Session (Elements) for a paid plan and returns its "
+                         "`client_secret`. Business plans need `business_id` (owners only).")
+async def create_checkout(body: CheckoutIn, request: Request, user: CurrentUser, session: SessionDep,
+                          client: ClientDep) -> dict:  # type: ignore[type-arg]
+    out = await payments.create_checkout(
+        session, user, plan_code=body.plan_code, interval=body.interval, business_id=body.business_id,
+        promotion_code=(body.promotion_code or "").strip() or None, return_origin=_web_origin(request))
+    audit.record(session, action="billing.checkout_start", user_id=user.id, client=client, resource_type="plan",
+                 metadata={"plan": body.plan_code, "interval": body.interval,
+                           "business_id": str(body.business_id) if body.business_id else None})
+    await session.commit()
+    return out
+
+
+@router.get("/billing/checkout/{session_id}", tags=["Usage & billing"], summary="Checkout result",
+            description="Checks the session with Stripe and activates the plan once paid (idempotent).")
+async def checkout_result(session_id: str, user: CurrentUser, session: SessionDep) -> dict:  # type: ignore[type-arg]
+    return await payments.checkout_status(session, user, session_id)
+
+
+class PortalIn(Schema):
+    business_id: uuid.UUID | None = None
+
+
+@router.post("/billing/portal", tags=["Usage & billing"], summary="Open the Stripe customer portal",
+             description="Update the card, download invoices or cancel. Returns a one-time `url`.")
+async def billing_portal(body: PortalIn, request: Request, user: CurrentUser,
+                         session: SessionDep) -> dict:  # type: ignore[type-arg]
+    back = _web_origin(request) + payments.billing_link(user, body.business_id)
+    return {"url": await payments.portal_url(session, user, body.business_id, back)}
+
+
+@router.post("/billing/stripe/webhook", tags=["Usage & billing"], summary="Stripe webhook receiver",
+             include_in_schema=False)
+async def stripe_webhook(request: Request, session: SessionDep) -> dict:  # type: ignore[type-arg]
+    set_actor(request, "public")
+    await payments.handle_webhook(session, await request.body(), request.headers.get("stripe-signature"))
+    return {"received": True}
 
 
 @router.get("/audit-logs", response_model=Page[AuditLogOut], tags=["Audit logs"], summary="Your audit trail")

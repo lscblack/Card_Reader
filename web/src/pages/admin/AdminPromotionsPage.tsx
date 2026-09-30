@@ -355,7 +355,7 @@ export default function AdminPromotionsPage() {
     <>
       <PageHeader
         title="Promotions"
-        description="Discounts shown on pricing and redeemable with coupon codes. Checkout itself is coming soon."
+        description="Discounts shown on pricing and redeemable with coupon codes at checkout (applied to the first payment)."
         actions={
           <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setEditing('new')}>
             New promotion

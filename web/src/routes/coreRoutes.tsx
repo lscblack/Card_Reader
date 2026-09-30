@@ -31,6 +31,11 @@ const UsagePage = lazy(() => import('@/pages/UsagePage'))
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const SupportPage = lazy(() => import('@/pages/SupportPage'))
+const AdminSupportPage = lazy(() => import('@/pages/admin/AdminSupportPage'))
+const AdminPaymentsPage = lazy(() => import('@/pages/admin/AdminPaymentsPage'))
+const CheckoutPage = lazy(() => import('@/pages/checkout/CheckoutPage'))
+const CheckoutCompletePage = lazy(() => import('@/pages/checkout/CheckoutCompletePage'))
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/admin/AdminAccountsPage'))
 const AdminDemographicsPage = lazy(() => import('@/pages/admin/AdminDemographicsPage'))
@@ -74,6 +79,9 @@ export function coreRoutes() {
       <Route path="/forgot-password" element={page(<GuestOnly><ForgotPasswordPage /></GuestOnly>)} />
       <Route path="/reset-password" element={page(<ResetPasswordPage />)} />
       <Route path="/verify-email" element={page(<VerifyEmailPage />)} />
+      <Route path="/support" element={page(<SupportPage />)} />
+      <Route path="/checkout" element={page(<RequireAuth><CheckoutPage /></RequireAuth>)} />
+      <Route path="/checkout/complete" element={page(<RequireAuth><CheckoutCompletePage /></RequireAuth>)} />
 
       <Route
         path="/dashboard"
@@ -124,6 +132,8 @@ export function coreRoutes() {
         <Route path="branding" element={page(<AdminBrandingPage />)} />
         <Route path="plans" element={page(<AdminPlansPage />)} />
         <Route path="promotions" element={page(<AdminPromotionsPage />)} />
+        <Route path="payments" element={page(<AdminPaymentsPage />)} />
+        <Route path="support" element={page(<AdminSupportPage />)} />
         <Route path="errors" element={page(<AdminErrorsPage />)} />
         <Route path="errors/:ref" element={page(<AdminErrorDetailPage />)} />
         <Route path="emails" element={page(<AdminEmailsPage />)} />
