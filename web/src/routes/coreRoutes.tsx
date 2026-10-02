@@ -33,6 +33,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const SupportPage = lazy(() => import('@/pages/SupportPage'))
 const AdminSupportPage = lazy(() => import('@/pages/admin/AdminSupportPage'))
+const AdminVisitsPage = lazy(() => import('@/pages/admin/AdminVisitsPage'))
 const AdminPaymentsPage = lazy(() => import('@/pages/admin/AdminPaymentsPage'))
 const CheckoutPage = lazy(() => import('@/pages/checkout/CheckoutPage'))
 const CheckoutCompletePage = lazy(() => import('@/pages/checkout/CheckoutCompletePage'))
@@ -134,6 +135,7 @@ export function coreRoutes() {
         <Route path="promotions" element={page(<AdminPromotionsPage />)} />
         <Route path="payments" element={page(<AdminPaymentsPage />)} />
         <Route path="support" element={page(<AdminSupportPage />)} />
+        <Route path="visits" element={page(<AdminVisitsPage />)} />
         <Route path="errors" element={page(<AdminErrorsPage />)} />
         <Route path="errors/:ref" element={page(<AdminErrorDetailPage />)} />
         <Route path="emails" element={page(<AdminEmailsPage />)} />

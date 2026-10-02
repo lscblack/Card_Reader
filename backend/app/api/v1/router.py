@@ -28,6 +28,7 @@ from app.api.v1.routes import (
     sandbox,
     support,
     team,
+    visits,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -44,6 +45,8 @@ api_router.include_router(releases.router)
 api_router.include_router(releases.admin_router)
 api_router.include_router(support.router)
 api_router.include_router(support.admin_router)
+api_router.include_router(visits.router)
+api_router.include_router(visits.admin_router)
 
 # Root-level public routes (no /api/v1): card taps and the sandbox receiver.
 root_router = APIRouter()

@@ -182,6 +182,13 @@ async def billing(ctx: View, session: SessionDep) -> BillingOut:
                       limits=biz.plan_limits(plan), status=ctx.business.status)
 
 
+@router.get("/{business_id}/page-visits", summary="Visits to your public pages (/b/…)")
+async def page_visits(ctx: View, session: SessionDep, days: int = Query(default=30, ge=1, le=365)) -> dict[str, Any]:
+    from app.services import visits
+
+    return await visits.business_report(session, ctx.business.id, days)
+
+
 @router.get("/{business_id}/overview", summary="Business dashboard overview")
 async def overview(ctx: View, session: SessionDep) -> dict[str, Any]:
     bid = ctx.business.id

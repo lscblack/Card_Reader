@@ -17,7 +17,7 @@ from app.core.errors import AppError, not_found
 from app.models import SupportTicket, User
 from app.models.support import SUPPORT_STATUSES
 from app.schemas.common import Schema
-from app.services import audit, notifications, payment_config, payments
+from app.services import audit, notifications, payment_config, payments, visits
 from app.services.request_logs import set_actor
 
 router = APIRouter(tags=["Support"])
@@ -109,6 +109,7 @@ async def admin_tickets(admin: AdminUser, session: SessionDep, pagination: Pagin
         "items": [ticket_out(t, u) for t, u in rows], "total": total, "page": pagination.page,
         "page_size": pagination.page_size,
         "counts": {s: int(counts.get(s, 0)) for s in SUPPORT_STATUSES},
+        "page_visits_30d": await visits.support_visits(session, 30),
     }
 
 

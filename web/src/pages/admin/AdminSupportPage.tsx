@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Inbox, Mail, Phone, Search, User as UserIcon } from 'lucide-react'
+import { Eye, Inbox, Mail, Phone, Search, User as UserIcon } from 'lucide-react'
 import { adminSupportApi, SUPPORT_CATEGORIES, SUPPORT_STATUS_LABEL, type SupportStatus, type SupportTicket } from '@/api/support'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
@@ -148,7 +148,19 @@ export default function AdminSupportPage() {
 
   return (
     <>
-      <PageHeader title="Support" description="Requests sent from the Support page, with the customer’s contact details." />
+      <PageHeader
+        title="Support"
+        description="Requests sent from the Support page, with the customer’s contact details."
+        actions={
+          q.data && (
+            <Link to="/admin/visits" className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-[13px] hover:bg-surface-2" title="Times the Support page was opened">
+              <Eye className="h-4 w-4 text-subtle" />
+              <span className="font-semibold tabular-nums">{q.data.page_visits_30d.toLocaleString()}</span>
+              <span className="text-muted">page visits · 30 days</span>
+            </Link>
+          )
+        }
+      />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <Tabs
           value={status}

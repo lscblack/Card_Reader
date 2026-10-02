@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { Activity, Globe, MousePointerClick, Nfc, Radio, Star, Users } from 'lucide-react'
+import { Activity, Eye, Globe, MousePointerClick, Nfc, Radio, Star, Users } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { visitsApi } from '@/api/visits'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Spinner'
@@ -38,6 +40,9 @@ export default function AnalyticsPage() {
   const allowed = can('analytics.view')
   const { data: a, error, isLoading, isFetching, refetch } = useAnalytics(business.id, { range, card_id: cardId || undefined, employee_id: employeeId || undefined }, allowed)
   const cards = useCards(business.id, { page_size: 100 }, allowed)
+  const visitDays = Number.parseInt(range, 10) || 30
+  const visits = useQuery({ queryKey: ['business', business.id, 'page-visits', visitDays], queryFn: () => visitsApi.business(business.id, visitDays), enabled: allowed })
+  const pv = visits.data
   const [tap, setTap] = useState<CardTap | null>(null)
   const rangeLabel = RANGES.find((r) => r.value === range)?.label.toLowerCase()
 
@@ -110,6 +115,36 @@ export default function AnalyticsPage() {
                     { key: 'unique_visitors', label: 'Unique visitors', color: CHART.secondary },
                   ]}
                 />
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Public page visits"
+              description={pv ? `${num(pv.period.visits)} visits · ${num(pv.period.unique_visitors)} unique visitors · ${num(pv.today.visits)} today` : 'People opening your business page and other public pages.'}
+            />
+            <CardBody className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+              {!pv ? (
+                <Skeleton className="h-56 lg:col-span-2" />
+              ) : (
+                <>
+                  <TimelineChart
+                    data={pv.daily}
+                    height={220}
+                    label={`Daily visits to your public pages over the last ${rangeLabel}`}
+                    series={[
+                      { key: 'visits', label: 'Visits', color: CHART.primary },
+                      { key: 'unique_visitors', label: 'Unique visitors', color: CHART.secondary },
+                    ]}
+                  />
+                  <div>
+                    <p className="mb-3 flex items-center gap-1.5 text-[13px] font-medium">
+                      <Eye className="h-4 w-4 text-subtle" /> Most visited pages
+                    </p>
+                    <BarList items={pv.pages.map((p) => ({ key: p.profile_id ?? 'home', label: p.title, value: p.visits }))} empty="No visits to your pages in this period yet." />
+                  </div>
+                </>
               )}
             </CardBody>
           </Card>

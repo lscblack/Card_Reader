@@ -41,6 +41,8 @@ export interface AdminSupportPage {
   page: number
   page_size: number
   counts: Record<SupportStatus, number>
+  /** Times the Support page was opened in the last 30 days. */
+  page_visits_30d: number
 }
 
 export const adminSupportApi = {

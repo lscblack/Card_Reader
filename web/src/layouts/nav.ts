@@ -2,6 +2,7 @@ import {
   Activity,
   LifeBuoy,
   Wallet,
+  Eye,
   CreditCard,
   Mail,
   PackageOpen,
@@ -78,6 +79,7 @@ export const adminNav: ShellNavSection[] = [
   {
     title: 'Observability',
     items: [
+      { to: '/admin/visits', label: 'Visits', icon: Eye },
       { to: '/admin/errors', label: 'Error center', icon: Siren, tour: 'nav-admin-errors' },
       { to: '/admin/logs', label: 'Request logs', icon: ScrollText },
       { to: '/admin/deliveries', label: 'Deliveries', icon: Send },

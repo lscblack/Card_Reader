@@ -24,6 +24,7 @@ from app.models.business import (
 )
 from app.models.billing import CheckoutSession
 from app.models.support import SupportTicket
+from app.models.visit import PageVisit
 from app.models.chip import ChipRegistration
 from app.models.communication import AppRelease, EmailCampaign, EmailLog, Notification, Promotion, PromotionClaim
 from app.models.personal import (
@@ -49,7 +50,7 @@ from app.models.user import (
 
 __all__ = [
     "CardTemplate", "Contact", "DigitalCard", "DigitalCardInvite", "PersonalActivity", "PersonalLoginCode",
-    "PersonalSession", "ChipRegistration", "CheckoutSession", "SupportTicket",
+    "PersonalSession", "ChipRegistration", "CheckoutSession", "SupportTicket", "PageVisit",
     "AppRelease", "EmailCampaign", "EmailLog", "Notification", "Promotion",
     "Business", "BusinessCategory", "BusinessInvitation", "BusinessMember", "BusinessSlugRedirect",
     "Card", "CardHistory", "CardTap", "Customer", "Employee", "FormResponse", "PageTemplate", "Profile",

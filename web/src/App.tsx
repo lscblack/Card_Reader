@@ -6,6 +6,7 @@ import { coreRoutes } from '@/routes/coreRoutes'
 import { businessRoutes } from '@/business/routes'
 import { personalRoutes } from '@/personal/routes'
 import { marketingRoutes } from '@/marketing/routes'
+import { useVisitTracker } from '@/hooks/useVisitTracker'
 
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
@@ -17,6 +18,7 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
  */
 export default function App() {
   const { pathname } = useLocation()
+  useVisitTracker()
   return (
     <ErrorBoundary resetKey={pathname}>
       <Suspense fallback={<FullPageSpinner />}>
