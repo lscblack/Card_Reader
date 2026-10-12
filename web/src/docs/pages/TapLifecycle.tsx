@@ -21,6 +21,46 @@ export default function TapLifecycle() {
         <TapFlowDiagram />
       </Figure>
 
+      <H2 id="delivery-model">How taps reach your backend</H2>
+      <P>
+        nexTap is <B>push-only</B>: every tap is delivered to you as a signed webhook at the endpoint you set on your application in the
+        dashboard. You build a receiver — there is nothing to poll and no per-tap URL for the phone to choose.
+      </P>
+      <Table
+        head={['Approach', 'Supported?', 'What to build']}
+        rows={[
+          [
+            <>nexTap cloud → webhook (<C>relay</C>, default)</>,
+            <B>Yes — this is the model</B>,
+            <>
+              Build an HTTPS receiver and set it as your application’s endpoint. The platform signs each tap and <C>POST</C>s it to you. See{' '}
+              <DocLink to="/docs/webhooks">Webhooks &amp; signatures</DocLink>.
+            </>,
+          ],
+          [
+            <>Phone → your endpoint (<C>direct</C>)</>,
+            <>Variant of the same thing</>,
+            <>
+              The phone delivers to the <B>same dashboard-configured endpoint</B> (allowlist-enforced) and reports the outcome back to the
+              platform. You still build one receiver; only who makes the call changes.
+            </>,
+          ],
+          [
+            <>Poll a “recent taps” API</>,
+            <B>No — not available</B>,
+            <>
+              There is no pull/poll API for taps. API keys only register devices; the event list (<C>GET /events</C>) is dashboard-only, not
+              reachable with an API key.
+            </>,
+          ],
+        ]}
+      />
+      <Callout tone="note" title="So which do I build?">
+        A single <B>webhook receiver</B> that verifies the <C>X-NFC-Signature</C> and returns <C>2xx</C>. Relay and direct deliver to that same
+        endpoint. If you want to see taps live while testing instead of standing up a receiver, use the{' '}
+        <DocLink to="/docs/sandbox">hosted sandbox</DocLink> or <DocLink to="/docs/run-mode">run mode</DocLink>.
+      </Callout>
+
       <H2 id="developer-device">Developer device</H2>
       <OL>
         <li>

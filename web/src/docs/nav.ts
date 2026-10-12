@@ -96,13 +96,14 @@ export const docPages: DocPage[] = [
     description: 'The full journey of a tap on a developer device, a business device and a customer’s phone.',
     headings: [
       { id: 'three-paths', title: 'Three kinds of tap' },
+      { id: 'delivery-model', title: 'How taps reach your backend' },
       { id: 'developer-device', title: 'Developer device' },
       { id: 'business-device', title: 'Business device' },
       { id: 'customer-phone', title: 'Customer phone' },
       { id: 'background', title: 'When the app is closed' },
       { id: 'failures', title: 'When something fails' },
     ],
-    keywords: 'tap flow lifecycle result recognized inactive unknown register open action notification t link',
+    keywords: 'tap flow lifecycle result recognized inactive unknown register open action notification t link push webhook receiver poll polling pull delivery model repoint integrate',
   },
   {
     slug: 'mobile-app',
