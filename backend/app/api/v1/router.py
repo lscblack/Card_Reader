@@ -27,13 +27,14 @@ from app.api.v1.routes import (
     request_logs,
     sandbox,
     support,
+    taps,
     team,
     visits,
 )
 
 api_router = APIRouter(prefix="/api/v1")
 for module in (health, auth, account, applications, api_keys, devices, events, admin, admin_console, admin_part3, pairing,
-               device_api, request_logs, sandbox, businesses, people, cards, profiles, forms, team, public):
+               device_api, request_logs, sandbox, taps, businesses, people, cards, profiles, forms, team, public):
     api_router.include_router(module.router)
 api_router.include_router(passkeys.router)
 api_router.include_router(team.public_router)

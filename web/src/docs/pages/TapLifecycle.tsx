@@ -23,8 +23,9 @@ export default function TapLifecycle() {
 
       <H2 id="delivery-model">How taps reach your backend</H2>
       <P>
-        nexTap is <B>push-only</B>: every tap is delivered to you as a signed webhook at the endpoint you set on your application in the
-        dashboard. You build a receiver — there is nothing to poll and no per-tap URL for the phone to choose.
+        Taps are delivered <B>push-first</B>: each one is sent to you as a signed webhook at the endpoint you set on your application in the
+        dashboard — that is the model to build for. If you can’t expose a public endpoint yet (local development, no tunnel), you can instead{' '}
+        <B>pull recent taps</B> with your API key while you build.
       </P>
       <Table
         head={['Approach', 'Supported?', 'What to build']}
@@ -47,18 +48,19 @@ export default function TapLifecycle() {
           ],
           [
             <>Poll a “recent taps” API</>,
-            <B>No — not available</B>,
+            <>Yes — for local dev</>,
             <>
-              There is no pull/poll API for taps. API keys only register devices; the event list (<C>GET /events</C>) is dashboard-only, not
-              reachable with an API key.
+              <C>GET /taps</C> with your API key returns your application’s taps and a cursor to tail new ones. Great for building without a
+              public endpoint; webhooks are still the better choice once you can receive them.
             </>,
           ],
         ]}
       />
       <Callout tone="note" title="So which do I build?">
         A single <B>webhook receiver</B> that verifies the <C>X-NFC-Signature</C> and returns <C>2xx</C>. Relay and direct deliver to that same
-        endpoint. If you want to see taps live while testing instead of standing up a receiver, use the{' '}
-        <DocLink to="/docs/sandbox">hosted sandbox</DocLink> or <DocLink to="/docs/run-mode">run mode</DocLink>.
+        endpoint. While you’re still building locally, you can <B>poll <C>GET /taps</C></B> with your API key instead — see{' '}
+        <DocLink to="/docs/polling">Polling taps</DocLink> — or watch them in the <DocLink to="/docs/sandbox">hosted sandbox</DocLink> and{' '}
+        <DocLink to="/docs/run-mode">run mode</DocLink>.
       </Callout>
 
       <H2 id="developer-device">Developer device</H2>

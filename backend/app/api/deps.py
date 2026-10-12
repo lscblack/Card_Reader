@@ -39,7 +39,7 @@ jwt_scheme = HTTPBearer(
 )
 api_key_scheme = HTTPBearer(
     scheme_name="ApiKey",
-    description="Application API key (`Authorization: Bearer nfc_...`). Only used for device registration.",
+    description="Application API key (`Authorization: Bearer nfc_...`). Registers devices and polls the application's taps (`GET /taps`).",
     auto_error=False,
 )
 device_scheme = HTTPBearer(

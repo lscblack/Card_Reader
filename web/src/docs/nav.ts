@@ -158,6 +158,20 @@ export const docPages: DocPage[] = [
     keywords: 'hmac sha256 x-nfc-signature v1 timestamp nonce raw body verify whsec',
   },
   {
+    slug: 'polling',
+    title: 'Polling taps',
+    group: 'Developers',
+    description: 'Pull recent taps with your API key when you can’t receive webhooks yet — with a keyset cursor to tail new ones.',
+    headings: [
+      { id: 'when', title: 'When to use polling' },
+      { id: 'list', title: 'List recent taps' },
+      { id: 'cursor', title: 'Tailing with a cursor' },
+      { id: 'filters', title: 'Filters & limits' },
+      { id: 'single', title: 'Get one tap' },
+    ],
+    keywords: 'poll polling pull fetch recent taps cursor next_cursor has_more since local development no endpoint tunnel list events api key',
+  },
+  {
     slug: 'sandbox',
     title: 'Sandbox',
     group: 'Developers',

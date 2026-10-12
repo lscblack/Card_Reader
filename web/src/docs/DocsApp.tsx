@@ -12,6 +12,7 @@ import PersonalGuide from './pages/PersonalGuide'
 import MobileApp from './pages/MobileApp'
 import DeviceApi from './pages/DeviceApi'
 import Webhooks from './pages/Webhooks'
+import Polling from './pages/Polling'
 import Sandbox from './pages/Sandbox'
 import BusinessGuide from './pages/BusinessGuide'
 import ApiReference from './pages/ApiReference'
@@ -50,6 +51,7 @@ export default function DocsApp() {
         <Route path="mobile-app" element={<MobileApp />} />
         <Route path="device-api" element={<DeviceApi />} />
         <Route path="webhooks" element={<Webhooks />} />
+        <Route path="polling" element={<Polling />} />
         <Route path="sandbox" element={<Sandbox />} />
         <Route path="business-guide" element={<BusinessGuide />} />
         <Route path="api-reference" element={<ApiReference />} />
