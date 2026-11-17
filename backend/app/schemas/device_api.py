@@ -180,3 +180,7 @@ class DeviceEventOut(Schema):
     error_ref: str | None = None
     business: dict[str, Any] | None = Field(
         default=None, description="Business devices only (§C2); absent for developer devices.")
+    endpoint_reply: EndpointReply | None = Field(
+        default=None, description="Relay mode: what the endpoint answered (display, action_url, session_open).")
+
+

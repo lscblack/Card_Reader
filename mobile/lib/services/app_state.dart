@@ -249,14 +249,13 @@ class AppState extends ChangeNotifier {
       httpClient: httpClient,
       repository: repository,
       isOnline: () => online,
-      onEndpointReply: (reply) => sharing.onReply(reply),
+      onEndpointReply: (reply, seq) => sharing.onReply(reply, seq: seq),
+      requestSeq: () => sharing.nextSeq(),
     );
     sharing = LocationSharing(
       source: locationSource,
       configProvider: () => configSync?.config,
-      send: (config, fix) async {
-        await delivery?.sendLocationUpdate(config, fix);
-      },
+      send: (config, fix) async => await delivery?.sendLocationUpdate(config, fix) ?? false,
     );
     locationSharing = sharing;
     retryQueue = RetryQueue(repository: repository, delivery: delivery!, configProvider: () => configSync?.config)

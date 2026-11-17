@@ -74,6 +74,8 @@ class ReaderController extends ChangeNotifier {
     }
   }
 
+  int _tapSeq = 0;
+
   NfcState nfcState = NfcState.enabled;
   ReaderPhase phase = ReaderPhase.checking;
 
@@ -260,6 +262,10 @@ class ReaderController extends ChangeNotifier {
     if (!_debouncer.accept(card.uid, card.detectedAt)) return null;
     unawaited(_haptic());
     _backToReady?.cancel();
+    // This read's place in line, taken before anything is awaited: a slower, older read must never replace
+    // the Reader state of a newer one or open its link.
+    final seq = ++_tapSeq;
+    bool isLatest() => seq == _tapSeq;
     lastCard = card;
     lastReply = null;
     linkNotice = null;
@@ -268,16 +274,18 @@ class ReaderController extends ChangeNotifier {
     lastMessage = null;
     _notify();
 
-    final config = configProvider();
     // Opt-in: no location is asked for, stored or sent unless the application has sharing on.
     GeoFix? fix;
-    if (config?.shareLocation == true) {
+    if (configProvider()?.shareLocation == true) {
       try {
         fix = await locationProvider?.call();
       } catch (e) {
         Log.d('reader', 'no location for this tap: ${e.runtimeType}');
       }
     }
+    // The setting may have been switched off while the fix was being taken: read it again, and drop the fix.
+    final config = configProvider();
+    if (config?.shareLocation != true) fix = null;
     final record = EventRecord(
       eventId: const Uuid().v4(),
       cardId: card.uid,
@@ -291,7 +299,7 @@ class ReaderController extends ChangeNotifier {
       locationJson: fix == null ? null : jsonEncode(fix.toJson()),
     );
     await repository.upsert(record);
-    lastEvent = record;
+    if (isLatest()) lastEvent = record;
 
     final delivery = deliveryProvider();
     if (delivery == null || config == null) {
@@ -301,17 +309,19 @@ class ReaderController extends ChangeNotifier {
         nextAttemptAt: () => DateTime.now().toUtc().add(const Duration(seconds: 5)),
       );
       await repository.upsert(queued);
-      _showResult(queued);
+      if (isLatest()) _showResult(queued);
       return queued;
     }
 
-    phase = ReaderPhase.sending;
-    _notify();
-    if (nfc.sessionBased) unawaited(nfc.setSessionMessage('Sending…'));
+    if (isLatest()) {
+      phase = ReaderPhase.sending;
+      _notify();
+      if (nfc.sessionBased) unawaited(nfc.setSessionMessage('Sending…'));
+    }
     final result = await delivery.deliver(record, config) ?? record;
-    if (lastEvent?.eventId == record.eventId) lastReply = result.reply;
     // A newer card may have been read meanwhile; only show the latest.
-    if (lastEvent?.eventId == record.eventId) {
+    if (isLatest()) {
+      lastReply = result.reply;
       _showResult(result);
       // iOS: the sheet covers the reader screen, so the result goes on the sheet too.
       if (nfc.sessionBased) {
@@ -319,7 +329,7 @@ class ReaderController extends ChangeNotifier {
         unawaited(nfc.setSessionMessage('${text.title}\nHold the next card near the top of the iPhone.'));
       }
     }
-    await _handleReplyLink(result.reply, config);
+    if (isLatest()) await _handleReplyLink(result.reply, configProvider() ?? config);
     final b = result.business;
     final run = runAction;
     if (run != null && b != null && b.isRecognized && b.actionUrl != null) {

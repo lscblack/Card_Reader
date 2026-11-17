@@ -24,6 +24,10 @@ def upgrade() -> None:
     op.add_column('applications', sa.Column('share_location', sa.Boolean(), server_default=sa.text('false'), nullable=False))
 
 
+    op.add_column('nfc_events', sa.Column('endpoint_reply', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+
+
 def downgrade() -> None:
+    op.drop_column('nfc_events', 'endpoint_reply')
     op.drop_column('applications', 'share_location')
     op.drop_column('applications', 'link_domains')

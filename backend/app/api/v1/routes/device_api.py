@@ -362,7 +362,7 @@ async def submit_event(
         error=d.error,
         error_code=d.error_code,
         error_ref=ref_for(d.error_code),
-    ), block, digital.response if digital else None, app_card, getattr(d, "endpoint_reply", None))
+    ), block, digital.response if digital else None, app_card, event.endpoint_reply)
 
 
 def _event_extra(app: Any, digital: Any, location: LocationIn | None) -> dict[str, Any] | None:
@@ -389,6 +389,9 @@ async def post_location(body: LocationIn, device: CurrentDevice) -> LocationUpda
     app = device.application
     if not app.share_location:
         raise AppError(409, "location_sharing_off", "Location sharing is off for this application")
+    if app.delivery_mode != "relay":
+        # Direct-mode phones sign and send their own location.update; the server must not sign for them.
+        raise AppError(409, "not_relay_mode", "Location updates go through the platform only in relay mode")
     result = await delivery.relay_location_update(app, device.id, body.as_dict())
     return LocationUpdateOut(endpoint_reply=result.reply, delivered=result.success)  # type: ignore[arg-type]
 
@@ -400,7 +403,7 @@ async def _enqueue(event: NfcEvent | None) -> None:
 
 def _out(state: DeviceEventOut, business_block: dict | None, digital: dict | None = None,
          app_card: dict | None = None, endpoint_reply: dict | None = None) -> JSONResponse:  # type: ignore[type-arg]
-    data = state.model_dump(mode="json", exclude={"business"})
+    data = state.model_dump(mode="json", exclude={"business", "endpoint_reply"})
     if endpoint_reply is not None:
         data["endpoint_reply"] = endpoint_reply
     if digital is not None:
@@ -425,7 +428,7 @@ async def _handle_duplicate(
         await _record_direct_attempt(session, event, body)
         await session.commit()
     block = await taps_service.block_for_existing_event(session, event.id) if business is not None else None
-    return _out(await _state(session, event), block)
+    return _out(await _state(session, event), block, endpoint_reply=event.endpoint_reply)
 
 
 # ── §C3: card management from business devices ─────────────────────────

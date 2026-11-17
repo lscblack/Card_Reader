@@ -155,6 +155,7 @@ class DeliveryService {
     String Function()? nonceGenerator,
     bool Function()? isOnline,
     this.onEndpointReply,
+    this.requestSeq,
   }) : _http = httpClient,
        _now = clock ?? DateTime.now,
        _nonce = nonceGenerator ?? Signer.nonce,
@@ -172,8 +173,12 @@ class DeliveryService {
   final Set<String> _inFlight = {};
 
   /// Called with every endpoint reply that arrives (also for retried deliveries and location updates), so the
-  /// location sharer can follow `session_open`.
-  final void Function(EndpointReply reply)? onEndpointReply;
+  /// location sharer can follow `session_open`. [seq] is the number [requestSeq] gave when the request was
+  /// sent, so replies that come back out of order can be told apart.
+  final void Function(EndpointReply reply, int seq)? onEndpointReply;
+
+  /// Numbers requests in the order they are sent (see [onEndpointReply]).
+  final int Function()? requestSeq;
 
   /// While offline, events wait without burning retry attempts; the
   /// connectivity-regained trigger (or this safety poll) sends them.
@@ -223,6 +228,7 @@ class DeliveryService {
 
   Future<EventRecord> _deliverRelay(EventRecord event, DeviceConfig config) async {
     final attempt = event.attempts + 1;
+    final seq = requestSeq?.call() ?? 0;
     final base = event.copyWith(attempts: attempt, deliveryMode: DeliveryMode.relay);
     try {
       final r = await api.submitEvent(
@@ -236,7 +242,7 @@ class DeliveryService {
         'failed' => EventStatus.failed,
         _ => EventStatus.retrying, // server-owned retries: never retried locally
       };
-      if (r.endpointReply != null) onEndpointReply?.call(r.endpointReply!);
+      if (r.endpointReply != null) onEndpointReply?.call(r.endpointReply!, seq);
       return _withBusiness(base, r).copyWith(
         reply: () => r.endpointReply,
         status: status,
@@ -289,6 +295,7 @@ class DeliveryService {
 
   Future<EventRecord> _deliverDirect(EventRecord event, DeviceConfig config) async {
     final attempt = event.attempts + 1;
+    final seq = requestSeq?.call() ?? 0;
     final base = event.copyWith(attempts: attempt, deliveryMode: DeliveryMode.direct);
 
     final url = config.endpointUrl;
@@ -335,7 +342,7 @@ class DeliveryService {
       }
       Log.d('delivery', 'direct ${event.eventId} attempt $attempt -> $code in ${sw.elapsedMilliseconds}ms');
       final reply = ok ? EndpointReply.fromBody(res.body) : null;
-      if (reply != null) onEndpointReply?.call(reply);
+      if (reply != null) onEndpointReply?.call(reply, seq);
       return _directResult(base, config, attempt,
           success: ok, statusCode: code, latencyMs: sw.elapsedMilliseconds,
           error: error, retryable: RetryPolicy.isRetryableStatus(code), reply: reply);
@@ -425,18 +432,20 @@ class DeliveryService {
 
   // ------------------------------------------------------ location updates --
 
-  /// Sends one background location update (only for applications with location sharing on) and returns the
-  /// endpoint's reply, whose `session_open` says whether to keep sharing. Never throws; a failure is null.
+  /// Sends one background location update (only for applications with location sharing on). Returns whether the
+  /// endpoint accepted it; its reply (`session_open`) reaches the sharer through [onEndpointReply]. Never throws.
   /// Nothing is queued or retried: the next update replaces it.
-  Future<EndpointReply?> sendLocationUpdate(DeviceConfig config, GeoFix fix) async {
-    if (!config.shareLocation || !_isOnline()) return null;
+  Future<bool> sendLocationUpdate(DeviceConfig config, GeoFix fix) async {
+    if (!config.shareLocation || !_isOnline()) return false;
+    final seq = requestSeq?.call() ?? 0;
     try {
       EndpointReply? reply;
+      var delivered = false;
       if (config.deliveryMode == DeliveryMode.direct) {
         final url = config.endpointUrl;
         final secret = config.signingSecret;
-        if (url == null || url.isEmpty || !config.endpointEnabled || secret == null || secret.isEmpty) return null;
-        if (!isHostAllowed(Uri.tryParse(url)?.host ?? '', config.allowedDomains)) return null;
+        if (url == null || url.isEmpty || !config.endpointEnabled || secret == null || secret.isEmpty) return false;
+        if (!isHostAllowed(Uri.tryParse(url)?.host ?? '', config.allowedDomains)) return false;
         final id = const Uuid().v4();
         final req = signDirectRequest(
           payload: buildLocationPayload(id: id, config: config, fix: fix, now: _now()),
@@ -449,17 +458,19 @@ class DeliveryService {
         final res = await sendBytes(_http,
             method: 'POST', url: req.url, headers: req.headers, bytes: req.bodyBytes,
             timeout: config.timeout, maxBodyChars: 8192);
-        if (res.statusCode >= 200 && res.statusCode < 300) reply = EndpointReply.fromBody(res.body);
+        delivered = res.statusCode >= 200 && res.statusCode < 300;
+        if (delivered) reply = EndpointReply.fromBody(res.body);
       } else {
         final r = await api.postLocation(fix, timeout: config.timeout + const Duration(seconds: 15));
+        delivered = r.delivered;
         reply = r.endpointReply;
       }
-      if (reply != null) onEndpointReply?.call(reply);
-      return reply;
+      if (reply != null) onEndpointReply?.call(reply, seq);
+      return delivered;
     } catch (e) {
       // Offline, refused or timed out: the sharer simply tries again with the next fix.
       Log.d('delivery', 'location update not sent: ${e.runtimeType}');
-      return null;
+      return false;
     }
   }
 

@@ -292,7 +292,9 @@ class _LocationCardState extends State<_LocationCard> {
           child: ListTile(
             leading: Icon(Icons.my_location, color: Theme.of(context).colorScheme.onPrimaryContainer),
             title: const Text('Sharing your location'),
-            subtitle: const Text('A session is open. Sharing stops when it ends.'),
+            subtitle: Text(s.deliveryTroubled
+                ? 'Updates are not reaching the server. Check the connection.'
+                : 'A session is open. Sharing stops when it ends.'),
             trailing: TextButton(onPressed: s.pauseByUser, child: const Text('Stop sharing')),
           ),
         ),
@@ -332,8 +334,13 @@ class _LocationCardState extends State<_LocationCard> {
           children: [
             Icon(Icons.location_disabled, size: 18, color: StatusColors.neutral(context)),
             const SizedBox(width: 8),
-            Expanded(child: Text('A session is open. You stopped sharing your location.', style: t.bodySmall)),
-            TextButton(onPressed: s.resume, child: const Text('Share again')),
+            Expanded(
+              child: Text(
+                s.problem ?? 'A session is open. You stopped sharing your location.',
+                style: t.bodySmall,
+              ),
+            ),
+            TextButton(onPressed: s.resume, child: Text(s.problem != null ? 'Try again' : 'Share again')),
           ],
         ),
       );

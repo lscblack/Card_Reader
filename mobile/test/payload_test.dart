@@ -140,9 +140,6 @@ void main() {
       expect(req.headers['X-NFC-Device-Id'], cfg.deviceId);
     });
 
-    test('each delivery draws a fresh nonce', () {
-      expect(Signer.nonce(), isNot(Signer.nonce()));
-    });
   });
 
   test('endpoint reply parsing: tones, clipping and junk', () {

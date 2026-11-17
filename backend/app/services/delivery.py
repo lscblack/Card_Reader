@@ -12,6 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from sqlalchemy import select
@@ -32,7 +33,7 @@ WORKER_HEARTBEAT_KEY = "nfc:worker:heartbeat"
 LOCK_PREFIX = "nfc:delivery:lock:"
 LOCK_TTL_MS = 120_000
 EXCERPT_MAX_CHARS = 500
-_READ_LIMIT_BYTES = 4096
+_READ_LIMIT_BYTES = 64 * 1024  # enough for a reply; excerpts keep only the first 2 KB
 RELAY_USER_AGENT = "nexTap-Webhook/1.0"
 DIRECT_USER_AGENT = "nexTap-Terminal/1.0"
 NIL_UUID = "00000000-0000-0000-0000-000000000000"
@@ -88,6 +89,15 @@ def build_event_payload(event: NfcEvent, mode: str = "relay") -> dict[str, Any]:
         "timestamp": _iso_z(event.detected_at),
         **(event.extra or {}),
     }
+
+
+def _payload_for_current_settings(application: Application, event: NfcEvent) -> dict[str, Any]:
+    """The relay body for an attempt. A location stored with the event is sent only while the application's
+    `share_location` is on right now (a retry after it was switched off drops it)."""
+    payload = build_event_payload(event, "relay")
+    if not application.share_location:
+        payload.pop("location", None)
+    return payload
 
 
 def build_test_payload(application_id: uuid.UUID) -> dict[str, Any]:
@@ -146,6 +156,22 @@ REPLY_URL_MAX = 2048
 
 def _clip(value: Any, limit: int) -> str | None:
     return value.strip()[:limit] if isinstance(value, str) and value.strip() else None
+
+
+def _strip_url_query(url: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
+def redact_reply_excerpt(excerpt: str | None, reply: dict[str, Any] | None) -> str | None:
+    """A reply's `action_url` may carry a token in its query: stored and live excerpts keep scheme, host and path
+    only. A body that parsed as a reply is shown as the sanitized reply, so nothing else leaks either."""
+    if excerpt is None or reply is None:
+        return excerpt
+    safe = dict(reply)
+    if safe.get("action_url"):
+        safe["action_url"] = _strip_url_query(safe["action_url"])
+    return json.dumps(safe, ensure_ascii=False)
 
 
 def parse_endpoint_reply(raw: bytes | None) -> dict[str, Any] | None:
@@ -301,9 +327,10 @@ async def _send_signed(
                     chunks.extend(chunk)
                     if len(chunks) >= _READ_LIMIT_BYTES:
                         break
-        live_excerpt = bytes(chunks[:2048]).decode("utf-8", errors="replace") or None
-        excerpt = (live_excerpt or "")[:EXCERPT_MAX_CHARS] or None
         success = 200 <= status_code < 300
+        reply = parse_endpoint_reply(bytes(chunks)) if success else None
+        live_excerpt = redact_reply_excerpt(bytes(chunks[:2048]).decode("utf-8", errors="replace") or None, reply)
+        excerpt = (live_excerpt or "")[:EXCERPT_MAX_CHARS] or None
         error = None
         if not success:
             error = f"HTTP {status_code}"
@@ -312,8 +339,7 @@ async def _send_signed(
         result = AttemptResult(success, status_code, latency_ms, error, excerpt)
         result.response_headers = {k: v for k, v in resp_headers.items()}
         result.live_excerpt = live_excerpt  # type: ignore[attr-defined]
-        if success:
-            result.reply = parse_endpoint_reply(bytes(chunks))
+        result.reply = reply
         return result
     except (TimeoutError, asyncio.TimeoutError, httpx.TimeoutException):
         return AttemptResult(
@@ -363,7 +389,7 @@ async def _relay_send(application: Application, event: NfcEvent) -> AttemptResul
     return await send_signed(
         url=application.endpoint_url,
         secret=decrypt_secret(application.webhook_secret_encrypted),
-        payload=build_event_payload(event, "relay"),
+        payload=_payload_for_current_settings(application, event),
         timeout_seconds=application.endpoint_timeout_seconds,
         custom_headers=application.endpoint_custom_headers,
     )
@@ -397,7 +423,8 @@ async def perform_relay_attempt(
         response_excerpt=result.response_excerpt,
     )
     session.add(delivery)
-    delivery.endpoint_reply = result.reply  # type: ignore[attr-defined]  # not stored: only for the phone's answer
+    if result.success:
+        event.endpoint_reply = result.reply  # kept so a retried submit gets the same answer
     event.attempts = attempt_no
     event.last_status_code = result.status_code
     event.last_error = result.error

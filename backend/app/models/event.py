@@ -70,6 +70,8 @@ class NfcEvent(CreatedAt, Base):
     last_error_code: Mapped[str | None] = mapped_column(String(64))
     # Extra payload fields for business `card.tapped` events (card, assignee, source).
     extra: Mapped[dict | None] = mapped_column(JSONB)
+    # What the endpoint answered (display / action_url / session_open) to the last successful relay delivery.
+    endpoint_reply: Mapped[dict | None] = mapped_column(JSONB)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
