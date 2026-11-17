@@ -138,6 +138,45 @@ def signed_headers(
     return headers
 
 
+# ── The endpoint's reply (shown on the phone) ─────────────────────────────
+REPLY_TITLE_MAX = 120
+REPLY_MESSAGE_MAX = 500
+REPLY_URL_MAX = 2048
+
+
+def _clip(value: Any, limit: int) -> str | None:
+    return value.strip()[:limit] if isinstance(value, str) and value.strip() else None
+
+
+def parse_endpoint_reply(raw: bytes | None) -> dict[str, Any] | None:
+    """What the phone may use from a 2xx answer: `{display: {title, message, tone}, action_url, session_open}`.
+
+    Anything else in the body is dropped, every text is clipped, and a body that is not a JSON object (or has
+    none of the three keys) is no reply. Pure; the phone still decides what to do with `action_url`.
+    """
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    out: dict[str, Any] = {}
+    display = data.get("display")
+    if isinstance(display, dict):
+        title = _clip(display.get("title"), REPLY_TITLE_MAX)
+        message = _clip(display.get("message"), REPLY_MESSAGE_MAX)
+        if title or message:
+            out["display"] = {"title": title, "message": message, "tone": _clip(display.get("tone"), 16)}
+    action_url = _clip(data.get("action_url"), REPLY_URL_MAX)
+    if action_url:
+        out["action_url"] = action_url
+    if isinstance(data.get("session_open"), bool):
+        out["session_open"] = data["session_open"]
+    return out or None
+
+
 # ── Sending ──────────────────────────────────────────────────────────────
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 _SIMPLE_CODES = ("application_disabled", "endpoint_not_configured", "endpoint_disabled", "domain_not_allowed",
@@ -196,6 +235,7 @@ class AttemptResult:
     error_code: str | None = None
     request_payload: dict[str, Any] | None = None
     response_headers: dict[str, str] | None = None
+    reply: dict[str, Any] | None = None  # parse_endpoint_reply of a 2xx answer
 
     def __post_init__(self) -> None:
         if not self.success and self.error_code is None:
@@ -272,6 +312,8 @@ async def _send_signed(
         result = AttemptResult(success, status_code, latency_ms, error, excerpt)
         result.response_headers = {k: v for k, v in resp_headers.items()}
         result.live_excerpt = live_excerpt  # type: ignore[attr-defined]
+        if success:
+            result.reply = parse_endpoint_reply(bytes(chunks))
         return result
     except (TimeoutError, asyncio.TimeoutError, httpx.TimeoutException):
         return AttemptResult(
@@ -355,6 +397,7 @@ async def perform_relay_attempt(
         response_excerpt=result.response_excerpt,
     )
     session.add(delivery)
+    delivery.endpoint_reply = result.reply  # type: ignore[attr-defined]  # not stored: only for the phone's answer
     event.attempts = attempt_no
     event.last_status_code = result.status_code
     event.last_error = result.error
@@ -395,6 +438,35 @@ async def perform_relay_attempt(
         event.id, attempt_no, result.success, result.status_code, result.latency_ms, result.error,
     )
     return delivery
+
+
+async def relay_location_update(application: Application, device_id: uuid.UUID, location: dict[str, Any]) -> AttemptResult:
+    """One signed `location.update` to the endpoint for a phone in relay mode. Nothing is stored and nothing is
+    retried: the next ping replaces it. The answer's `session_open` tells the phone whether to keep sharing."""
+    if application.deleted_at is not None or not application.is_active:
+        return AttemptResult(False, error="application_disabled")
+    if not application.endpoint_url or not application.webhook_secret_encrypted:
+        return AttemptResult(False, error="endpoint_not_configured")
+    if not application.endpoint_enabled:
+        return AttemptResult(False, error="endpoint_disabled")
+    if not url_matches_allowlist(application.endpoint_url, application.allowed_domains):
+        return AttemptResult(False, error="domain_not_allowed")
+    return await send_signed(
+        url=application.endpoint_url,
+        secret=decrypt_secret(application.webhook_secret_encrypted),
+        payload={
+            "event_id": str(uuid.uuid4()),
+            "event": "location.update",
+            "device_id": str(device_id),
+            "application_id": str(application.id),
+            "delivery_mode": "relay",
+            "test": False,
+            "timestamp": _iso_z(datetime.now(UTC)),
+            "location": location,
+        },
+        timeout_seconds=application.endpoint_timeout_seconds,
+        custom_headers=application.endpoint_custom_headers,
+    )
 
 
 # ── Queue & locks ────────────────────────────────────────────────────────

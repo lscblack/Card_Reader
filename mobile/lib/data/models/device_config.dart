@@ -24,6 +24,8 @@ class DeviceConfig {
     required this.maxRetries,
     required this.customHeaders,
     this.allowedDomains = const [],
+    this.linkDomains = const [],
+    this.shareLocation = false,
     this.signingSecret,
     this.accountType = 'developer',
     this.business,
@@ -44,6 +46,13 @@ class DeviceConfig {
 
   /// Endpoint host allowlist (contract 7.1). Empty = no restriction.
   final List<String> allowedDomains;
+
+  /// Hosts a link returned by the endpoint (`action_url`) may open on this phone. Empty = never open one.
+  final List<String> linkDomains;
+
+  /// Opt-in: send the phone's location with each tap, and in the background while the endpoint says a
+  /// session is open.
+  final bool shareLocation;
 
   /// Present only in direct mode. Kept in memory / secure storage only.
   final String? signingSecret;
@@ -85,6 +94,8 @@ class DeviceConfig {
       maxRetries: (json['max_retries'] as num?)?.toInt() ?? 3,
       customHeaders: headers,
       allowedDomains: (json['allowed_domains'] as List?)?.whereType<String>().toList() ?? const [],
+      linkDomains: (json['link_domains'] as List?)?.whereType<String>().toList() ?? const [],
+      shareLocation: json['share_location'] == true,
       signingSecret: json['signing_secret'] as String?,
       accountType: json['account_type'] == 'business' ? 'business' : 'developer',
       business: BusinessInfo.fromJson(json['business']),
@@ -105,6 +116,8 @@ class DeviceConfig {
     'max_retries': maxRetries,
     'custom_headers': customHeaders,
     'allowed_domains': allowedDomains,
+    'link_domains': linkDomains,
+    'share_location': shareLocation,
     'account_type': accountType,
     'business': business?.toJson(),
     'assigned_employee': assignedEmployee?.toJson(),
@@ -123,6 +136,8 @@ class DeviceConfig {
     maxRetries: maxRetries,
     customHeaders: customHeaders,
     allowedDomains: allowedDomains,
+    linkDomains: linkDomains,
+    shareLocation: shareLocation,
     signingSecret: secret,
     accountType: accountType,
     business: business,

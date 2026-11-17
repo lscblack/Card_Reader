@@ -59,6 +59,8 @@ class DeviceConfigOut(Schema):
     custom_headers: dict[str, str]
     signing_secret: str | None
     allowed_domains: list[str]
+    link_domains: list[str] = []
+    share_location: bool = False
     account_type: Literal["developer", "business"] = "developer"
     business: dict[str, Any] | None = None
     assigned_employee: dict[str, Any] | None = None
@@ -84,6 +86,37 @@ class DirectDeliveryIn(Schema):
     attempt: int = Field(default=1, ge=1, le=100)
 
 
+class LocationIn(Schema):
+    """A phone's position. Only used when the application has `share_location` on; otherwise it is dropped."""
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    accuracy_m: float | None = Field(default=None, ge=0, le=100_000)
+
+    def as_dict(self) -> dict[str, float]:
+        out = {"lat": self.lat, "lng": self.lng}
+        if self.accuracy_m is not None:
+            out["accuracy_m"] = self.accuracy_m
+        return out
+
+
+class EndpointReplyDisplay(Schema):
+    title: str | None = None
+    message: str | None = None
+    tone: str | None = None
+
+
+class EndpointReply(Schema):
+    """The endpoint's answer to a delivery, as far as the phone uses it (relay mode)."""
+    display: EndpointReplyDisplay | None = None
+    action_url: str | None = None
+    session_open: bool | None = None
+
+
+class LocationUpdateOut(Schema):
+    endpoint_reply: EndpointReply | None = None
+    delivered: bool
+
+
 class DeviceEventIn(Schema):
     event_id: uuid.UUID
     card_id: str = Field(min_length=1, max_length=200)
@@ -93,6 +126,8 @@ class DeviceEventIn(Schema):
     direct_delivery: DirectDeliveryIn | None = None
     # Part 4 §5: phone-as-card token read over HCE (base64url, 55 chars)
     digital_card_token: str | None = Field(default=None, min_length=1, max_length=128)
+    # Opt-in per application (`share_location`): relayed to the endpoint as `location` in the signed body.
+    location: LocationIn | None = None
 
     @field_validator("card_id")
     @classmethod

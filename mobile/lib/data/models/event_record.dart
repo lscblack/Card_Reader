@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'api_models.dart' show AppCardResult;
+import 'api_models.dart' show AppCardResult, GeoFix;
+import 'endpoint_reply.dart';
 import 'business.dart';
 import 'personal.dart';
 import 'device_config.dart';
@@ -52,6 +53,8 @@ class EventRecord {
     this.digitalCardToken,
     this.digitalJson,
     this.appCardJson,
+    this.locationJson,
+    this.reply,
   });
 
   final String eventId;
@@ -91,6 +94,23 @@ class EventRecord {
 
   /// Developer devices: `app_card` block returned by the platform, JSON-encoded.
   final String? appCardJson;
+
+  /// Location fix taken at the tap, JSON-encoded. Only set for applications with location sharing on;
+  /// kept so a retried delivery carries the same location.
+  final String? locationJson;
+
+  /// The endpoint's answer to the last delivery. Not stored: it only drives what the reader screen shows.
+  final EndpointReply? reply;
+
+  GeoFix? get location {
+    final raw = locationJson;
+    if (raw == null) return null;
+    try {
+      return GeoFix.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
 
   AppCardResult? get appCard {
     final raw = appCardJson;
@@ -139,6 +159,8 @@ class EventRecord {
     String? Function()? businessJson,
     String? Function()? digitalJson,
     String? Function()? appCardJson,
+    String? Function()? locationJson,
+    EndpointReply? Function()? reply,
   }) => EventRecord(
     eventId: eventId,
     cardId: cardId,
@@ -160,6 +182,8 @@ class EventRecord {
     digitalCardToken: digitalCardToken,
     digitalJson: digitalJson != null ? digitalJson() : this.digitalJson,
     appCardJson: appCardJson != null ? appCardJson() : this.appCardJson,
+    locationJson: locationJson != null ? locationJson() : this.locationJson,
+    reply: reply != null ? reply() : this.reply,
   );
 
   Map<String, Object?> toRow() => {
@@ -183,6 +207,7 @@ class EventRecord {
     'digital_token': digitalCardToken,
     'digital_json': digitalJson,
     'app_card_json': appCardJson,
+    'location_json': locationJson,
   };
 
   factory EventRecord.fromRow(Map<String, Object?> r) {
@@ -215,6 +240,7 @@ class EventRecord {
       digitalCardToken: r['digital_token'] as String?,
       digitalJson: r['digital_json'] as String?,
       appCardJson: r['app_card_json'] as String?,
+      locationJson: r['location_json'] as String?,
     );
   }
 }

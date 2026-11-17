@@ -1,17 +1,22 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/logger.dart';
 import '../data/event_repository.dart';
 import '../data/models/business.dart';
 import '../data/models/card_read.dart';
 import '../data/models/device_config.dart';
+import '../data/models/endpoint_reply.dart';
+import '../data/models/api_models.dart' show GeoFix;
 import '../data/models/event_record.dart';
 import 'background_reading.dart' show backgroundResultText;
 import 'delivery_service.dart';
+import 'domain_allowlist.dart';
 import 'nfc_service.dart';
 import 'platform_info.dart';
 
@@ -40,7 +45,10 @@ class ReaderController extends ChangeNotifier {
     UidDebouncer? debouncer,
     Future<void> Function()? haptic,
     this.runAction,
-  }) : _debouncer = debouncer ?? UidDebouncer(),
+    this.locationProvider,
+    Future<bool> Function(Uri url)? openLink,
+  }) : _openLink = openLink ?? _launchExternally,
+       _debouncer = debouncer ?? UidDebouncer(),
        _haptic = haptic ?? HapticFeedback.heavyImpact;
 
   final NfcService nfc;
@@ -54,6 +62,18 @@ class ReaderController extends ChangeNotifier {
   final Future<void> Function(BusinessResult result)? runAction;
   final Future<void> Function() _haptic;
 
+  /// Location sharing (opt-in per application): a fix for the tap, or null. Only asked when the config has it on.
+  final Future<GeoFix?> Function()? locationProvider;
+  final Future<bool> Function(Uri url) _openLink;
+
+  static Future<bool> _launchExternally(Uri url) async {
+    try {
+      return await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
+  }
+
   NfcState nfcState = NfcState.enabled;
   ReaderPhase phase = ReaderPhase.checking;
 
@@ -66,6 +86,15 @@ class ReaderController extends ChangeNotifier {
   CardRead? lastCard;
   EventRecord? lastEvent;
   String? lastMessage;
+
+  /// What the endpoint answered to the last tap (`display` is shown instead of only "Delivered").
+  EndpointReply? lastReply;
+
+  /// Small notice when the endpoint's link was refused (not https, or its host is not on the application's list).
+  String? linkNotice;
+
+  /// The last tap opened the endpoint's link (a dispatched tap must then not send the app to the back).
+  bool openedLink = false;
 
   StreamSubscription<NfcState>? _stateSub;
   StreamSubscription<void>? _repoSub;
@@ -232,11 +261,23 @@ class ReaderController extends ChangeNotifier {
     unawaited(_haptic());
     _backToReady?.cancel();
     lastCard = card;
+    lastReply = null;
+    linkNotice = null;
+    openedLink = false;
     phase = ReaderPhase.reading;
     lastMessage = null;
     _notify();
 
     final config = configProvider();
+    // Opt-in: no location is asked for, stored or sent unless the application has sharing on.
+    GeoFix? fix;
+    if (config?.shareLocation == true) {
+      try {
+        fix = await locationProvider?.call();
+      } catch (e) {
+        Log.d('reader', 'no location for this tap: ${e.runtimeType}');
+      }
+    }
     final record = EventRecord(
       eventId: const Uuid().v4(),
       cardId: card.uid,
@@ -247,6 +288,7 @@ class ReaderController extends ChangeNotifier {
       status: EventStatus.pending,
       updatedAt: DateTime.now().toUtc(),
       digitalCardToken: card.digitalCardToken,
+      locationJson: fix == null ? null : jsonEncode(fix.toJson()),
     );
     await repository.upsert(record);
     lastEvent = record;
@@ -267,6 +309,7 @@ class ReaderController extends ChangeNotifier {
     _notify();
     if (nfc.sessionBased) unawaited(nfc.setSessionMessage('Sending…'));
     final result = await delivery.deliver(record, config) ?? record;
+    if (lastEvent?.eventId == record.eventId) lastReply = result.reply;
     // A newer card may have been read meanwhile; only show the latest.
     if (lastEvent?.eventId == record.eventId) {
       _showResult(result);
@@ -276,6 +319,7 @@ class ReaderController extends ChangeNotifier {
         unawaited(nfc.setSessionMessage('${text.title}\nHold the next card near the top of the iPhone.'));
       }
     }
+    await _handleReplyLink(result.reply, config);
     final b = result.business;
     final run = runAction;
     if (run != null && b != null && b.isRecognized && b.actionUrl != null) {
@@ -286,6 +330,30 @@ class ReaderController extends ChangeNotifier {
       }
     }
     return result;
+  }
+
+  /// Opens the endpoint's `action_url` only when it is https and on this application's link domains
+  /// ([isActionUrlAllowed]). Anything else is dropped; with a domain list set, a small notice says so.
+  Future<void> _handleReplyLink(EndpointReply? reply, DeviceConfig config) async {
+    final url = reply?.actionUrl;
+    if (url == null) return;
+    if (!isActionUrlAllowed(url, config.linkDomains)) {
+      if (config.linkDomains.isNotEmpty) {
+        linkNotice = 'A link from the endpoint was not opened: its address is not on this application\'s allowed list.';
+        Log.d('reader', 'reply link refused (host ${Uri.tryParse(url.trim())?.host})');
+        _notify();
+      }
+      return;
+    }
+    try {
+      openedLink = await _openLink(Uri.parse(url.trim()));
+    } catch (e) {
+      Log.d('reader', 'reply link not opened: ${e.runtimeType}');
+    }
+    if (!openedLink) {
+      linkNotice = 'The link from the endpoint could not be opened.';
+      _notify();
+    }
   }
 
   void _showResult(EventRecord r) {

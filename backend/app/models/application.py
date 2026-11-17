@@ -57,6 +57,15 @@ class Application(UUIDPk, Timestamps, Base):
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
 
+    # Opt-in reader features. `link_domains`: hosts a link returned by the endpoint may open on the phone
+    # (empty = the phone never opens a returned link). `share_location`: the phone sends its location.
+    link_domains: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    share_location: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
     webhook_secret_encrypted: Mapped[str | None] = mapped_column(Text)
     webhook_secret_last4: Mapped[str | None] = mapped_column(String(4))
     webhook_secret_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

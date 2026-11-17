@@ -82,6 +82,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         platform: _app.platform,
         deliveryProvider: () => _app.delivery,
         configProvider: () => _app.config,
+        locationProvider: () => _app.locationSharing?.fixForTap() ?? Future.value(null),
         runAction: (b) async {
           if (_app.autoRunActions && (_app.config?.isBusiness ?? false)) await openActionUrl(b.actionUrl);
         },
@@ -95,6 +96,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         flushRetries: () => _app.retryQueue?.kick(),
         resolveTapLink: _resolveTapLink,
         onForeignLink: _runForeignLink,
+        openedLink: () => reader.openedLink,
       )..start();
     } else if (!_terminal && _reader != null) {
       final r = _reader!;

@@ -25,6 +25,8 @@ export const applicationsApi = {
   rotateSecret: (id: string, body: RotateSecretRequest = {}) =>
     api.post<RotateSecretResponse>(`/applications/${id}/webhook-secret/rotate`, body),
   setAllowedDomains: (id: string, domains: string[]) => api.put<Application>(`/applications/${id}/allowed-domains`, { domains }),
+  setReplyOptions: (id: string, body: { link_domains: string[]; share_location: boolean }) =>
+    api.put<Application>(`/applications/${id}/reply-options`, body),
   createPairingCode: (id: string, body: CreatePairingCodeRequest = {}) =>
     api.post<PairingCodeCreated>(`/applications/${id}/pairing-codes`, body),
   listCards: (id: string) => api.get<AppCard[]>(`/applications/${id}/cards`),

@@ -19,6 +19,8 @@ DeviceConfig testConfig({
   int maxRetries = 3,
   Map<String, String> customHeaders = const {},
   List<String> allowedDomains = const [],
+  List<String> linkDomains = const [],
+  bool shareLocation = false,
 }) => DeviceConfig(
   deviceId: '3b241101-e2bb-4255-8caf-4136c566a962',
   deviceName: 'Front desk Pixel',
@@ -31,6 +33,8 @@ DeviceConfig testConfig({
   maxRetries: maxRetries,
   customHeaders: customHeaders,
   allowedDomains: allowedDomains,
+  linkDomains: linkDomains,
+  shareLocation: shareLocation,
   signingSecret: secret,
 );
 
@@ -257,6 +261,14 @@ class FakeDeviceApi implements DeviceApi {
     submissions.add(submission);
     return onSubmit?.call(submission) ??
         Future.value(EventSubmitResult(eventId: submission.eventId, status: 'delivered', statusCode: 200, latencyMs: 12));
+  }
+
+  final locationUpdates = <GeoFix>[];
+
+  @override
+  Future<LocationUpdateResult> postLocation(GeoFix fix, {Duration? timeout}) async {
+    locationUpdates.add(fix);
+    return const LocationUpdateResult(delivered: true);
   }
 }
 

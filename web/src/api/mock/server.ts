@@ -1568,6 +1568,14 @@ function handle(method: string, path: string, q: Query, body: Body, token: strin
       log('application.allowed_domains_update', 'application', app.id)
       return ok(app)
     }
+    if (is('PUT', '/applications/:id/reply-options')) {
+      const domains = Array.isArray(body.link_domains) ? (body.link_domains as unknown[]).map(String) : []
+      app.link_domains = domains
+      app.share_location = body.share_location === true
+      app.updated_at = now()
+      log('application.reply_options_update', 'application', app.id)
+      return ok(app)
+    }
     if (is('POST', '/applications/:id/pairing-codes')) {
       const code = `nfcp_${urlsafe(32)}`
       const id = uuid()

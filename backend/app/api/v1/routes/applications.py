@@ -21,6 +21,7 @@ from app.schemas.resources import (
     ApplicationOut,
     ApplicationUpdateIn,
     AllowedDomainsIn,
+    ReplyOptionsIn,
     EndpointTestOut,
     PairingCodeCreatedOut,
     PairingCodeCreateIn,
@@ -291,6 +292,35 @@ async def set_allowed_domains(
     app.allowed_domains = domains
     audit.record(session, action="application.allowed_domains_update", user_id=user.id, client=client,
                  resource_type="application", resource_id=app.id, metadata={"from": old, "to": domains})
+    await session.commit()
+    return await application_out_single(session, app)
+
+
+@router.put(
+    "/{application_id}/reply-options",
+    response_model=ApplicationOut,
+    summary="Set what the phone may do with the endpoint's reply, and location sharing",
+    description=(
+        "`link_domains`: hosts (same entry format as the endpoint allowlist, max 20) a link returned by the "
+        "endpoint (`action_url`) may open on the phone; empty = the phone never opens a returned link (the phone "
+        "also requires https). `share_location`: the phone sends its location with every tap and, while the "
+        "endpoint's reply says `session_open: true`, in the background. Both default to off."
+    ),
+)
+async def set_reply_options(
+    application_id: uuid.UUID, body: ReplyOptionsIn, user: CurrentUser, session: SessionDep, client: ClientDep
+) -> ApplicationOut:
+    app = await get_owned_application(session, user, application_id)
+    try:
+        domains = normalize_domain_list(body.link_domains)
+    except ValueError as exc:
+        raise validation_error("body.link_domains", str(exc)) from exc
+    old = {"link_domains": list(app.link_domains or []), "share_location": bool(app.share_location)}
+    app.link_domains = domains
+    app.share_location = body.share_location
+    audit.record(session, action="application.reply_options_update", user_id=user.id, client=client,
+                 resource_type="application", resource_id=app.id,
+                 metadata={"from": old, "to": {"link_domains": domains, "share_location": body.share_location}})
     await session.commit()
     return await application_out_single(session, app)
 

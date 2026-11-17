@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import '../core/config.dart';
 import '../core/error_catalog.dart';
@@ -13,6 +14,7 @@ import '../data/api_client.dart';
 import '../data/event_repository.dart';
 import '../data/models/api_models.dart';
 import '../data/models/device_config.dart';
+import '../data/models/endpoint_reply.dart';
 import '../data/models/event_record.dart';
 import 'domain_allowlist.dart';
 import 'retry_queue.dart';
@@ -48,6 +50,26 @@ Map<String, Object?> buildEndpointPayload({
   // platform; public profile fields are only added by the platform in relay mode.
   if (event.digitalCardToken != null)
     'digital_card': {'id': _uuidFromHex(event.cardId), 'token': event.digitalCardToken, 'verified': false},
+  // Opt-in per application: a location is never sent unless the application has sharing on right now.
+  if (config.shareLocation && event.location != null) 'location': event.location!.toJson(),
+};
+
+/// Body of a background `location.update` (direct mode). Same identity fields as a tap: `device_id`, and a fresh
+/// `event_id` the endpoint can deduplicate on. The reply's `session_open` says whether to keep sharing.
+Map<String, Object?> buildLocationPayload({
+  required String id,
+  required DeviceConfig config,
+  required GeoFix fix,
+  required DateTime now,
+}) => {
+  'event_id': id,
+  'event': 'location.update',
+  'device_id': config.deviceId,
+  'application_id': config.applicationId,
+  'delivery_mode': DeliveryMode.direct.name,
+  'test': false,
+  'timestamp': isoUtc(now),
+  'location': fix.toJson(),
 };
 
 String _uuidFromHex(String h) => h.length != 32
@@ -84,17 +106,34 @@ SignedRequest buildSignedDirectRequest({
   required String secret,
   required DateTime now,
   required String nonce,
+}) => signDirectRequest(
+  payload: buildEndpointPayload(event: event, config: config, mode: DeliveryMode.direct),
+  eventId: event.eventId,
+  config: config,
+  secret: secret,
+  now: now,
+  nonce: nonce,
+);
+
+/// Signs [payload] for direct delivery. The signature covers the exact body bytes (so the body's `device_id` and
+/// `event_id` are signed); `X-NFC-Event-Id` / `X-NFC-Device-Id` repeat them and must agree with the body.
+/// [nonce] is fresh per delivery; a redelivery after a 503 may reuse it, but this app always draws a new one.
+SignedRequest signDirectRequest({
+  required Map<String, Object?> payload,
+  required String eventId,
+  required DeviceConfig config,
+  required String secret,
+  required DateTime now,
+  required String nonce,
 }) {
-  final body = utf8.encode(
-    jsonEncode(buildEndpointPayload(event: event, config: config, mode: DeliveryMode.direct)),
-  );
+  final body = utf8.encode(jsonEncode(payload));
   final ts = unixSeconds(now).toString();
   final headers = <String, String>{
     for (final e in config.customHeaders.entries)
       if (!_reservedHeaders.contains(e.key.toLowerCase())) e.key: e.value,
     'Content-Type': 'application/json',
     'User-Agent': AppConfig.terminalUserAgent,
-    'X-NFC-Event-Id': event.eventId,
+    'X-NFC-Event-Id': eventId,
     'X-NFC-Timestamp': ts,
     'X-NFC-Nonce': nonce,
     'X-NFC-Device-Id': config.deviceId,
@@ -115,6 +154,7 @@ class DeliveryService {
     DateTime Function()? clock,
     String Function()? nonceGenerator,
     bool Function()? isOnline,
+    this.onEndpointReply,
   }) : _http = httpClient,
        _now = clock ?? DateTime.now,
        _nonce = nonceGenerator ?? Signer.nonce,
@@ -130,6 +170,10 @@ class DeliveryService {
   final String Function() _nonce;
   final bool Function() _isOnline;
   final Set<String> _inFlight = {};
+
+  /// Called with every endpoint reply that arrives (also for retried deliveries and location updates), so the
+  /// location sharer can follow `session_open`.
+  final void Function(EndpointReply reply)? onEndpointReply;
 
   /// While offline, events wait without burning retry attempts; the
   /// connectivity-regained trigger (or this safety poll) sends them.
@@ -182,7 +226,7 @@ class DeliveryService {
     final base = event.copyWith(attempts: attempt, deliveryMode: DeliveryMode.relay);
     try {
       final r = await api.submitEvent(
-        _submission(event),
+        _submission(event, location: config.shareLocation ? event.location : null),
         // The server makes the first delivery synchronously, bounded by the endpoint timeout.
         timeout: config.timeout + const Duration(seconds: 15),
       );
@@ -192,7 +236,9 @@ class DeliveryService {
         'failed' => EventStatus.failed,
         _ => EventStatus.retrying, // server-owned retries: never retried locally
       };
+      if (r.endpointReply != null) onEndpointReply?.call(r.endpointReply!);
       return _withBusiness(base, r).copyWith(
+        reply: () => r.endpointReply,
         status: status,
         lastStatusCode: () => r.statusCode,
         latencyMs: () => r.latencyMs,
@@ -278,7 +324,7 @@ class DeliveryService {
         headers: req.headers,
         bytes: req.bodyBytes,
         timeout: config.timeout,
-        maxBodyChars: 1024,
+        maxBodyChars: 8192,
       );
       sw.stop();
       final code = res.statusCode;
@@ -288,9 +334,11 @@ class DeliveryService {
         error = code >= 300 && code < 400 ? 'redirect_not_followed (HTTP $code)' : 'HTTP $code';
       }
       Log.d('delivery', 'direct ${event.eventId} attempt $attempt -> $code in ${sw.elapsedMilliseconds}ms');
+      final reply = ok ? EndpointReply.fromBody(res.body) : null;
+      if (reply != null) onEndpointReply?.call(reply);
       return _directResult(base, config, attempt,
           success: ok, statusCode: code, latencyMs: sw.elapsedMilliseconds,
-          error: error, retryable: RetryPolicy.isRetryableStatus(code));
+          error: error, retryable: RetryPolicy.isRetryableStatus(code), reply: reply);
     } on TimeoutException {
       return _directResult(base, config, attempt,
           success: false, statusCode: null, latencyMs: sw.elapsedMilliseconds,
@@ -318,6 +366,7 @@ class DeliveryService {
     required int? latencyMs,
     required String? error,
     required bool retryable,
+    EndpointReply? reply,
   }) {
     final report = DirectDeliveryReport(
       success: success, statusCode: statusCode, latencyMs: latencyMs, error: error, attempt: attempt,
@@ -332,7 +381,7 @@ class DeliveryService {
       pendingReport: () => jsonEncode(report.toJson()),
     );
     if (success) {
-      return withReport.copyWith(status: EventStatus.delivered, nextAttemptAt: () => null);
+      return withReport.copyWith(status: EventStatus.delivered, nextAttemptAt: () => null, reply: () => reply);
     }
     if (retryable) return _scheduleOrFail(withReport, config, error ?? 'failed', statusCode, null, ref: ref);
     return withReport.copyWith(status: EventStatus.failed, nextAttemptAt: () => null);
@@ -345,7 +394,7 @@ class DeliveryService {
     if (raw == null) return event;
     final report = DirectDeliveryReport.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     try {
-      final r = await api.submitEvent(_submission(event, report));
+      final r = await api.submitEvent(_submission(event, report: report));
       final done = _withBusiness(event, r).copyWith(pendingReport: () => null);
       await repository.upsert(done);
       return done;
@@ -371,6 +420,46 @@ class DeliveryService {
       } finally {
         _inFlight.remove(e.eventId);
       }
+    }
+  }
+
+  // ------------------------------------------------------ location updates --
+
+  /// Sends one background location update (only for applications with location sharing on) and returns the
+  /// endpoint's reply, whose `session_open` says whether to keep sharing. Never throws; a failure is null.
+  /// Nothing is queued or retried: the next update replaces it.
+  Future<EndpointReply?> sendLocationUpdate(DeviceConfig config, GeoFix fix) async {
+    if (!config.shareLocation || !_isOnline()) return null;
+    try {
+      EndpointReply? reply;
+      if (config.deliveryMode == DeliveryMode.direct) {
+        final url = config.endpointUrl;
+        final secret = config.signingSecret;
+        if (url == null || url.isEmpty || !config.endpointEnabled || secret == null || secret.isEmpty) return null;
+        if (!isHostAllowed(Uri.tryParse(url)?.host ?? '', config.allowedDomains)) return null;
+        final id = const Uuid().v4();
+        final req = signDirectRequest(
+          payload: buildLocationPayload(id: id, config: config, fix: fix, now: _now()),
+          eventId: id,
+          config: config,
+          secret: secret,
+          now: _now(),
+          nonce: _nonce(),
+        );
+        final res = await sendBytes(_http,
+            method: 'POST', url: req.url, headers: req.headers, bytes: req.bodyBytes,
+            timeout: config.timeout, maxBodyChars: 8192);
+        if (res.statusCode >= 200 && res.statusCode < 300) reply = EndpointReply.fromBody(res.body);
+      } else {
+        final r = await api.postLocation(fix, timeout: config.timeout + const Duration(seconds: 15));
+        reply = r.endpointReply;
+      }
+      if (reply != null) onEndpointReply?.call(reply);
+      return reply;
+    } catch (e) {
+      // Offline, refused or timed out: the sharer simply tries again with the next fix.
+      Log.d('delivery', 'location update not sent: ${e.runtimeType}');
+      return null;
     }
   }
 
@@ -406,7 +495,7 @@ class DeliveryService {
     );
   }
 
-  EventSubmission _submission(EventRecord e, [DirectDeliveryReport? report]) => EventSubmission(
+  EventSubmission _submission(EventRecord e, {DirectDeliveryReport? report, GeoFix? location}) => EventSubmission(
     eventId: e.eventId,
     cardId: e.cardId,
     technologies: e.technologies,
@@ -414,5 +503,6 @@ class DeliveryService {
     detectedAt: isoUtc(e.detectedAt),
     directDelivery: report,
     digitalCardToken: e.digitalCardToken,
+    location: location,
   );
 }

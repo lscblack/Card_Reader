@@ -31,6 +31,8 @@ from app.schemas.device_api import (
     DeviceRegisterIn,
     DeviceRegisterOut,
     HeartbeatOut,
+    LocationIn,
+    LocationUpdateOut,
 )
 from app.core.error_catalog import ref_for
 from app.services import audit, delivery, live, usage
@@ -71,6 +73,8 @@ async def build_device_config(session: SessionDep, device: Device) -> DeviceConf
         custom_headers=dict(app.endpoint_custom_headers or {}) if direct else {},
         signing_secret=signing_secret,
         allowed_domains=list(app.allowed_domains or []),
+        link_domains=list(app.link_domains or []),
+        share_location=bool(app.share_location),
         account_type="business" if business is not None else "developer",
         business=({"id": business.id, "name": business.name, "slug": business.slug,
                    "logo_url": biz.media_url(business.logo_path)} if business is not None else None),
@@ -289,7 +293,7 @@ async def submit_event(
         event_type="card.detected",
         card_id=body.card_id,
         card_type="digital_card" if digital is not None else body.card_type,
-        extra={"digital_card": digital.payload} if digital is not None else None,
+        extra=_event_extra(app, digital, body.location),
         card_technologies=body.card_technologies,
         delivery_mode="direct" if is_direct else "relay",
         status="pending",
@@ -358,7 +362,35 @@ async def submit_event(
         error=d.error,
         error_code=d.error_code,
         error_ref=ref_for(d.error_code),
-    ), block, digital.response if digital else None, app_card)
+    ), block, digital.response if digital else None, app_card, getattr(d, "endpoint_reply", None))
+
+
+def _event_extra(app: Any, digital: Any, location: LocationIn | None) -> dict[str, Any] | None:
+    """The event's extra payload fields. A location is kept only when the application opted in."""
+    extra: dict[str, Any] = {}
+    if digital is not None:
+        extra["digital_card"] = digital.payload
+    if location is not None and app.share_location:
+        extra["location"] = location.as_dict()
+    return extra or None
+
+
+@router.post(
+    "/location",
+    response_model=LocationUpdateOut,
+    summary="Relay a background location update to the endpoint (relay mode)",
+    description=(
+        "Only for applications with location sharing on (`409 location_sharing_off` otherwise). Sends one signed "
+        "`location.update` to the endpoint, stores nothing and retries nothing. The answer's `endpoint_reply."
+        "session_open` says whether the phone should keep sharing."
+    ),
+)
+async def post_location(body: LocationIn, device: CurrentDevice) -> LocationUpdateOut:
+    app = device.application
+    if not app.share_location:
+        raise AppError(409, "location_sharing_off", "Location sharing is off for this application")
+    result = await delivery.relay_location_update(app, device.id, body.as_dict())
+    return LocationUpdateOut(endpoint_reply=result.reply, delivered=result.success)  # type: ignore[arg-type]
 
 
 async def _enqueue(event: NfcEvent | None) -> None:
@@ -367,8 +399,10 @@ async def _enqueue(event: NfcEvent | None) -> None:
 
 
 def _out(state: DeviceEventOut, business_block: dict | None, digital: dict | None = None,
-         app_card: dict | None = None) -> JSONResponse:  # type: ignore[type-arg]
+         app_card: dict | None = None, endpoint_reply: dict | None = None) -> JSONResponse:  # type: ignore[type-arg]
     data = state.model_dump(mode="json", exclude={"business"})
+    if endpoint_reply is not None:
+        data["endpoint_reply"] = endpoint_reply
     if digital is not None:
         data["digital_card"] = digital
     if app_card is not None:
