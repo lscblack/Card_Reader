@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfc_terminal/data/models/api_models.dart';
 import 'package:nfc_terminal/data/models/device_config.dart';
+import 'package:nfc_terminal/data/models/endpoint_reply.dart';
 import 'package:nfc_terminal/services/delivery_service.dart';
 import 'package:nfc_terminal/services/signing.dart';
 
@@ -97,5 +98,61 @@ void main() {
     expect(back.signingSecret, isNull);
     expect(back.deliveryMode, DeliveryMode.direct);
     expect(back.applicationName, 'Gym');
+  });
+
+  group('signed body: ids, location opt-in, nonce', () {
+    final now = DateTime.utc(2026, 9, 25, 8, 30, 30);
+    final withFix = testEvent().copyWith(locationJson: () => jsonEncode({'lat': -1.95, 'lng': 30.06, 'accuracy_m': 12.5}));
+
+    test('every body carries the phone device_id and the tap id, signed, and the headers agree with the body', () {
+      final cfg = testConfig(mode: DeliveryMode.direct, secret: 'a' * 64);
+      final req = buildSignedDirectRequest(event: testEvent(), config: cfg, secret: 'a' * 64, now: now, nonce: 'n1');
+      final body = jsonDecode(utf8.decode(req.bodyBytes)) as Map<String, dynamic>;
+      expect(body['device_id'], cfg.deviceId);
+      expect(body['event_id'], testEvent().eventId);
+      expect(req.headers['X-NFC-Device-Id'], body['device_id']);
+      expect(req.headers['X-NFC-Event-Id'], body['event_id']);
+      expect(
+        req.headers['X-NFC-Signature'],
+        Signer.sign(secret: 'a' * 64, timestamp: req.headers['X-NFC-Timestamp']!, nonce: 'n1', bodyBytes: req.bodyBytes),
+      );
+    });
+
+    test('a location is in the body only when the application has sharing on', () {
+      final on = testConfig(mode: DeliveryMode.direct, shareLocation: true);
+      final off = testConfig(mode: DeliveryMode.direct);
+      expect(buildEndpointPayload(event: withFix, config: on, mode: DeliveryMode.direct)['location'],
+          {'lat': -1.95, 'lng': 30.06, 'accuracy_m': 12.5});
+      expect(buildEndpointPayload(event: withFix, config: off, mode: DeliveryMode.direct).containsKey('location'), isFalse);
+      expect(buildEndpointPayload(event: testEvent(), config: on, mode: DeliveryMode.direct).containsKey('location'), isFalse);
+    });
+
+    test('a location.update has its own id, the device id, and is signed like a tap', () {
+      final cfg = testConfig(mode: DeliveryMode.direct, secret: 'b' * 64, shareLocation: true);
+      final payload = buildLocationPayload(id: 'ping-1', config: cfg, fix: const GeoFix(lat: 1, lng: 2), now: now);
+      final req = signDirectRequest(payload: payload, eventId: 'ping-1', config: cfg, secret: 'b' * 64, now: now, nonce: 'n2');
+      final body = jsonDecode(utf8.decode(req.bodyBytes)) as Map<String, dynamic>;
+      expect(body['event'], 'location.update');
+      expect(body['event_id'], 'ping-1');
+      expect(body['device_id'], cfg.deviceId);
+      expect(body['location'], {'lat': 1.0, 'lng': 2.0});
+      expect(req.headers['X-NFC-Event-Id'], 'ping-1');
+      expect(req.headers['X-NFC-Device-Id'], cfg.deviceId);
+    });
+
+  });
+
+  test('endpoint reply parsing: tones, clipping and junk', () {
+    final r = EndpointReply.fromBody('{"display":{"title":"Checked out","message":"Ann, 8 h","tone":"SUCCESS"},'
+        '"action_url":"https://a.example/x","session_open":true}')!;
+    expect(r.tone, ReplyTone.success);
+    expect(r.title, 'Checked out');
+    expect(r.actionUrl, 'https://a.example/x');
+    expect(r.sessionOpen, isTrue);
+    expect(EndpointReply.fromBody('{"display":{"title":"x","tone":"purple"}}')!.tone, ReplyTone.neutral);
+    expect(EndpointReply.fromBody('{"ok":true}'), isNull);
+    expect(EndpointReply.fromBody('not json'), isNull);
+    expect(EndpointReply.fromBody('[1]'), isNull);
+    expect(EndpointReply.fromBody('{"display":{"title":"${'x' * 500}"}}')!.title!.length, EndpointReply.titleMax);
   });
 }

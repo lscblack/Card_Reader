@@ -1,5 +1,6 @@
 import '../../core/error_catalog.dart';
 import 'business.dart';
+import 'endpoint_reply.dart';
 import 'personal.dart';
 import 'device_config.dart';
 
@@ -116,6 +117,7 @@ class EventSubmission {
     required this.detectedAt,
     this.directDelivery,
     this.digitalCardToken,
+    this.location,
   });
 
   final String eventId;
@@ -130,6 +132,9 @@ class EventSubmission {
   /// Part 4 §5 (only sent for digital cards; Part 1 body unchanged otherwise).
   final String? digitalCardToken;
 
+  /// Only set when the application has location sharing on (the server drops it otherwise).
+  final GeoFix? location;
+
   Map<String, Object?> toJson() => {
     'event_id': eventId,
     'card_id': cardId,
@@ -138,6 +143,7 @@ class EventSubmission {
     'detected_at': detectedAt,
     'direct_delivery': directDelivery?.toJson(),
     'digital_card_token': ?digitalCardToken,
+    'location': ?location?.toJson(),
   };
 }
 
@@ -154,6 +160,7 @@ class EventSubmitResult {
     this.business,
     this.digitalCard,
     this.appCard,
+    this.endpointReply,
   });
 
   final String eventId;
@@ -179,6 +186,9 @@ class EventSubmitResult {
   /// Developer devices: whether the chip is one of the application's registered cards.
   final AppCardResult? appCard;
 
+  /// Relay mode: what the developer's endpoint answered (`display`, `action_url`, `session_open`).
+  final EndpointReply? endpointReply;
+
   factory EventSubmitResult.fromJson(Map<String, dynamic> j) => EventSubmitResult(
     eventId: j['event_id'] as String? ?? '',
     status: j['status'] as String? ?? 'pending',
@@ -191,6 +201,38 @@ class EventSubmitResult {
     digitalCard: DigitalCardSummary.fromJson(j['digital_card']),
     business: j['business'] is Map ? BusinessResult.fromJson((j['business'] as Map).cast<String, dynamic>()) : null,
     appCard: j['app_card'] is Map ? AppCardResult.fromJson((j['app_card'] as Map).cast<String, dynamic>()) : null,
+    endpointReply: EndpointReply.fromJson(j['endpoint_reply']),
+  );
+}
+
+/// A position fix. Only ever created, stored or sent for applications with location sharing on.
+class GeoFix {
+  const GeoFix({required this.lat, required this.lng, this.accuracyM});
+
+  final double lat;
+  final double lng;
+  final double? accuracyM;
+
+  Map<String, Object?> toJson() => {'lat': lat, 'lng': lng, 'accuracy_m': ?accuracyM};
+
+  static GeoFix? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final lat = (j['lat'] as num?)?.toDouble();
+    final lng = (j['lng'] as num?)?.toDouble();
+    if (lat == null || lng == null || lat.abs() > 90 || lng.abs() > 180) return null;
+    return GeoFix(lat: lat, lng: lng, accuracyM: (j['accuracy_m'] as num?)?.toDouble());
+  }
+}
+
+/// Response of `POST /device/location` (relay mode).
+class LocationUpdateResult {
+  const LocationUpdateResult({required this.delivered, this.endpointReply});
+  final bool delivered;
+  final EndpointReply? endpointReply;
+
+  factory LocationUpdateResult.fromJson(Map<String, dynamic> j) => LocationUpdateResult(
+    delivered: j['delivered'] == true,
+    endpointReply: EndpointReply.fromJson(j['endpoint_reply']),
   );
 }
 

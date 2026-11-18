@@ -10,9 +10,11 @@ import '../../data/event_repository.dart';
 import '../../data/models/business.dart';
 import '../../data/models/card_read.dart';
 import '../../data/models/device_config.dart';
+import '../../data/models/endpoint_reply.dart';
 import '../../data/models/event_record.dart';
 import '../../services/app_state.dart';
 import '../../services/card_programmer.dart';
+import '../../services/location_sharing.dart';
 import '../../services/nfc_writer.dart';
 import '../../services/reader_controller.dart';
 import '../theme.dart';
@@ -113,6 +115,8 @@ class ReaderScreen extends StatelessWidget {
           children: [
             if (app.availableUpdate != null) UpdateBanner(release: app.availableUpdate!),
             _ConnectionCard(app: app),
+            if (app.locationSharing != null) _LocationCard(sharing: app.locationSharing!),
+            if (reader.linkNotice != null) _LinkNotice(text: reader.linkNotice!),
             const SizedBox(height: 24),
             Center(child: _indicator(context, reader, app.online)),
             const SizedBox(height: 20),
@@ -173,6 +177,12 @@ class ReaderScreen extends StatelessWidget {
         color: businessResultColor(context, e.business!),
         title: businessResultLabel(e.business!),
         subtitle: e.business!.message),
+      // The endpoint answered with something to show: its words instead of only "Delivered".
+      ReaderPhase.delivered when r.lastReply?.hasDisplay == true => StatusIndicator(
+        icon: replyToneIcon(r.lastReply!.tone),
+        color: replyToneColor(context, r.lastReply!.tone),
+        title: r.lastReply!.title ?? (e?.status == EventStatus.logged ? 'Logged ✓' : 'Delivered ✓'),
+        subtitle: r.lastReply!.message ?? codeLatency()),
       ReaderPhase.delivered => StatusIndicator(
         icon: Icons.check_circle_outline, color: StatusColors.success(context),
         title: e?.status == EventStatus.logged ? 'Logged ✓' : 'Delivered ✓', subtitle: codeLatency()),
@@ -188,6 +198,154 @@ class ReaderScreen extends StatelessWidget {
           if (e?.status == EventStatus.queued) 'queued for retry',
         ].join(' – ')),
     };
+  }
+}
+
+/// Colour of an endpoint reply's tone; unknown tones are neutral.
+Color replyToneColor(BuildContext c, ReplyTone tone) => switch (tone) {
+  ReplyTone.success => StatusColors.success(c),
+  ReplyTone.warning => StatusColors.warning(c),
+  ReplyTone.error => StatusColors.error(c),
+  ReplyTone.info => StatusColors.active(c),
+  ReplyTone.neutral => StatusColors.neutral(c),
+};
+
+IconData replyToneIcon(ReplyTone tone) => switch (tone) {
+  ReplyTone.success => Icons.check_circle_outline,
+  ReplyTone.warning => Icons.warning_amber_rounded,
+  ReplyTone.error => Icons.error_outline,
+  ReplyTone.info => Icons.info_outline,
+  ReplyTone.neutral => Icons.chat_bubble_outline,
+};
+
+/// Small notice under the connection card: the endpoint's link was not opened.
+class _LinkNotice extends StatelessWidget {
+  const _LinkNotice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    key: const Key('linkNotice'),
+    padding: const EdgeInsets.only(top: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.link_off, size: 16, color: StatusColors.warning(context)),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall)),
+      ],
+    ),
+  );
+}
+
+/// Location sharing (opt-in per application): the persistent "sharing location" indicator while a session is
+/// open, and the permission prompt when the setting is on but the phone has not allowed it.
+class _LocationCard extends StatefulWidget {
+  const _LocationCard({required this.sharing});
+
+  final LocationSharing sharing;
+
+  @override
+  State<_LocationCard> createState() => _LocationCardState();
+}
+
+class _LocationCardState extends State<_LocationCard> {
+  @override
+  void initState() {
+    super.initState();
+    widget.sharing.addListener(_changed);
+    unawaited(widget.sharing.refreshAccess());
+  }
+
+  @override
+  void didUpdateWidget(_LocationCard old) {
+    super.didUpdateWidget(old);
+    if (old.sharing != widget.sharing) {
+      old.sharing.removeListener(_changed);
+      widget.sharing.addListener(_changed);
+      unawaited(widget.sharing.refreshAccess());
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.sharing.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.sharing;
+    if (!s.enabled) return const SizedBox.shrink();
+    final t = Theme.of(context).textTheme;
+    if (s.active) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Card(
+          key: const Key('locationSharingIndicator'),
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: ListTile(
+            leading: Icon(Icons.my_location, color: Theme.of(context).colorScheme.onPrimaryContainer),
+            title: const Text('Sharing your location'),
+            subtitle: Text(s.deliveryTroubled
+                ? 'Updates are not reaching the server. Check the connection.'
+                : 'A session is open. Sharing stops when it ends.'),
+            trailing: TextButton(onPressed: s.pauseByUser, child: const Text('Stop sharing')),
+          ),
+        ),
+      );
+    }
+    if (s.needsPermission) {
+      final blocked = s.access == LocationAccess.deniedForever;
+      final off = s.access == LocationAccess.serviceOff;
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          key: const Key('locationPermission'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.location_off_outlined, size: 18, color: StatusColors.warning(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                off
+                    ? 'This application shares your location, but location is switched off on this phone.'
+                    : 'This application shares your location with each tap. Allow location access to do so.',
+                style: t.bodySmall,
+              ),
+            ),
+            TextButton(
+              onPressed: blocked || off ? s.openSettings : s.requestAccess,
+              child: Text(blocked || off ? 'Settings' : 'Allow'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (s.sessionWaiting) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          children: [
+            Icon(Icons.location_disabled, size: 18, color: StatusColors.neutral(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                s.problem ?? 'A session is open. You stopped sharing your location.',
+                style: t.bodySmall,
+              ),
+            ),
+            TextButton(onPressed: s.resume, child: Text(s.problem != null ? 'Try again' : 'Share again')),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 

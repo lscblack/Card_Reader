@@ -99,6 +99,8 @@ def application_out(app: Application, device_count: int = 0) -> ApplicationOut:
             rotated_at=app.webhook_secret_rotated_at,
         ),
         allowed_domains=list(app.allowed_domains or []),
+        link_domains=list(app.link_domains or []),
+        share_location=bool(app.share_location),
         device_count=device_count,
         created_at=app.created_at,
         updated_at=app.updated_at,

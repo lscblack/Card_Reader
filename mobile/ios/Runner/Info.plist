@@ -73,6 +73,12 @@
 		<string>F04E4643444301</string>
 		<string>D2760000850101</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Applications that turn on location sharing receive your location with each card tap, and while one of their sessions is open.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera scans pairing and card QR codes, and takes photos for your digital card.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Spinner'
 import { AppSelect } from '@/components/AppSelect'
 import { EndpointForm } from '@/components/EndpointForm'
 import { AllowedDomainsCard } from '@/components/AllowedDomains'
+import { ReplyOptionsCard } from '@/components/ReplyOptions'
 
 export default function EndpointsPage() {
   useDocumentTitle('Endpoint Configuration')
@@ -44,6 +45,7 @@ export default function EndpointsPage() {
         <div className="space-y-6">
           <EndpointForm key={app.id} app={app} />
           <AllowedDomainsCard key={`ad-${app.id}`} app={app} />
+          <ReplyOptionsCard key={`ro-${app.id}-${app.updated_at}`} app={app} />
         </div>
       )}
     </>

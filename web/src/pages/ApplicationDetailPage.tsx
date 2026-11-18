@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/toastContext'
 import { EndpointForm } from '@/components/EndpointForm'
 import { WebhookSecretPanel } from '@/components/Webhooks'
 import { AllowedDomainsCard } from '@/components/AllowedDomains'
+import { ReplyOptionsCard } from '@/components/ReplyOptions'
 import { ApiKeysTable, CreateApiKeyModal } from '@/components/ApiKeys'
 import { DevicesTable } from '@/components/Devices'
 import { RunConsole } from '@/components/RunConsole'
@@ -290,6 +291,7 @@ export default function ApplicationDetailPage() {
             <div className="space-y-6">
               <EndpointForm key={app.id} app={app} />
               <AllowedDomainsCard key={`ad-${app.id}`} app={app} />
+              <ReplyOptionsCard key={`ro-${app.id}-${app.updated_at}`} app={app} />
               <WebhookSecretPanel app={app} />
             </div>
           )}

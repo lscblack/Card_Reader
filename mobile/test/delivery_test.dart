@@ -144,6 +144,21 @@ void main() {
       api = FakeDeviceApi();
     });
 
+    test('every delivery, retries included, goes out with its own X-NFC-Nonce', () async {
+      final nonces = <String>[];
+      final client = MockClient((req) async {
+        nonces.add(req.headers['X-NFC-Nonce']!);
+        return http.Response('', nonces.length == 1 ? 503 : 200);
+      });
+      final cfg = testConfig(mode: DeliveryMode.direct, secret: secret);
+      final service = svc(client);
+      final first = await service.deliver(testEvent(), cfg);
+      await service.deliver(first!, cfg); // the redelivery after the 503
+      await service.deliver(testEvent(id: '7f1c2d3e-0000-4000-8000-000000000002'), cfg);
+      expect(nonces, hasLength(3));
+      expect(nonces.toSet(), hasLength(3));
+    });
+
     test('signs, sends to endpoint and reports outcome to the platform', () async {
       late http.Request seen;
       final client = MockClient((req) async {

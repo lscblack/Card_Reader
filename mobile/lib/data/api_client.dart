@@ -46,6 +46,9 @@ abstract class DeviceApi {
   Future<HeartbeatResult> heartbeat();
   Future<EventSubmitResult> submitEvent(EventSubmission submission, {Duration? timeout});
 
+  /// Relay mode, location sharing on: the platform forwards one signed `location.update` to the endpoint.
+  Future<LocationUpdateResult> postLocation(GeoFix fix, {Duration? timeout});
+
   // Part 2 C3 — business devices with capabilities.
   Future<List<BusinessCardItem>> listBusinessCards({String? query, bool? programmed});
   /// [assignToBusiness]: the card belongs to the company itself (null = server default).
@@ -147,6 +150,12 @@ class ApiClient implements DeviceApi {
       timeout: timeout,
     );
     return EventSubmitResult.fromJson(j);
+  }
+
+  @override
+  Future<LocationUpdateResult> postLocation(GeoFix fix, {Duration? timeout}) async {
+    final j = await _request('POST', '/device/location', body: fix.toJson(), timeout: timeout);
+    return LocationUpdateResult.fromJson(j);
   }
 
   @override

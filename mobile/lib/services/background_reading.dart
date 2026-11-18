@@ -15,6 +15,11 @@ bool shouldReturnToBackground(DispatchedTag tag) => tag.launchedFromBackground;
   if (result == null) {
     return (title: '$card read', body: 'Still sending — it will be retried if needed.');
   }
+  // The endpoint's own reply (opt-in by the endpoint): its title and message instead of "delivered".
+  final reply = result.reply;
+  if (reply != null && reply.hasDisplay && result.isSuccess && result.business == null) {
+    return (title: reply.title ?? '$card delivered ✓', body: reply.message ?? '');
+  }
   final digital = result.digitalCard;
   if (result.digitalCardToken != null && result.business == null) {
     final who = digital?.fullName ?? 'Digital card';
@@ -65,6 +70,7 @@ class BackgroundReading {
     required this.flushRetries,
     this.resolveTapLink,
     this.onForeignLink,
+    this.openedLink,
     this.timeout = const Duration(seconds: 8),
   });
 
@@ -74,6 +80,10 @@ class BackgroundReading {
   final void Function() flushRetries;
   final Future<String?> Function(Uri tapLink)? resolveTapLink;
   final void Function(DispatchedTag tag)? onForeignLink;
+
+  /// The tap just handled opened a link from the endpoint: that page must stay in front, so the app does not
+  /// send itself to the back.
+  final bool Function()? openedLink;
   final Duration timeout;
   StreamSubscription<DispatchedTag>? _sub;
 
@@ -106,12 +116,13 @@ class BackgroundReading {
       return null;
     });
     if (!shouldReturnToBackground(tag)) return;
+    final linkOpened = result != null && (openedLink?.call() ?? false);
     if (result != null || timedOut) {
       final text = backgroundResultText(card.uid, result);
       await dispatch.showNotification(text.title, text.body);
     }
     // null without timeout = debounced duplicate: just go back.
-    await dispatch.moveToBack();
+    if (!linkOpened) await dispatch.moveToBack();
   }
 
   /// iOS tap link → this business's card (null: not ours, unknown, or the server can't be asked).

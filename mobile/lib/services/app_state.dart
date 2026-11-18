@@ -18,6 +18,7 @@ import '../data/models/device_config.dart';
 import '../data/models/event_record.dart';
 import 'config_sync.dart';
 import 'delivery_service.dart';
+import 'location_sharing.dart';
 import 'platform_info.dart';
 import 'retry_queue.dart';
 import 'tag_dispatch.dart';
@@ -41,6 +42,7 @@ class AppState extends ChangeNotifier {
     this.tagDispatch = const NoTagDispatch(),
     this.apkUpdates = true,
     AppSettings? settings,
+    this.locationSource = const GeolocatorSource(),
   }) : settings = settings ?? AppSettings(credentials.store),
        _apiFactory = apiFactory ??
            ((base, token, onUnauthorized) => ApiClient(
@@ -57,6 +59,7 @@ class AppState extends ChangeNotifier {
   final DeviceApiFactory _apiFactory;
   final TagDispatch tagDispatch;
   final AppSettings settings;
+  final LocationSource locationSource;
 
   /// Android: look for newer APKs published on the server. iOS updates come from the App Store.
   final bool apkUpdates;
@@ -99,6 +102,9 @@ class AppState extends ChangeNotifier {
   ConfigSync? configSync;
   DeliveryService? delivery;
   RetryQueue? retryQueue;
+
+  /// Opt-in per application ([DeviceConfig.shareLocation]); null when not registered.
+  LocationSharing? locationSharing;
   StreamSubscription<bool>? _onlineSub;
   bool _handlingAuthFailure = false;
 
@@ -235,26 +241,44 @@ class AppState extends ChangeNotifier {
       await sync.loadCached();
     }
     sync.addListener(notifyListeners);
+    sync.addListener(_onConfigChanged);
     configSync = sync;
+    late final LocationSharing sharing;
     delivery = DeliveryService(
       api: api,
       httpClient: httpClient,
       repository: repository,
       isOnline: () => online,
+      onEndpointReply: (reply, seq) => sharing.onReply(reply, seq: seq),
+      requestSeq: () => sharing.nextSeq(),
     );
+    sharing = LocationSharing(
+      source: locationSource,
+      configProvider: () => configSync?.config,
+      send: (config, fix) async => await delivery?.sendLocationUpdate(config, fix) ?? false,
+    );
+    locationSharing = sharing;
     retryQueue = RetryQueue(repository: repository, delivery: delivery!, configProvider: () => configSync?.config)
       ..start();
     sync.start();
   }
 
+  /// The application's settings changed: location sharing stops as soon as it is switched off.
+  void _onConfigChanged() => locationSharing?.configChanged();
+
   Future<void> _endSession() async {
     retryQueue?.stop();
     retryQueue = null;
     delivery = null;
+    final sharing = locationSharing;
+    locationSharing = null;
+    await sharing?.stop();
+    sharing?.dispose();
     final sync = configSync;
     configSync = null;
     _api = null;
     sync?.removeListener(notifyListeners);
+    sync?.removeListener(_onConfigChanged);
     sync?.dispose();
   }
 

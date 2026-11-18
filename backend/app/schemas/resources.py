@@ -69,6 +69,8 @@ class ApplicationOut(Schema):
     endpoint: EndpointConfig
     webhook_secret: WebhookSecretInfo
     allowed_domains: list[str]
+    link_domains: list[str] = []
+    share_location: bool = False
     device_count: int
     created_at: UTCDateTime
     updated_at: UTCDateTime
@@ -111,6 +113,11 @@ class EndpointUpdateIn(Schema):
 
 class AllowedDomainsIn(Schema):
     domains: list[str] = Field(max_length=100)
+
+
+class ReplyOptionsIn(Schema):
+    link_domains: list[str] = Field(default_factory=list, max_length=100)
+    share_location: bool = False
 
 
 class EndpointTestOut(Schema):

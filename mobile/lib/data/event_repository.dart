@@ -51,7 +51,7 @@ class SqfliteEventRepository implements EventRepository {
     final db = await f.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onUpgrade: (db, oldVersion, _) async {
           if (oldVersion < 2) {
             // Part 2: error refs + business result.
@@ -67,6 +67,10 @@ class SqfliteEventRepository implements EventRepository {
           if (oldVersion < 4) {
             // Developer devices: registered-card status of each tap.
             await db.execute('ALTER TABLE $_table ADD COLUMN app_card_json TEXT');
+          }
+          if (oldVersion < 5) {
+            // Location sharing: the fix taken at the tap (only for applications that opted in).
+            await db.execute('ALTER TABLE $_table ADD COLUMN location_json TEXT');
           }
         },
         onCreate: (db, _) async {
@@ -91,7 +95,8 @@ class SqfliteEventRepository implements EventRepository {
               business_json TEXT,
               digital_token TEXT,
               digital_json TEXT,
-              app_card_json TEXT
+              app_card_json TEXT,
+              location_json TEXT
             )''');
           await db.execute('CREATE INDEX idx_events_detected ON $_table(detected_at DESC)');
           await db.execute('CREATE INDEX idx_events_status ON $_table(status, next_attempt_at)');

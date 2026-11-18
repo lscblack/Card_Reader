@@ -238,6 +238,10 @@ export interface Application {
   webhook_secret: WebhookSecretStatus
   /** Contract §7.1 — empty = no restriction beyond §5. Exact host, `*.example.com` or IP literal. */
   allowed_domains: string[]
+  /** Hosts a link returned by the endpoint may open on the phone (https only); empty = never open one. */
+  link_domains?: string[]
+  /** The phone sends its location (with each tap; in the background while the endpoint says a session is open). */
+  share_location?: boolean
   device_count: number
   created_at: ISODateTime
   updated_at: ISODateTime

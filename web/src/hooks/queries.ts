@@ -204,6 +204,14 @@ export function useSetAllowedDomains(id: string) {
   })
 }
 
+export function useSetReplyOptions(id: string) {
+  const inv = useInvalidate()
+  return useMutation({
+    mutationFn: (body: { link_domains: string[]; share_location: boolean }) => applicationsApi.setReplyOptions(id, body),
+    onSuccess: () => inv(qk.applications),
+  })
+}
+
 export function useAddAllowedOrigin() {
   const inv = useInvalidate()
   return useMutation({
