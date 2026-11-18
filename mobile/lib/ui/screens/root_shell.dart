@@ -16,6 +16,7 @@ import '../../services/personal_state.dart';
 import '../../services/reader_controller.dart';
 import '../../services/tag_dispatch.dart';
 import '../personal/contacts_screen.dart';
+import 'in_app_page_screen.dart';
 import '../personal/my_card_screen.dart';
 import '../widgets/business_result.dart';
 import '../widgets/guest_tap.dart';
@@ -65,6 +66,27 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   }
 
   bool get _terminal => _app.phase == AppPhase.ready;
+
+  /// A link the endpoint returned (already checked against the application's link domains) opens as a page
+  /// INSIDE nexTap, so the person does not leave the reader and come back. Not awaited: the page stays open
+  /// while taps keep being read. A newer link replaces the one on screen.
+  bool _linkPageOpen = false;
+  int _linkToken = 0;
+  Future<bool> _openLinkInApp(Uri url) async {
+    if (!mounted) return false;
+    final navigator = Navigator.of(context);
+    if (_linkPageOpen) navigator.pop();
+    _linkPageOpen = true;
+    final token = ++_linkToken;
+    navigator
+        .push(MaterialPageRoute<void>(
+          builder: (_) => InAppPageScreen(url: url, linkDomains: _app.config?.linkDomains ?? const []),
+        ))
+        .whenComplete(() {
+          if (_linkToken == token) _linkPageOpen = false; // a newer page may already have replaced this one
+        });
+    return true;
+  }
   bool get _personalOn => _personal.signedIn;
 
   List<ShellTab> get _tabs => [
@@ -83,6 +105,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         deliveryProvider: () => _app.delivery,
         configProvider: () => _app.config,
         locationProvider: () => _app.locationSharing?.fixForTap() ?? Future.value(null),
+        openLink: _openLinkInApp,
         runAction: (b) async {
           if (_app.autoRunActions && (_app.config?.isBusiness ?? false)) await openActionUrl(b.actionUrl);
         },
